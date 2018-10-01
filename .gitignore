@@ -1,2 +1,6 @@
-# ignore data folder
-data/
+#  data folder
+data
+# editor files
+*.sw[o,n,p]
+.idea
+*.csv
