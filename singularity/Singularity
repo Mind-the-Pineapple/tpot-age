@@ -30,7 +30,11 @@ An Ubuntu 17.10 Singularity container with basic Python 3.6.3 and packages
          numpy==1.15.1 \
          pandas==0.23.4 \
          scipy==1.1.0 \
-         scikit-learn==0.19.2
+         scikit-learn==0.19.2 \
+         nibabel==2.3.0 \
+         matplotlib==3.0.0 \
+         ipython==7.0.1 \
+         jupyter notebook==5.6.0
 
     # mount necessary folders to the container
     # export SINGULARITY_BINDPATH="/home/vagrant/BayOpt:/home/BayOpt/"
