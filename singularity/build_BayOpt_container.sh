@@ -2,13 +2,11 @@
 
 set -e
 
-echo "---------------------------"
-echo "Removing previous container"
-echo "---------------------------"
-sudo rm -rf BayOpt.img
+if [ -d BayOpt.img ]; then
+    sudo rm -rf BayOpt.img
+    echo 'Remove old files'
+fi
 
-echo "----------------------------------"
-echo "Linking image to singularity file"
-echo "----------------------------------"
-sudo singularity build --sandbox BayOpt.img Singularity
+sudo singularity build --sandbox BayOpt.img BayOptSingularity
+echo 'Linked image to recipe'
 

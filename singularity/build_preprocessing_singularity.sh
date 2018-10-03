@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 
 # If it exists remove old image
