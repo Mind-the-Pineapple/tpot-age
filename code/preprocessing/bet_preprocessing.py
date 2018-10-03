@@ -9,12 +9,12 @@ from nipype.interfaces.io import DataSink, DataGrabber
 from nipype.interfaces.utility import IdentityInterface
 
 # Data location
-#dataPath = 'data' # TODO: work out your containter path
+print('current working directory is: %s' %os.getcwd())
 dataPath = 'data'
 
 # Get image
 #-----------------------------------------------------------------------------
-# get list of subjects
+# get list of subjects, select all files with .nii ending
 fileList = os.listdir(dataPath)
 subjects_id = [re.sub(r'^smwc1(.*?)\_mpr-1_anon.nii$', '\\1', file) for file in
             fileList if file.endswith('.nii')]
@@ -26,13 +26,9 @@ dataSource = Node(interface=DataGrabber(infields=['subject_id'],
 dataSource.inputs.base_directory = os.getcwd()
 dataSource.inputs.template = 'data/smwc1%s_mpr-1_anon.nii'
 dataSource.inputs.sort_filelist = True
-# this specifies the variables for the field_templates
+# this specifies the variables for the field_templates. Or in other words, what
+# to iterate over
 dataSource.inputs.subject_id = subjects_id
-
-# templates={"T1": "smwc1OAS1_{subject_id}_MR1_mpr1-anon.nii"}
-# dg = Node(SelectFiles(templates), 'selectfiles')
-# dg.inputs.subject_id = subjects_id
-# db.base_directory = dataPath
 
 bet = Node(BET(), name='bet')
 bet.inputs.mask = True
@@ -58,8 +54,8 @@ preproc.base_dir =  dataPath
 preproc.connect([
                  (infoSource, dataSource, [('subject_id', 'subject_id')] ),
                  (dataSource, bet,        [('t1'        , 'in_file'   )] ),
-                 # (bet       , dataSink    [('mask_file' , 'bet.mask'  )] ),
-                 # (bet       , dataSink    [('out_file'  , 'bet.output')])
+                 (bet       , dataSink,    [('mask_file' , 'betout.mask'  )] ),
+                 (bet       , dataSink,    [('out_file'  , 'betout.output')] )
                ])
 
 preproc.run()
