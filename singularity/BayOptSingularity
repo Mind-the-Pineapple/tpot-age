@@ -27,17 +27,21 @@ An Ubuntu 17.10 Singularity container with basic Python 3.6.3 and packages
     #echo "PROMPT=\"(singularity) \$PROMPT\"" >> $HOME/.zshrc
 
     pip3 --no-cache-dir install \
+         virtualenv===16.0.0
+
+    # create and activate virtualenv and install remaining packages
+    virtualenv -p python3 /neuroenv
+    /bin/bash -c "source /neuroenv/bin/activate && \
+    pip3 --no-cache-dir install \
          numpy==1.15.1 \
          pandas==0.23.4 \
          scipy==1.1.0 \
          scikit-learn==0.19.2 \
          nibabel==2.3.0 \
+         nilearn==0.4.2 \
          matplotlib==3.0.0 \
          ipython==7.0.1 \
-         jupyter notebook==5.6.0
-
-    # mount necessary folders to the container
-    # export SINGULARITY_BINDPATH="/home/vagrant/BayOpt:/home/BayOpt/"
+         jupyter notebook==5.6.0"
 
 
 
