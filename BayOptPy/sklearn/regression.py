@@ -64,6 +64,7 @@ def data_preprocessing():
     print('Y_test: '  + str(Ytest.shape))
     return Xtrain, Xtest, Ytrain, Ytest, demographics
 
+
 if __name__ == '__main__':
     # Perform preprocessing
     Xtrain, Xtest, Ytrain, Ytest, demographics = data_preprocessing()
