@@ -4,3 +4,7 @@ data
 *.sw[o,n,p]
 .idea
 *.csv
+# singularity examples
+singularity/examples/
+# singularity images
+*.img

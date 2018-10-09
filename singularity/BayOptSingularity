@@ -43,5 +43,6 @@ An Ubuntu 17.10 Singularity container with basic Python 3.6.3 and packages
          ipython==7.0.1 \
          jupyter notebook==5.6.0"
 
-
+%runscript
+/BayOpt/singularity/startup.sh "$@"
 
