@@ -35,17 +35,19 @@ args = parser.parse_args()
 
 if __name__ == '__main__':
 
-    project_cwd = '/BayOpt'
+    project_wd = '/BayOpt'
+    project_data = os.path.join(project_wd, 'data')
+    project_sink = os.path.join(project_wd, 'output')
     print('Running regression analyis')
     print('The current args are: %s' %args)
 
     # Get nii images and list of subjects
-    dataPath = os.path.join(project_cwd, 'data')
+    dataPath = os.path.join(project_data)
     # remove the file end and get list of all used subjects
     fileList = os.listdir(dataPath)
     rawsubjectsId = [re.sub(r'^smwc1(.*?)\_mpr-1_anon.nii$', '\\1', file) for file in fileList if file.endswith('.nii')]
     # TODO: Change this. For testing purpose select just the first 5 subjects
-    rawsubjectsId = rawsubjectsId[:250]
+    rawsubjectsId = rawsubjectsId[:25]
 
     # Load the demographics for each subject
     demographics = get_data_covariates(dataPath, rawsubjectsId)
@@ -86,7 +88,7 @@ if __name__ == '__main__':
     plt.ylabel("Predicted Age: $\hat{Y}_i$")
     plt.title("Age vs Predicted Age: $Y_i$ vs $\hat{Y}_i$")
     if args.nogui:
-        plt.savefig('regression.png')
+        plt.savefig(os.path.join(project_sink, 'regression.png'))
     else:
         plt.show()
     print('Done')
