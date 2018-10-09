@@ -3,6 +3,8 @@
 import os
 import re
 import pandas as pd
+import argparse
+
 from nilearn import masking
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,14 +26,21 @@ def get_data_covariates(dataPath, rawsubjectsId):
 
     return demographics
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-nogui',
+                    dest='nogui',
+                    action='store_true',
+                    help='No gui')
+args = parser.parse_args()
 
 if __name__ == '__main__':
 
-    cwd = os.getcwd()
-    print('Current working directory is: %s' %cwd)
+    project_cwd = '/BayOpt'
+    print('Running regression analyis')
+    print('The current args are: %s' %args)
 
     # Get nii images and list of subjects
-    dataPath = os.path.join(cwd, 'data')
+    dataPath = os.path.join(project_cwd, 'data')
     # remove the file end and get list of all used subjects
     fileList = os.listdir(dataPath)
     rawsubjectsId = [re.sub(r'^smwc1(.*?)\_mpr-1_anon.nii$', '\\1', file) for file in fileList if file.endswith('.nii')]
@@ -45,6 +54,7 @@ if __name__ == '__main__':
     imgs = [nib.load(os.path.join(dataPath, 'smwc1%s_mpr-1_anon.nii' %subject)) for subject in rawsubjectsId]
 
     # Use nilearn to mask only the brain voxels across subjects
+    print('Compute brain mask')
     MeanImgMask = masking.compute_multi_epi_mask(imgs, lower_cutoff=0.001, upper_cutoff=.7, opening=1)
     # Apply the group mask on all subjects.
     # Note: The apply_mask function returns the flattened data as a numpy array
@@ -64,14 +74,19 @@ if __name__ == '__main__':
     print('Y_test: '  + str(Ytest.shape))
 
     # Do simple Linear regression
+    print('Start simple linear regression')
     linReg = LinearRegression()
     linReg.fit(Xtrain, Ytrain)
     print('Performed simple linear regresssion')
     Ypred = linReg.predict(Xtest)
+
     # plot the results
     plt.scatter(Ytest, Ypred)
     plt.xlabel("Age: $Y_i$")
     plt.ylabel("Predicted Age: $\hat{Y}_i$")
     plt.title("Age vs Predicted Age: $Y_i$ vs $\hat{Y}_i$")
-    plt.show()
+    if args.nogui:
+        plt.savefig('regression.png')
+    else:
+        plt.show()
     print('Done')
