@@ -33,8 +33,15 @@ if __name__ == '__main__':
     print('Y_train: ' + str(Ytrain.shape))
     print('Y_test: '  + str(Ytest.shape))
 
-    tpot = TPOTRegressor(generations=5, population_size=20, n_jobs=-1, verbosity=2, max_time_mins=20, random_state=42,
-                         memory='auto')
+    tpot = TPOTRegressor(generations=5,
+                         population_size=20,
+                         n_jobs=-1,
+                         verbosity=2,
+                         # max_time_mins=20,
+                         random_state=42,
+                         config_dict='TPOT light',
+                         # memory='auto'
+                        )
     # njobs=-1 uses all cores present in the machine
     tpot.fit(Xtrain, Ytrain)
     print(tpot.score(Xtest, Ytest))
