@@ -20,14 +20,14 @@ if __name__ == '__main__':
     print('The current args are: %s' %args)
     #project_wd = '/BayOpt'
     project_wd = os.getcwd()
-    project_sink, demographics, imgs, maskedData, imgDf = get_data(project_wd)
+    project_sink, demographics, imgs, maskedData = get_data(project_wd)
 
     print('Running regression analyis with sklearn')
 
 
     # split train-test dataset
     targetAttribute = demographics['Age']
-    Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(imgDf, targetAttribute, test_size=.4, random_state=42)
+    Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(maskedData, targetAttribute, test_size=.4, random_state=42)
     print('Divided dataset into test and training')
     print('Check train test split sizes')
     print('X_train: ' + str(Xtrain.shape))

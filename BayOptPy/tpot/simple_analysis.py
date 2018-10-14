@@ -18,14 +18,12 @@ if __name__ == '__main__':
 
     #project_wd = '/BayOpt'
     project_wd = os.getcwd()
-    project_sink, demographics, imgs, maskedData, imgDf = get_data(project_wd)
-    # transform data into numpy array
-    data = np.array(maskedData)[:, :2000]
+    project_sink, demographics, imgs, maskedData = get_data(project_wd)
     print('Running regression analyis with TPOT')
     # split train-test dataset
     targetAttribute = np.array(demographics['Age'])
 
-    Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(data, targetAttribute, test_size=.4, random_state=42)
+    Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(maskedData, targetAttribute, test_size=.4, random_state=42)
     print('Divided dataset into test and training')
     print('Check train test split sizes')
     print('X_train: ' + str(Xtrain.shape))
