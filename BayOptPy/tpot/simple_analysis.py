@@ -3,6 +3,7 @@ import argparse
 from tpot import TPOTRegressor
 from sklearn import model_selection
 import numpy as np
+from dask.distributed import Client
 
 from BayOptPy.helperfunctions import get_data
 
@@ -22,6 +23,9 @@ if __name__ == '__main__':
     print('Running regression analyis with TPOT')
     # split train-test dataset
     targetAttribute = np.array(demographics['Age'])
+    print('Start DASK client')
+    client = Client(threads_per_worker=1)
+    client
 
     Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(maskedData, targetAttribute, test_size=.4, random_state=42)
     print('Divided dataset into test and training')
@@ -38,6 +42,7 @@ if __name__ == '__main__':
                          # max_time_mins=20,
                          random_state=42,
                          config_dict='TPOT light',
+                         use_dask=True
                          # memory='auto'
                         )
     # njobs=-1 uses all cores present in the machine
