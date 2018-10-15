@@ -16,16 +16,6 @@ An Ubuntu 17.10 Singularity container with basic Python 3.6.3 and packages
                     python3-setuptools \
                     python3-pip
 
-    # Install oh-my-zsh
-     wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
-    # set zsh as shell
-    # export SINGULARITY_SHELL="/bin/bash --norc"
-    # export SINGULARITY_SHELL=/bin/zsh
-    # /bin/zsh --login
-
-    ## Make sure the shell always shows that we are in
-    #echo "PROMPT=\"(singularity) \$PROMPT\"" >> $HOME/.zshrc
-
     pip3 --no-cache-dir install \
          virtualenv===16.0.0
 
@@ -41,8 +31,14 @@ An Ubuntu 17.10 Singularity container with basic Python 3.6.3 and packages
          nilearn==0.4.2 \
          matplotlib==3.0.0 \
          ipython==7.0.1 \
-         jupyter notebook==5.6.0"
-
+         jupyter notebook==5.6.0 \
+         TPOT==0.9.5 \
+         bokeh==0.13.0 \
+         dask==0.19.4 \
+         distributed==1.23.3\
+         dask-ml==0.10.0\
+         dask-glm==0.1.0"
+ 
 %runscript
 /BayOpt/singularity/startup.sh "$@"
 
