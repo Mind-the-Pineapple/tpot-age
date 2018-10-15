@@ -39,6 +39,14 @@ An Ubuntu 17.10 Singularity container with basic Python 3.6.3 and packages
          dask-ml==0.10.0\
          dask-glm==0.1.0"
  
+    # Check if the project folder exists and if not create it
+    if [ ! -d /code ]; then mkdir /code; fi
+    if [ ! -d /data ]; then mkdir -p /data; fi
+    if [ ! -d /sing ]; then mkdir -p /sing; fi
+
+    # Add costume module to python path 
+    export PYTHONPATH="/BayOpt:$PYTHONPATH"
+
 %runscript
-/BayOpt/singularity/startup.sh "$@"
+/sing/startup.sh "$@"
 
