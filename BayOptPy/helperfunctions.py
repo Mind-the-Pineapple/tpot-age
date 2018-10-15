@@ -5,6 +5,21 @@ from nilearn import masking, image
 import nibabel as nib
 import numpy as np
 
+
+def get_paths(debug):
+    if debug:
+        project_wd = os.getcwd()
+        project_data = os.path.join(project_wd, 'data')
+    else:
+        project_wd = '/code'
+        project_data = os.path.join(os.sep, 'data')
+    project_sink = os.path.join(project_data, 'output')
+    print('Code Path: %s' %project_wd)
+    print('Data Path: %s' %project_data)
+    print('Data Out: %s' %project_sink )
+    return project_wd, project_data, project_sink
+
+
 def get_data_covariates(dataPath, rawsubjectsId):
     # Load the demographic details from the dataset
     demographics = pd.read_csv(os.path.join(dataPath, 'oasis_cross-sectional.csv'))
@@ -19,10 +34,8 @@ def get_data_covariates(dataPath, rawsubjectsId):
     return demographics
 
 
-def get_data(project_wd):
+def get_data(project_data):
     print('Getting data')
-    project_data = os.path.join(project_wd, 'data')
-    project_sink = os.path.join(project_wd, 'output')
 
     # remove the file end and get list of all used subjects
     fileList = os.listdir(project_data)
@@ -50,4 +63,4 @@ def get_data(project_wd):
 
     # Transform the imaging data into a np array (subjects x voxels)
     maskedData = np.array(maskedData)
-    return project_sink, demographics, imgs, maskedData
+    return demographics, imgs, maskedData

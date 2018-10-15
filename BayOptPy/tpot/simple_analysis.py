@@ -5,29 +5,41 @@ from sklearn import model_selection
 import numpy as np
 from dask.distributed import Client
 
-from BayOptPy.helperfunctions import get_data
+from BayOptPy.helperfunctions import get_data, get_paths
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-nogui',
                     dest='nogui',
                     action='store_true',
-                    help='No gui')
+                    help='No gui'
+                    )
+parser.add_argument('-debug',
+                    dest='debug',
+                    action='store_true',
+                    help='Run debug with Pycharm'
+                    )
+
 args = parser.parse_args()
 
 if __name__ == '__main__':
     print('The current args are: %s' %args)
 
-    #project_wd = '/BayOpt'
-    project_wd = os.getcwd()
-    project_sink, demographics, imgs, maskedData = get_data(project_wd)
+    project_wd, project_data, project_sink = get_paths(args.debug)
+    demographics, imgs, maskedData = get_data(project_data)
+
     print('Running regression analyis with TPOT')
     # split train-test dataset
     targetAttribute = np.array(demographics['Age'])
     print('Start DASK client')
-    client = Client(threads_per_worker=1)
+    if args.debug:
+        port = 8889
+    else:
+        port = 8787
+    client = Client(threads_per_worker=1, diagnostics_port=port)
     client
 
-    Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(maskedData, targetAttribute, test_size=.4, random_state=42)
+    # To ensure the example runs quickly, we'll make the training dataset relatively small
+    Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(maskedData, targetAttribute, test_size=.5, random_state=42)
     print('Divided dataset into test and training')
     print('Check train test split sizes')
     print('X_train: ' + str(Xtrain.shape))
@@ -48,4 +60,5 @@ if __name__ == '__main__':
     # njobs=-1 uses all cores present in the machine
     tpot.fit(Xtrain, Ytrain)
     print(tpot.score(Xtest, Ytest))
+    tpot.export('tpot_simple_analysis_pipeline.py')
     print('Done TPOT analysis!')

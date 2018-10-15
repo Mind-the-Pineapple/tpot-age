@@ -6,21 +6,27 @@ import matplotlib.pyplot as plt
 from sklearn import model_selection
 from sklearn.linear_model import LinearRegression
 
-from BayOptPy.helperfunctions import get_data
+from BayOptPy.helperfunctions import get_data, get_paths
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-nogui',
                     dest='nogui',
                     action='store_true',
-                    help='No gui')
+                    help='No gui'
+                    )
+parser.add_argument('-debug',
+                    dest='debug',
+                    action='store_true',
+                    help='Run debug with Pycharm'
+                    )
 args = parser.parse_args()
 
 if __name__ == '__main__':
 
     print('The current args are: %s' %args)
-    #project_wd = '/BayOpt'
-    project_wd = os.getcwd()
-    project_sink, demographics, imgs, maskedData = get_data(project_wd)
+
+    project_wd, project_data, project_sink = get_paths(args.debug)
+    demographics, imgs, maskedData = get_data(project_wd)
 
     print('Running regression analyis with sklearn')
 
