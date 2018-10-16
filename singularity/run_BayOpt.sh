@@ -1,6 +1,6 @@
 #!/bin/bash
 singularity run -c \
-            -B /home/vagrant/BayOpt/:\code \
-            -B /home/vagrant/BayOpt/singularity:\sing \
-            -B /home/vagrant/BayOpt/data:\data \
+            -B ~/BayOpt/:\code \
+            -B ~/BayOpt/singularity:\sing \
+            -B ~/BayOpt/data:\data \
             $(dirname $0)/BayOpt.img
