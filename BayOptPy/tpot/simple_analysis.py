@@ -18,6 +18,11 @@ parser.add_argument('-debug',
                     action='store_true',
                     help='Run debug with Pycharm'
                     )
+parser.add_argument('-dask',
+                    dest='dask',
+                    action='store_true',
+                    help='Run analysis with dask'
+                    )
 
 args = parser.parse_args()
 
@@ -30,13 +35,14 @@ if __name__ == '__main__':
     print('Running regression analyis with TPOT')
     # split train-test dataset
     targetAttribute = np.array(demographics['Age'])
-    print('Start DASK client')
-    if args.debug:
+    if args.debug and args.dask:
+        print('Start DASK client')
         port = 8889
     else:
         port = 8787
-    client = Client(threads_per_worker=1, diagnostics_port=port)
-    client
+    if args.dask:
+        client = Client(threads_per_worker=1, diagnostics_port=port)
+        client
 
     # To ensure the example runs quickly, we'll make the training dataset relatively small
     Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(maskedData, targetAttribute, test_size=.5, random_state=42)
@@ -54,7 +60,7 @@ if __name__ == '__main__':
                          # max_time_mins=20,
                          random_state=42,
                          config_dict='TPOT light',
-                         use_dask=True
+                         use_dask=args.dask
                          # memory='auto'
                         )
     # njobs=-1 uses all cores present in the machine
