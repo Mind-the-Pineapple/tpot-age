@@ -26,7 +26,7 @@ if __name__ == '__main__':
     print('The current args are: %s' %args)
 
     project_wd, project_data, project_sink = get_paths(args.debug)
-    demographics, imgs, maskedData = get_data(project_wd)
+    demographics, imgs, maskedData = get_data(project_data)
 
     print('Running regression analyis with sklearn')
 
