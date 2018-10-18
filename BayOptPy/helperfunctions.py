@@ -31,7 +31,11 @@ def get_data_covariates(dataPath, rawsubjectsId):
     # remove the demographic data from the missing subjects
     demographics = demographics.loc[~demographics['ID'].isin(missingsubjectsId)]
 
-    return demographics
+    # list of subjects that do not have dementia (CDR > 0)
+    selectedSubId = demographics.loc[(demographics['CDR'] == 0) | (demographics['CDR'].isnull()), 'ID']
+    # filter demographics to exclude those with CDR > 0
+    demographics = demographics.loc[demographics['ID'].isin(selectedSubId)]
+    return demographics, selectedSubId
 
 
 def get_data(project_data):
@@ -44,10 +48,10 @@ def get_data(project_data):
     #rawsubjectsId = rawsubjectsId[:25]
 
     # Load the demographics for each subject
-    demographics = get_data_covariates(project_data, rawsubjectsId)
+    demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId)
 
     # Load image proxies
-    imgs = [nib.load(os.path.join(project_data, 'smwc1%s_mpr-1_anon.nii' %subject)) for subject in rawsubjectsId]
+    imgs = [nib.load(os.path.join(project_data, 'smwc1%s_mpr-1_anon.nii' %subject)) for subject in selectedSubId]
 
     # resample dataset to a lower quality. Increase the voxel size by two
     resampleby2affine = np.array([[2, 1, 1, 1], [1, 2, 1, 1], [1, 1, 2, 1], [1, 1, 1, 1]])
