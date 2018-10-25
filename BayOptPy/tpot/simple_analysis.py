@@ -1,9 +1,10 @@
+import multiprocessing
 import os
 import argparse
 from tpot import TPOTRegressor
 from sklearn import model_selection
 import numpy as np
-from dask.distributed import Client
+#from dask.distributed import Client
 
 from BayOptPy.helperfunctions import get_data, get_paths
 
@@ -27,6 +28,7 @@ parser.add_argument('-dask',
 args = parser.parse_args()
 
 if __name__ == '__main__':
+
     print('The current args are: %s' %args)
 
     project_wd, project_data, project_sink = get_paths(args.debug)
@@ -55,7 +57,7 @@ if __name__ == '__main__':
 
     tpot = TPOTRegressor(generations=5,
                          population_size=20,
-                         n_jobs=-1,
+                         n_jobs=1,
                          verbosity=2,
                          # max_time_mins=20,
                          random_state=42,
