@@ -6,9 +6,11 @@ if [ -d /data ]; then
 else
     datapath=$HOME/BayOpt/data
 fi
+echo "Data path is:"
+echo $datapath
 
 singularity exec -c \
-            -B ~/BayOpt/:\code \
-            -B ~/BayOpt/singularity:\sing \
+            -B $HOME/BayOpt/:\code \
+            -B $HOME/BayOpt/singularity:\sing \
             -B $datapath:/data \
             $(dirname $0)/BayOpt.img "$@"
