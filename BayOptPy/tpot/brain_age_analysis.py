@@ -24,6 +24,10 @@ parser.add_argument('-dask',
                     action='store_true',
                     help='Run analysis with dask'
                     )
+parser.add_argument('-dataset',
+                    dest='dataset',
+                    help='Specify which dataset to use'
+                    )
 
 args = parser.parse_args()
 
@@ -31,8 +35,8 @@ if __name__ == '__main__':
 
     print('The current args are: %s' %args)
 
-    project_wd, project_data, project_sink = get_paths(args.debug)
-    demographics, imgs, maskedData = get_data(project_data)
+    project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
+    demographics, imgs, maskedData = get_data(project_data, args.dataset)
 
     print('Running regression analyis with TPOT')
     # split train-test dataset
@@ -63,7 +67,7 @@ if __name__ == '__main__':
                          # max_time_mins=20,
                          random_state=42,
                          config_dict='TPOT light',
-                         scoring='neg_mean_absolute_error'
+                         scoring='neg_mean_absolute_error',
                          use_dask=args.dask
                          # memory='auto'
                         )
