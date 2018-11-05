@@ -38,7 +38,8 @@ An Ubuntu 17.10 Singularity container with basic Python 3.6.3 and packages
          distributed==1.23.3\
          dask-ml==0.10.0\
          dask-glm==0.1.0\
-         joblib==0.12.5"
+         joblib==0.12.5\
+         tornado==5.1.1"
  
     # Check if the project folder exists and if not create it
     if [ ! -d /code ]; then mkdir /code; fi
