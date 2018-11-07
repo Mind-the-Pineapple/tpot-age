@@ -4,6 +4,7 @@ import argparse
 from tpot import TPOTRegressor
 from sklearn import model_selection
 import numpy as np
+import pickle
 #from dask.distributed import Client
 
 from BayOptPy.helperfunctions import get_data, get_paths
@@ -76,3 +77,7 @@ if __name__ == '__main__':
     print(tpot.score(Xtest, Ytest))
     tpot.export('tpot_simple_analysis_pipeline.py')
     print('Done TPOT analysis!')
+
+    # Pickle dictionary with the the list of evaluated pipelines
+    with open(os.path.join(project_wd, 'BayOptPy', 'tpot', '%s_pipelines.pkl' %args.dataset), 'wb') as handle:
+        pickle.dump(tpot.evaluated_individuals_, handle)

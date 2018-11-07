@@ -62,7 +62,7 @@ def get_data_covariates(dataPath, rawsubjectsId, dataset):
 
 
 def get_data(project_data, dataset):
-    print('Getting data')
+    print('Loading Brain image data')
     if dataset == 'OASIS':
         # remove the file end and get list of all used subjects
         fileList = os.listdir(project_data)
