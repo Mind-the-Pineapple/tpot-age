@@ -10,12 +10,28 @@ X_train, X_test, y_train, y_test = \
 train_test_split(housing.data, housing.target, train_size=0.75, test_size=0.25)
 # used scoring
 scoring = 'neg_mean_absolute_error'
-
+tpot_config = {
+    'sklearn.linear_model.ElasticNetCV': {
+    'l1_ratio': np.arange(0.0, 1.01),
+    'tol': [1e-5]
+    },
+    'sklearn.neighbors.KNeighborsRegressor': {
+    'n_neighbors': range(1,2),
+    'weights': ["uniform", "distance"],
+    'p': [1, 2]
+    },
+    # preprocessing
+    'sklearn.decomposition.PCA': {
+    'svd_solver': ['randomized'],
+    'iterated_power': range(1,2)
+    }
+}
 tpot = TPOTRegressor(generations=5,
                      population_size=50,
-                     verbosity=3,
+                     verbosity=2,
                      random_state=42,
                      config_dict='TPOT light',
+                     # config_dict=tpot_config,
                      scoring=scoring
                      )
 tpot.fit(X_train, y_train)
@@ -28,16 +44,16 @@ print(dict(list(tpot.evaluated_individuals_.items())[0:2]))
 # print a pipeline and its values
 pipeline_str = list(tpot.evaluated_individuals_.keys())[0]
 print(pipeline_str)
-print(tpot._evaluated_individuals[pipeline_str])
+print(tpot.evaluated_individuals_[pipeline_str])
 # convert pipeline string to scikit-learn pipeline object
 optimized_pipeline = creator.Individual.from_string(pipeline_str, tpot._pset) # deap object
-fitted_pipeline = tpot._toolbox.compile(expr=optimized_pipeline ) # scikit-learn pipeline object
+fitted_pipeline = tpot._toolbox.compile(expr=optimized_pipeline) # scikit-learn pipeline object
 # print scikit-learn pipeline object
 print(fitted_pipeline)
 # Fix random state when the operator allows  (optional) just for get consistent CV score
 tpot._set_param_recursive(fitted_pipeline.steps, 'random_state', 42)
 scores = cross_val_score(fitted_pipeline, X_train, y_train, cv=5, scoring=scoring, verbose=0)
 print(np.mean(scores))
-print(tpot._evaluated_individuals[pipeline_str][1])
+print(tpot.evaluated_individuals[pipeline_str][1])
 
 print('Done')
