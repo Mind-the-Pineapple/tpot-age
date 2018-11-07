@@ -29,6 +29,18 @@ parser.add_argument('-dataset',
                     dest='dataset',
                     help='Specify which dataset to use'
                     )
+parser.add_argument('-cv',
+                    dest='cv',
+                    help='Specify number of cross validations to use'
+                    )
+parser.add_argument('-generations',
+                    dest='generations',
+                    help='Specify number of generations to use'
+                    )
+parser.add_argument('-population_size',
+                    dest='population_size',
+                    help='Specify population size to use'
+                    )
 
 args = parser.parse_args()
 
@@ -60,10 +72,10 @@ if __name__ == '__main__':
     print('Y_train: ' + str(Ytrain.shape))
     print('Y_test: '  + str(Ytest.shape))
 
-    tpot = TPOTRegressor(generations=5,
-                         population_size=20,
+    tpot = TPOTRegressor(generations=args.generations,
+                         population_size=args.population_size,
                          n_jobs=1,
-                         cv=5,
+                         cv=args.cv,
                          verbosity=2,
                          # max_time_mins=20,
                          random_state=42,
@@ -72,6 +84,9 @@ if __name__ == '__main__':
                          use_dask=args.dask
                          # memory='auto'
                         )
+    print('Number of cross-validation: %d' %args.cv)
+    print('Number of generations: %d' %args.generations)
+    print('Population Size: %d' %args.population_size)
     # njobs=-1 uses all cores present in the machine
     tpot.fit(Xtrain, Ytrain)
     print(tpot.score(Xtest, Ytest))
