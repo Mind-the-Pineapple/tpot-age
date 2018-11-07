@@ -4,6 +4,7 @@ from multiprocessing import Process, Pool
 from functools import partial
 from nilearn import image
 import nibabel as nib
+from tqdm import tqdm
 
 def multiprocessing_resample(img, target_affine):
     resampled_img = image.resample_img(img, target_affine=target_affine,
@@ -33,9 +34,9 @@ if __name__ == '__main__':
                              [   0.,    0.,    0.,    1.]])
     # initialise Pool and set target_affine to a fixed value. Imgs is a list to
     # be iterated over
-    pool = Pool()
-    args = partial(multiprocessing_resample, target_affine=target_affine)
-    res = pool.map(args, imgs)
+    with Pool() as p:
+        args = partial(multiprocessing_resample, target_affine=target_affine)
+        res = list(tqdm(p.imap(args, imgs), total=len(subjects)))
 
     print(res[0].shape)
 
