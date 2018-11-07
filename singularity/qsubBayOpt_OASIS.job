@@ -1,0 +1,9 @@
+#!/bin/bash --login
+#$ -r n
+#$ -l h_vmem=64G
+#$ -l cns_os=u1604
+#$ -q global
+#$ -o ~/BayOpt/singularity/
+#$ -e ~/BayOpt/singularity/
+
+/home/k1506210/BayOpt/singularity/exec_BayOpt.sh /sing/neuroenvpy.sh /code/BayOptPy/tpot/brain_age_analysis.py -dataset OASIS
