@@ -37,7 +37,7 @@ if __name__ == '__main__':
     print('The current args are: %s' %args)
 
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-    demographics, imgs, maskedData = get_data(project_data, args.dataset)
+    demographics, imgs, maskedData = get_data(project_data, args.dataset, args.debug, project_wd)
 
     print('Running regression analyis with TPOT')
     # split train-test dataset

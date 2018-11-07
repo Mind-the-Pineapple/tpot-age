@@ -53,7 +53,7 @@ def get_data_covariates(dataPath, rawsubjectsId, dataset):
         missingsubjectsId = list(set(demographics['ID']) ^ set(rawsubjectsId))
         # remove the demographic data from the missing subjects
         demographics = demographics.loc[~demographics['ID'].isin(missingsubjectsId)]
-        selectedSubId = list(set(demographics['ID']) ^ set(missingsubjectsId))
+        selectedSubId = rawsubjectsId
 
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
@@ -61,7 +61,7 @@ def get_data_covariates(dataPath, rawsubjectsId, dataset):
     return demographics, selectedSubId
 
 
-def get_data(project_data, dataset):
+def get_data(project_data, dataset, debug, project_wd):
     print('Loading Brain image data')
     if dataset == 'OASIS':
         # remove the file end and get list of all used subjects
@@ -91,12 +91,13 @@ def get_data(project_data, dataset):
         # Transform the imaging data into a np array (subjects x voxels)
         maskedData = np.array(maskedData)
     elif dataset == 'BANC':
+        # For now, performing analysis on White Matter.
         project_data_path = os.path.join(project_data, 'wm_data')
         # remove the file end and get list of all used subjects
         fileList = os.listdir(project_data_path)
         rawsubjectsId = [file[5:12] for file in fileList if file.endswith('.nii.gz')]
-        # TODO: Change this. For testing purpose select just the first 5 subjects
-        #rawsubjectsId = rawsubjectsId[:25]
+        # TODO: select only a set of 5 subjects
+        # rawsubjectsId = rawsubjectsId[:5]
 
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, dataset)
@@ -104,14 +105,19 @@ def get_data(project_data, dataset):
         # Load image proxies
         imgs = [nib.load(os.path.join(project_data_path, file)) for file in tqdm(fileList) if file[5:12] in selectedSubId]
 
-        resamplefactor = 1
+        resamplefactor = 2
         print('Resample the dataset by a factor of %d' %resamplefactor)
+        print('Original image size: %s' %(imgs[0].shape,))
         # resample dataset to a lower quality. Increase the voxel size by two
         resampleby2affine = np.array([[resamplefactor, 1, 1, 1],
                                       [1, resamplefactor, 1, 1],
                                       [1, 1, resamplefactor, 1],
                                       [1, 1, 1, 1]])
-        resampledimgs = [image.resample_img(img, np.multiply(img.affine, resampleby2affine)) for img in imgs]
+        target_affine = np.multiply(imgs[0].affine, resampleby2affine)
+        print('Resampling Images')
+        resampledimgs = [image.resample_img(img, target_affine=target_affine,
+                                            interpolation='nearest') for img in tqdm(imgs)]
+        print('Resampled image size: %s' %(resampledimgs[0].shape,))
 
         # Use nilearn to mask only the brain voxels across subjects
         print('Compute brain mask')
@@ -120,8 +126,12 @@ def get_data(project_data, dataset):
         # Apply the group mask on all subjects.
         # Note: The apply_mask function returns the flattened data as a numpy array
         maskedData = [masking.apply_mask(img, MeanImgMask) for img in resampledimgs]
-        # to save an nifti image of the image
-        # nib.
+        # If debug option is set, save an nifti image of the image.
+        # Note: if you resampled the image you will not be able to overlay it on the original brain
+        if debug:
+            mask_path = os.path.join(project_wd, 'BayOptPy', 'tpot')
+            print('Saving brain mask: %s' %mask_path)
+            nib.save(MeanImgMask, os.path.join(mask_path, 'mask.nii.gz'))
         print('Applied mask to the dataset')
 
         # Transform the imaging data into a np array (subjects x voxels)
