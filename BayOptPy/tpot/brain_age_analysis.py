@@ -31,15 +31,18 @@ parser.add_argument('-dataset',
                     )
 parser.add_argument('-cv',
                     dest='cv',
-                    help='Specify number of cross validations to use'
+                    help='Specify number of cross validations to use',
+                    type=int
                     )
 parser.add_argument('-generations',
                     dest='generations',
-                    help='Specify number of generations to use'
+                    help='Specify number of generations to use',
+                    type=int
                     )
 parser.add_argument('-population_size',
                     dest='population_size',
-                    help='Specify population size to use'
+                    help='Specify population size to use',
+                    type=int,
                     )
 
 args = parser.parse_args()
