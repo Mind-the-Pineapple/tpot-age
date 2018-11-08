@@ -7,7 +7,7 @@ import numpy as np
 import pickle
 #from dask.distributed import Client
 
-from BayOptPy.helperfunctions import get_data, get_paths
+from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-nogui',
@@ -54,6 +54,12 @@ parser.add_argument('-resamplefactor',
                     type=int,
                     default=1 # no resampling is performed
                     )
+parser.add_argument('-nopreprocessing',
+                    dest='nopreprocessing',
+                    action='store_true',
+                    help='Use default TPOT light models without the preprocessing',
+                    default=False
+                    )
 
 args = parser.parse_args()
 
@@ -85,6 +91,12 @@ if __name__ == '__main__':
     print('Y_train: ' + str(Ytrain.shape))
     print('Y_test: '  + str(Ytest.shape))
 
+    # if no preprocessing is passed as argument do not perform any preprocessing on the pipelines
+    if args.nopreprocessing:
+        config_dic = get_config_dictionary()
+    else:
+        config_dic = 'TPOT_light'
+
     tpot = TPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
                          n_jobs=1,
@@ -92,7 +104,7 @@ if __name__ == '__main__':
                          verbosity=2,
                          # max_time_mins=20,
                          random_state=42,
-                         config_dict='TPOT light',
+                         config_dict=config_dic,
                          scoring='neg_mean_absolute_error',
                          use_dask=args.dask
                          # memory='auto'
