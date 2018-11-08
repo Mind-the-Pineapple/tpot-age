@@ -27,22 +27,32 @@ parser.add_argument('-dask',
                     )
 parser.add_argument('-dataset',
                     dest='dataset',
-                    help='Specify which dataset to use'
+                    help='Specify which dataset to use',
+                    choices=['OASIS', 'BANC']
                     )
 parser.add_argument('-cv',
                     dest='cv',
                     help='Specify number of cross validations to use',
-                    type=int
+                    type=int,
+                    required=True
                     )
 parser.add_argument('-generations',
                     dest='generations',
                     help='Specify number of generations to use',
-                    type=int
+                    type=int,
+                    required=True
                     )
 parser.add_argument('-population_size',
                     dest='population_size',
                     help='Specify population size to use',
                     type=int,
+                    default=100 # use the same default as TPOT default population value
+                    )
+parser.add_argument('-resamplefactor',
+                    dest='resamplefactor',
+                    help='Specify resampling rate for the image affine',
+                    type=int,
+                    default=1 # no resampling is performed
                     )
 
 args = parser.parse_args()
@@ -52,7 +62,7 @@ if __name__ == '__main__':
     print('The current args are: %s' %args)
 
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-    demographics, imgs, maskedData = get_data(project_data, args.dataset, args.debug, project_wd)
+    demographics, imgs, maskedData = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
 
     print('Running regression analyis with TPOT')
     # split train-test dataset

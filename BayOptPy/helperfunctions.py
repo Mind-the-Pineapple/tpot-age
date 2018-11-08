@@ -74,7 +74,7 @@ def _load_nibabel(filePath):
     img = nib.load(os.path.join(filePath))
     return img
 
-def get_data(project_data, dataset, debug, project_wd):
+def get_data(project_data, dataset, debug, project_wd, resamplefactor):
     print('Loading Brain image data')
     if dataset == 'OASIS':
         # remove the file end and get list of all used subjects
@@ -89,20 +89,6 @@ def get_data(project_data, dataset, debug, project_wd):
         # Load image proxies
         imgs = [nib.load(os.path.join(project_data, 'smwc1%s_mpr-1_anon.nii' %subject)) for subject in tqdm(selectedSubId)]
 
-        # resample dataset to a lower quality. Increase the voxel size by two
-        resampleby2affine = np.array([[2, 1, 1, 1], [1, 2, 1, 1], [1, 1, 2, 1], [1, 1, 1, 1]])
-        resampledimgs = [image.resample_img(img, np.multiply(img.affine, resampleby2affine)) for img in imgs]
-
-        # Use nilearn to mask only the brain voxels across subjects
-        print('Compute brain mask')
-        MeanImgMask = masking.compute_multi_epi_mask(resampledimgs, lower_cutoff=0.001, upper_cutoff=.7, opening=1)
-        # Apply the group mask on all subjects.
-        # Note: The apply_mask function returns the flattened data as a numpy array
-        maskedData = [masking.apply_mask(img, MeanImgMask) for img in resampledimgs]
-        print('Applied mask to the dataset')
-
-        # Transform the imaging data into a np array (subjects x voxels)
-        maskedData = np.array(maskedData)
     elif dataset == 'BANC':
         # For now, performing analysis on White Matter.
         project_data_path = os.path.join(project_data, 'wm_data')
@@ -120,40 +106,39 @@ def get_data(project_data, dataset, debug, project_wd):
         # Load image proxies
         with Pool() as p:
             imgs = list(tqdm(p.imap(_load_nibabel, subjectsFile), total=len(selectedSubId)))
-
-        resamplefactor = 2
-        print('Resample the dataset by a factor of %d' %resamplefactor)
-        print('Original image size: %s' %(imgs[0].shape,))
-        # resample dataset to a lower quality. Increase the voxel size by two
-        resampleby2affine = np.array([[resamplefactor, 1, 1, 1],
-                                      [1, resamplefactor, 1, 1],
-                                      [1, 1, resamplefactor, 1],
-                                      [1, 1, 1, 1]])
-        target_affine = np.multiply(imgs[0].affine, resampleby2affine)
-        print('Resampling Images')
-        with Pool() as p:
-            args = partial(_multiprocessing_resample, target_affine=target_affine)
-            resampledimgs = list(tqdm(p.imap(args, imgs), total=len(imgs)))
-        print('Resampled image size: %s' %(resampledimgs[0].shape,))
-
-        # Use nilearn to mask only the brain voxels across subjects
-        print('Compute brain mask')
-        #The lower and the upper_cutoff represent the lower and the upper fraction of the histogram to be discarded
-        MeanImgMask = masking.compute_multi_epi_mask(resampledimgs, lower_cutoff=0.001, upper_cutoff=.85, opening=False)
-        # Apply the group mask on all subjects.
-        # Note: The apply_mask function returns the flattened data as a numpy array
-        maskedData = [masking.apply_mask(img, MeanImgMask) for img in resampledimgs]
-        # If debug option is set, save an nifti image of the image.
-        # Note: if you resampled the image you will not be able to overlay it on the original brain
-        if debug:
-            mask_path = os.path.join(project_wd, 'BayOptPy', 'tpot')
-            print('Saving brain mask: %s' %mask_path)
-            nib.save(MeanImgMask, os.path.join(mask_path, 'mask.nii.gz'))
-        print('Applied mask to the dataset')
-
-        # Transform the imaging data into a np array (subjects x voxels)
-        maskedData = np.array(maskedData)
-
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
+
+    print('Resample the dataset by a factor of %d' %resamplefactor)
+    print('Original image size: %s' %(imgs[0].shape,))
+    # resample dataset to a lower quality. Increase the voxel size by two
+    resampleby2affine = np.array([[resamplefactor, 1, 1, 1],
+                                  [1, resamplefactor, 1, 1],
+                                  [1, 1, resamplefactor, 1],
+                                  [1, 1, 1, 1]])
+    target_affine = np.multiply(imgs[0].affine, resampleby2affine)
+    print('Resampling Images')
+    with Pool() as p:
+        args = partial(_multiprocessing_resample, target_affine=target_affine)
+        resampledimgs = list(tqdm(p.imap(args, imgs), total=len(imgs)))
+    print('Resampled image size: %s' %(resampledimgs[0].shape,))
+
+    # Use nilearn to mask only the brain voxels across subjects
+    print('Compute brain mask')
+    #The lower and the upper_cutoff represent the lower and the upper fraction of the histogram to be discarded
+    MeanImgMask = masking.compute_multi_epi_mask(resampledimgs, lower_cutoff=0.001, upper_cutoff=.85, opening=False)
+    # Apply the group mask on all subjects.
+    # Note: The apply_mask function returns the flattened data as a numpy array
+    maskedData = [masking.apply_mask(img, MeanImgMask) for img in resampledimgs]
+    # If debug option is set, save an nifti image of the image.
+    # Note: if you resampled the image you will not be able to overlay it on the original brain
+    if debug:
+        mask_path = os.path.join(project_wd, 'BayOptPy', 'tpot')
+        print('Saving brain mask: %s' %mask_path)
+        nib.save(MeanImgMask, os.path.join(mask_path, 'mask_%s.nii.gz' %dataset))
+    print('Applied mask to the dataset')
+
+    # Transform the imaging data into a np array (subjects x voxels)
+    maskedData = np.array(maskedData)
+
     return demographics, imgs, maskedData
