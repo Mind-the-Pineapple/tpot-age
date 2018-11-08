@@ -16,9 +16,12 @@ def get_paths(debug, dataset):
     elif debug and dataset == 'BANC':
         project_wd = os.getcwd()
         project_data = os.path.join(os.getenv('HOME'), 'NaN')
-    elif not debug:
+    elif not debug and dataset == 'OASIS':
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'data')
+    elif not debug and dataset == 'BANC':
+        project_wd = '/code'
+        project_data = os.path.join(os.sep, 'data', 'BANC_2016')
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
 
