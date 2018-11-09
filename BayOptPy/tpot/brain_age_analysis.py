@@ -95,7 +95,7 @@ if __name__ == '__main__':
     if args.nopreprocessing:
         config_dic = get_config_dictionary()
     else:
-        config_dic = 'TPOT_light'
+        config_dic = 'TPOT light'
 
     tpot = TPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
