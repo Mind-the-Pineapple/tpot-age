@@ -134,6 +134,10 @@ def get_config_dictionary():
     }
     return regressor_config_dic
 
+def get_mean_age(df):
+    mean_age = df['Age'].mean()
+    std_age = df['Age'].std()
+    print('Mean Age %.2f +- %.2f' %(mean_age, std_age))
 
 def get_data(project_data, dataset, debug, project_wd, resamplefactor):
     print('Loading Brain image data')
@@ -146,6 +150,8 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
 
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, dataset)
+        # print subjects mean age
+        get_mean_age(demographics)
 
         # Load image proxies
         imgs = [nib.load(os.path.join(project_data, 'smwc1%s_mpr-1_anon.nii' %subject)) for subject in tqdm(selectedSubId)]
@@ -161,6 +167,8 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
 
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, dataset)
+        # print subjects mean age
+        get_mean_age(demographics)
         # Get the file path of the selected subjects
         subjectsFile = [os.path.join(project_data_path, file) for file in fileList if file[5:12] in selectedSubId]
 
