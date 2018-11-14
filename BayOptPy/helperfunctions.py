@@ -1,7 +1,7 @@
+from multiprocessing.pool import ThreadPool
 import os
 import re
 import pandas as pd
-from multiprocessing import Process, Pool
 from functools import partial
 from nilearn import masking, image
 import nibabel as nib
@@ -173,7 +173,7 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
         subjectsFile = [os.path.join(project_data_path, file) for file in fileList if file[5:12] in selectedSubId]
 
         # Load image proxies
-        with Pool() as p:
+        with ThreadPool(4) as p:
             imgs = list(tqdm(p.imap(_load_nibabel, subjectsFile), total=len(selectedSubId)))
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
@@ -187,7 +187,7 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
                                   [1, 1, 1, 1]])
     target_affine = np.multiply(imgs[0].affine, resampleby2affine)
     print('Resampling Images')
-    with Pool() as p:
+    with ThreadPool(4) as p:
         args = partial(_multiprocessing_resample, target_affine=target_affine)
         resampledimgs = list(tqdm(p.imap(args, imgs), total=len(imgs)))
     print('Resampled image size: %s' %(resampledimgs[0].shape,))
