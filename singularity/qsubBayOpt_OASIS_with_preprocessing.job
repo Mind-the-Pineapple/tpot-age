@@ -1,0 +1,14 @@
+#!/bin/bash
+#$ -r n
+#$ -l h_vmem=64G
+#$ -l cns_os=u1604
+#$ -q global
+#$ -o ~/BayOpt/singularity/
+#$ -e ~/BayOpt/singularity/
+
+# check if the preprocessing argument is passed or not, in cased not do not pass
+# this argument to the python script (the default is false).
+# Note: the -z switch will test if the expansion of "$6" is a null string or not
+/home/k1506210/BayOpt/singularity/exec_BayOpt_OASIS.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset $1 \
+-generations $2 -cv $3 -population_size $4 -resamplefactor $5
