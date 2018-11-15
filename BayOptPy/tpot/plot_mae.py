@@ -16,6 +16,24 @@ dic_gen = {'MAE': [-10.157332265800637, -10.13726144682216, -10.13726144682216, 
            'n_generations': np.arange(1, 30 + 1),
            }
 
+
+# OASIS for 60 generations (results are saved here: qsubBayOpt_OASIS.job.o4326309)
+# Namespace(cv=5, dask=False, dataset='OASIS', debug=False, generations=60, nogui=False, population_size=100)
+#
+dic_gen2 = {'MAE': [-10.157332265800644, -10.148634423480523, -10.148634423480523, -10.027366493285328, -10.027366493285328,
+                    -9.230141170150954, -9.230141170150954, -9.230141170150954, -9.230141170150954, -9.230141170150954,
+                    -9.230141170150954, -9.230141170150954, -9.230141170150954, -9.079230477225071, -9.079230477225071,
+                    -9.079230477225071, -9.079230477225071, -9.00487985132841, -9.00487985132841, -9.00487985132841,
+                    -9.00487985132841, -8.94430617608224, -8.94430617608224, -8.94430617608224, -8.94430617608224,
+                    -8.94430617608224, -8.927656932206142, -8.927656932206142, -8.927656932206103, -8.922154327148041,
+                    -8.877289485646749, -8.877289485646749, -8.877289485646749, -8.877289485646749, -8.855758301907134,
+                    -8.855758301907134, -8.758534150239667, -8.685490337016068, -8.685490337016068, -8.685490337016068,
+                    -8.685490337016068, -8.685490337016068, -8.685490337016068, -8.685490337016068, -8.685490337016068,
+                    -8.685490337016068, -8.685490337016068, -8.6225812452792, -8.6225812452792, -8.6225812452792,
+                    -8.6225812452792, -8.6225812452792, -8.6225812452792, -8.6225812452792, -8.6225812452792,
+                    -8.6225812452792, -8.6225812452792, -8.6225812452792, -8.6225812452792, -8.6225812452792
+                    ],
+            'n_generations': np.arange(1, 60+1)}
 # OASIS with different numbers of resampling factors
 # (cv=5, dask=False, dataset='OASIS', debug=False, generations=5, nogui=False,
 # population_size=100)
@@ -88,3 +106,11 @@ plt.figure()
 sns.lineplot(x='n_generations', y='MAE', markers='o', data=df_gen)
 sns.scatterplot(x='n_generations', y='MAE', data=df_gen)
 plt.savefig('MAE_gen.png')
+
+# Analyse the progression of MAE with the number of generations
+print('Plot Analysis of the number of generations')
+df_gen2 = pd.DataFrame.from_dict(dic_gen2)
+plt.figure()
+sns.lineplot(x='n_generations', y='MAE', markers='o', data=df_gen2)
+sns.scatterplot(x='n_generations', y='MAE', data=df_gen2)
+plt.savefig('MAE_gen2.png')
