@@ -23,8 +23,16 @@ class ExtendedTPOTBase(TPOTBase):
 
     def _fit_init(self):
         super()._fit_init()
+        # Initialise list to save the predictions and pipelines analysed by TPOT
         self.predictions = []
         self.pipelines = []
+
+
+    def fit(self, features, target, features_test):
+        # Pass the features of the test set so that they can be used for the predictions
+        self.features_test = features_test
+        self = super().fit(features, target)
+
 
     def _evaluate_individuals(self, individuals, features, target, sample_weight=None, groups=None):
         operator_counts, eval_individuals_str, sklearn_pipeline_list, stats_dicts = self._preprocess_individuals(individuals)
@@ -41,7 +49,8 @@ class ExtendedTPOTBase(TPOTBase):
             timeout=max(int(self.max_eval_time_mins * 60), 1),
             use_dask=self.use_dask,
             predictions=self.predictions,
-            pipelines=self.pipelines
+            pipelines=self.pipelines,
+            features_test=self.features_test
         )
 
         result_score_list = []
@@ -93,7 +102,7 @@ class ExtendedTPOTBase(TPOTBase):
 @threading_timeoutable(default="Timeout")
 def _wrapped_cross_val_score(sklearn_pipeline, features, target,
                              cv, scoring_function, sample_weight=None,
-                             groups=None, use_dask=False, predictions=None, pipelines=None):
+                             groups=None, use_dask=False, predictions=None, pipelines=None, features_test=None):
     """Fit estimator and compute scores for a given dataset split.
 
     Parameters
@@ -128,11 +137,12 @@ def _wrapped_cross_val_score(sklearn_pipeline, features, target,
     cv_iter = list(cv.split(features, target, groups))
     scorer = check_scoring(sklearn_pipeline, scoring=scoring_function)
 
-    # save the predictions.
+    # save the sklearn predictions. The model is trained with the training set (features) and validated with the test dataset
+    # (features_test)
     # Note: because of the way TPOT is built, the fit function is called to see if the model is valid.
     try:
-        tmp = sklearn_pipeline.fit(features[:-20], target[:-20])
-        predictions.append(tmp.predict(features[-20:]))
+        tmp = sklearn_pipeline.fit(features, target)
+        predictions.append(tmp.predict(features_test))
         pipelines.append(sklearn_pipeline)
     except:
         pass
@@ -224,7 +234,7 @@ tpot = ExtendedTPOTRegressor(generations=5,
                      config_dict='TPOT light',
                      scoring=scoring
                      )
-tpot.fit(X_train, y_train)
+tpot.fit(X_train, y_train, X_test)
 print('Test score using optimal model: %f ' %tpot.score(X_test, y_test))
 tpot.export('tpot_boston_pipeline.py')
 
@@ -233,6 +243,6 @@ corr_matrix = np.corrcoef(tpot.predictions)
 import seaborn as sns
 from matplotlib.pylab import plt
 sns.heatmap(corr_matrix)
-plt.plot()
+plt.show()
 
 
