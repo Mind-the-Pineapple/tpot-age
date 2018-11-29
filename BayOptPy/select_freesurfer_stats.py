@@ -29,6 +29,7 @@ aparc_data_rh['rh.aparc.thickness'] = aparc_data_rh['rh.aparc.thickness'].str.re
 aparc_data_rh['rh.aparc.thickness'] = aparc_data_rh['rh.aparc.thickness'].str.replace(r'_*.T1', '')
 # split the BANC id from its original dataset ID
 aparc_data_rh['BANC_ID'] = aparc_data_rh['rh.aparc.thickness'].str.split('_').str[0]
+aparc_data_rh['orig_dataset_ID'] = aparc_data_rh['rh.aparc.thickness'].str.split('_').str[1]
 # use the BANC_ID as pandas index
 aparc_data_rh = aparc_data_rh.set_index('BANC_ID')
 print('aparc shape: (%d, %d)' %(aparc_data_rh.shape[0], aparc_data_rh.shape[1]))
