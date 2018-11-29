@@ -2,9 +2,18 @@
 data
 # editor files
 *.sw[o,n,p]
-.idea
 *.csv
 # singularity examples
 singularity/examples/
 # singularity images
 *.img
+# mac specific files
+.DS_Store
+# python specific files
+.idea
+__pycache__/
+# dask related folder
+dask-worker-space/
+# ignore tpotcreated pipelines
+BayOptPy/tpot/debug/tpot_boston_pipeline_super.py
+BayOptPy/tpot/debug/tpot_boston_pipeline.py'

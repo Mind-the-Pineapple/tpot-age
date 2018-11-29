@@ -38,7 +38,7 @@ tpot = ExtendedTPOTRegressor(generations=5,
                      )
 tpot.fit(X_train, y_train, X_test)
 print('Test score using optimal model: %f ' %tpot.score(X_test, y_test))
-tpot.export('tpot_boston_pipeline.py')
+tpot.export('BayOptPy/tpot/debug/tpot_boston_pipeline_super.py')
 
 # Cross correlate the predictions
 corr_matrix = np.corrcoef(tpot.predictions)

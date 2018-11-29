@@ -40,7 +40,7 @@ tpot = TPOTRegressor(generations=5,
                      )
 tpot.fit(X_train, y_train)
 print('Test score using optimal model: %f ' %tpot.score(X_test, y_test))
-tpot.export('tpot_boston_pipeline.py')
+tpot.export('BayOptPy/tpot/debug/tpot_boston_pipeline.py')
 # get the list of models analysed
 analysed_models = list(tpot.evaluated_individuals_.items())
 predicted_age = {}
