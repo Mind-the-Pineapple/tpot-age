@@ -7,9 +7,10 @@ import numpy as np
 from tempfile import mkdtemp
 from shutil import rmtree
 
+random_seed = 42
 housing = load_boston()
 X_train, X_test, y_train, y_test = \
-train_test_split(housing.data, housing.target, train_size=0.75, test_size=0.25)
+train_test_split(housing.data, housing.target, train_size=0.75, test_size=0.25, random_state=random_seed)
 # used scoring
 scoring = 'neg_mean_absolute_error'
 tpot_config = {
@@ -33,7 +34,7 @@ cachedir = mkdtemp()
 tpot = TPOTRegressor(generations=5,
                      population_size=50,
                      verbosity=2,
-                     random_state=42,
+                     random_state=random_seed,
                      config_dict='TPOT light',
                      scoring=scoring
                      )
@@ -52,7 +53,7 @@ for model in analysed_models:
     optimised_pipeline = creator.Individual.from_string(model_name, tpot._pset)
     # Transform the tree expression int a callable function
     fitted_pipeline = tpot._toolbox.compile(expr=optimised_pipeline)
-    tpot._set_param_recursive(fitted_pipeline.steps, 'random_state', 42)
+    tpot._set_param_recursive(fitted_pipeline.steps, 'random_state', random_seed)
     predicted_age[model_name] = {}
     predicted_age[model_name]['age'] = cross_val_predict(fitted_pipeline, X_test, y_test, cv=5)
 # remove the cached directory
@@ -72,7 +73,7 @@ fitted_pipeline = tpot._toolbox.compile(expr=optimized_pipeline) # scikit-learn 
 # print scikit-learn pipeline object
 print(fitted_pipeline)
 # Fix random state when the operator allows  (optional) just for get consistent CV score
-tpot._set_param_recursive(fitted_pipeline.steps, 'random_state', 42)
+tpot._set_param_recursive(fitted_pipeline.steps, 'random_state', random_seed)
 scores = cross_val_score(fitted_pipeline, X_train, y_train, cv=5, scoring=scoring, verbose=0)
 print(np.mean(scores))
 print(tpot.evaluated_individuals[pipeline_str][1])
