@@ -3,8 +3,17 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import seaborn as sns
 from matplotlib.pylab import plt
+import argparse
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-nogui',
+                    dest='nogui',
+                    action='store_true',
+                    help='No gui'
+                    )
+args = parser.parse_args()
 
 random_seed = 42
 housing = load_boston()
@@ -42,10 +51,9 @@ tpot.export('BayOptPy/tpot/debug/tpot_boston_pipeline_super.py')
 
 # Cross correlate the predictions
 corr_matrix = np.corrcoef(tpot.predictions)
-colormap = sns.diverging_palette(220, 10, as_cmap=True)
-sns.heatmap(corr_matrix, cmap=colormap)
+#colormap = sns.diverging_palette(220, 10, as_cmap=True)
+sns.heatmap(corr_matrix, cmap='coolwarm')
 plt.savefig('cross_corr.png')
-plt.show()
 
 
 # plot using MeanShift
@@ -82,7 +90,6 @@ def plot_clusters(labels, n_clusters, cluster_centers, analysis, corr_matrix):
             plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
                      markeredgecolor='k', markersize=6)
             plt.title(analysis)
-    plt.show()
 
 from sklearn.cluster import MeanShift
 ms = MeanShift()
@@ -122,3 +129,6 @@ n_noise_ = list(labels).count(-1)
 print('Estimated number of clusters: %d' % n_clusters_)
 print('Estimated number of noise points: %d' % n_noise_)
 plot_clusters(labels, n_clusters, None, 'DBSCAN', corr_matrix)
+
+if not args.nogui:
+    plt.show()

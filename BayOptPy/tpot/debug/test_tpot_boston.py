@@ -9,7 +9,7 @@ train_test_split(housing.data, housing.target, train_size=0.75, test_size=0.25,
                 random_state=random_seed)
 scoring = 'neg_mean_absolute_error'
 
-tpot = TPOTRegressor(generations=100,
+tpot = TPOTRegressor(generations=30,
                      population_size=50,
                      verbosity=2,
                      random_state=random_seed,
