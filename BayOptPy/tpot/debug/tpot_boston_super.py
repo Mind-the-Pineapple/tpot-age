@@ -6,8 +6,11 @@ import seaborn as sns
 from matplotlib.pylab import plt
 import argparse
 import pdb
+from sklearn.gaussian_process.kernels import DotProduct, WhiteKernel
+from scipy.stats import pearsonr
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
+from BayOptPy.tpot.custom_tpot_config_dict import tpot_config_custom
 from BayOptPy.helperfunctions import get_paths
 parser = argparse.ArgumentParser()
 parser.add_argument('-nogui',
@@ -20,8 +23,24 @@ parser.add_argument('-debug',
                     action='store_true',
                     help='Run debug with Pycharm'
                    )
+parser.add_argument('-config_dict',
+                    dest='config_dict',
+                    help='Specify which TPOT config dict to use',
+                    choices=['None', 'light', 'custom']
+                    )
 args = parser.parse_args()
+
 dataset = 'BOSTON'
+print('The current dataset being used is: %s' %dataset)
+print('The current args are: %s' %args)
+
+# check which TPOT dictionary containing the operators and parameters to be used was passed as argument
+if args.config_dict == 'None':
+    tpot_config = None
+elif args.config_dict == 'light':
+    tpot_config = 'TPOT light'
+else:
+    tpot_config = tpot_config_custom
 
 random_seed = 42
 housing = load_boston()
@@ -29,28 +48,13 @@ X_train, X_test, y_train, y_test = \
     train_test_split(housing.data, housing.target, train_size=0.75, test_size=0.25, random_state=random_seed)
 # used scoring
 scoring = 'neg_mean_absolute_error'
-tpot_config = {
-    'sklearn.linear_model.ElasticNetCV': {
-    'l1_ratio': np.arange(0.0, 1.01),
-    'tol': [1e-5]
-    },
-    'sklearn.neighbors.KNeighborsRegressor': {
-    'n_neighbors': range(1,2),
-    'weights': ["uniform", "distance"],
-    'p': [1, 2]
-    },
-    # preprocessing
-    'sklearn.decomposition.PCA': {
-    'svd_solver': ['randomized'],
-    'iterated_power': range(1,2)
-    }
-}
+
 # create a directory where to cache the results
 tpot = ExtendedTPOTRegressor(generations=5,
                      population_size=50,
                      verbosity=2,
                      random_state=42,
-                     config_dict=None,
+                     config_dict=tpot_config,
                      scoring=scoring
                      )
 tpot.fit(X_train, y_train, X_test)
@@ -61,11 +65,22 @@ project_wd, _, _ = get_paths(args.debug, dataset)
 tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'debug',
                         'tpot_boston_pipeline_super.py'))
 
+# Do some preprocessing to find models where all predictions have the same value and eliminate them, as those will correspond
+# to NaN entries or very small numbers on the correlation matrix.
+repeated_idx = np.argwhere([np.array_equal(np.repeat(tpot.predictions[i][0], len(tpot.predictions[i])), tpot.predictions[i]) for i in range(len(tpot.predictions))])
+print('Index of the models with the same prediction for all subjects: ' + str(np.squeeze(repeated_idx)))
+print('Number of models analysed: %d' %len(tpot.predictions))
+tpot_predictions = np.delete(np.array(tpot.predictions), np.squeeze(repeated_idx), axis=0)
+print('Number of models that will be used for cross-correlation: %s' %(tpot_predictions.shape,))
+
 # Cross correlate the predictions
-corr_matrix = np.corrcoef(tpot.predictions)
+corr_matrix = np.corrcoef(tpot_predictions)
+
+print('Check the number of NaNs after deleting models with constant predictions: %d' %len(np.argwhere(np.isnan(corr_matrix))))
 #colormap = sns.diverging_palette(220, 10, as_cmap=True)
 sns.heatmap(corr_matrix, cmap='coolwarm')
-plt.savefig(os.path.join(project_wd, 'BayOptPy', 'tpot', 'cross_corr.png'))
+plt.title(args.config_dict)
+plt.savefig(os.path.join(project_wd, 'BayOptPy', 'tpot', 'cross_corr_%s.png' %args.config_dict))
 
 
 # plot using MeanShift
