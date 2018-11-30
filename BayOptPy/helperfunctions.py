@@ -13,19 +13,30 @@ def get_paths(debug, dataset):
     if debug and dataset == 'OASIS':
         project_wd = os.getcwd()
         project_data = os.path.join(project_wd, 'data')
+        project_sink = os.path.join(project_data, 'output')
     elif debug and dataset == 'BANC':
         project_wd = os.getcwd()
         project_data = os.path.join(os.getenv('HOME'), 'NaN')
+        project_sink = os.path.join(project_data, 'output')
+    elif debug and dataset == 'BOSTON':
+        project_wd = os.getcwd()
+        project_data = None
+        project_sink = None
     elif not debug and dataset == 'OASIS':
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'data')
+        project_sink = os.path.join(project_data, 'output')
     elif not debug and dataset == 'BANC':
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'data', 'BANC_2016')
+        project_sink = os.path.join(project_data, 'output')
+    elif not debug and dataset == 'BOSTON':
+        project_wd = '/code'
+        project_data = None
+        project_sink = None
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
 
-    project_sink = os.path.join(project_data, 'output')
     print('Code Path: %s' %project_wd)
     print('Data Path: %s' %project_data)
     print('Data Out: %s' %project_sink )
