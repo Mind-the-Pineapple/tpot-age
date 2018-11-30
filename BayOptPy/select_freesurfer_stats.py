@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 import numpy as np
-
+from sklearn.preprocessing import StandardScaler
 from BayOptPy.helperfunctions import get_data_covariates, get_paths
 
 
@@ -93,6 +93,16 @@ assert(np.sum(aparc_data_lh_BANC2016.index == aseg_data_BANC2016.index) == aparc
 freesurfer_stats = pd.concat([aparc_data_lh_BANC2016, aparc_data_rh_BANC2016, aseg_data_BANC2016], axis=1, sort=False)
 # select only the numeric values
 freesurfer_stats_num = freesurfer_stats._get_numeric_data()
+# Normalise all values in the analysis so that they have the same weight.
+free_stats_num_std = StandardScaler().fit_transform(freesurfer_stats_num)
+# As this will return a numpy array transform the data again into a pandas dataframe
+scaled_features_df = pd.DataFrame(free_stats_num_std, index=freesurfer_stats_num.index, columns=freesurfer_stats_num.columns)
+# For debugging process look at the max values
+print('Max values for ech column in the NOT scaled dataframe')
+freesurfer_stats_num.max()
+print('Max values for each column of the z-scaled dataframe')
+scaled_features_df.max()
+
 # dump the results as csv
-freesurfer_stats_num.to_csv('aparc_aseg_stats_BANC.csv')
+scaled_features_df.to_csv('aparc_aseg_stats_BANC.csv')
 print('Done')
