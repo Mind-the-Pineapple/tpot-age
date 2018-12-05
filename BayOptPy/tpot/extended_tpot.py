@@ -8,6 +8,7 @@ from sklearn.model_selection._split import check_cv
 from sklearn.metrics.scorer import check_scoring
 import warnings
 from sklearn.model_selection._validation import _fit_and_score
+from sklearn.gaussian_process.kernels import (RBF, Matern, RationalQuadratic, ExpSineSquared, DotProduct, ConstantKernel)
 
 from functools import partial
 from multiprocessing import cpu_count
@@ -23,6 +24,14 @@ class ExtendedTPOTBase(TPOTBase):
         # Initialise list to save the predictions and pipelines analysed by TPOT
         self.predictions = []
         self.pipelines = []
+
+        # Add the Gaussian kernels so that they can be used by TPOT
+        self.operators_context['RBF'] = eval('RBF')
+        self.operators_context['Matern'] = eval('Matern')
+        self.operators_context['RationalQuadratic'] = eval('RationalQuadratic')
+        self.operators_context['ExpSineSquared'] = eval('ExpSineSquared')
+        self.operators_context['DotProduct'] = eval('DotProduct')
+        self.operators_context['ConstantKernel'] = eval('ConstantKernel')
 
 
     def fit(self, features, target, features_test):

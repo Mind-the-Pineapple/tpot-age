@@ -5,12 +5,10 @@ import numpy as np
 import seaborn as sns
 from matplotlib.pylab import plt
 import argparse
-import pdb
-from sklearn.gaussian_process.kernels import DotProduct, WhiteKernel
-from scipy.stats import pearsonr
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.tpot.custom_tpot_config_dict import tpot_config_custom
+from BayOptPy.tpot.gpr_tpot_config_dict import tpot_config_gpr
 from BayOptPy.helperfunctions import get_paths
 parser = argparse.ArgumentParser()
 parser.add_argument('-nogui',
@@ -26,7 +24,7 @@ parser.add_argument('-debug',
 parser.add_argument('-config_dict',
                     dest='config_dict',
                     help='Specify which TPOT config dict to use',
-                    choices=['None', 'light', 'custom']
+                    choices=['None', 'light', 'custom', 'gpr']
                     )
 args = parser.parse_args()
 
@@ -39,8 +37,10 @@ if args.config_dict == 'None':
     tpot_config = None
 elif args.config_dict == 'light':
     tpot_config = 'TPOT light'
-else:
+elif args.config_dict == 'custom':
     tpot_config = tpot_config_custom
+elif args.config_dict == 'gpr':
+    tpot_config = tpot_config_gpr
 
 random_seed = 42
 housing = load_boston()
@@ -81,7 +81,46 @@ print('Check the number of NaNs after deleting models with constant predictions:
 sns.heatmap(corr_matrix, cmap='coolwarm')
 plt.title(args.config_dict)
 plt.savefig(os.path.join(project_wd, 'BayOptPy', 'tpot', 'cross_corr_%s.png' %args.config_dict))
+if not args.nogui:
+    plt.show()
 
+
+from scipy.cluster.hierarchy import dendrogram, linkage
+import pdb
+methods = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']
+for method in methods:
+    plt.figure()
+    Z = linkage(corr_matrix, method=method)
+    dend = dendrogram(Z, leaf_font_size=8.)
+    plt.title(str(method))
+    plt.savefig('dendrogram_%s.png' %method)
+
+
+print('Plot PCA with 95 variance')
+from sklearn.decomposition import PCA
+pca = PCA(n_components=.95)
+corr_matrix_pca = pca.fit_transform(corr_matrix)
+plt.scatter(corr_matrix_pca[:, 0], corr_matrix_pca[:, 1])
+methods = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']
+for method in methods:
+    plt.figure()
+    Z = linkage(corr_matrix_pca, method=method)
+    dend = dendrogram(Z, leaf_font_size=8.)
+    plt.title(str(method))
+    plt.savefig('dendrogram_%s_pca.png' %method)
+
+# Once we found the number of clusters perform Agglomartive clustering from sklearn
+from sklearn.cluster import AgglomerativeClustering
+
+aggclu = AgglomerativeClustering(n_clusters=2, affinity='euclidean', linkage='ward')
+clusters_labels = aggclu.fit_predict(corr_matrix)
+
+# plot cluster labeling on the PCA dataset
+plt.figure()
+plt.scatter(corr_matrix_pca[:, 0], corr_matrix_pca[:, 1], c=clusters_labels, cmap='rainbow')
+plt.show()
+
+# check the groupings
 
 # plot using MeanShift
 # def plot_clusters(labels, n_clusters, cluster_centers, analysis, corr_matrix):
