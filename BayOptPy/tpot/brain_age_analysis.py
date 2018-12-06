@@ -10,13 +10,14 @@ from matplotlib.pylab import plt
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
 from BayOptPy.tpot.custom_tpot_config_dict import tpot_config_custom
+from BayOptPy.tpot.gpr_tpot_config_dict import tpot_config_gpr
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-nogui',
-                    dest='nogui',
+parser.add_argument('-gui',
+                    dest='gui',
                     action='store_true',
-                    help='No gui'
+                    help='Use gui'
                     )
 parser.add_argument('-debug',
                     dest='debug',
@@ -60,7 +61,7 @@ parser.add_argument('-resamplefactor',
 parser.add_argument('-config_dict',
                     dest='config_dict',
                     help='Specify which TPOT config dict to use',
-                    choices=['None', 'light', 'custom', 'ligth_no_preproc']
+                    choices=['None', 'light', 'custom', 'ligth_no_preproc', 'gpr']
                     )
 
 args = parser.parse_args()
@@ -79,6 +80,8 @@ if __name__ == '__main__':
     elif args.config_dict == 'light_no_preproc':
         # this option uses the TPOT light definition without the preprocessing
         tpot_config = get_config_dictionary()
+    elif args.config_dict == 'gpr':
+        tpot_config = tpot_config_gpr
 
     random_seed = 42
 
@@ -145,4 +148,7 @@ if __name__ == '__main__':
     sns.heatmap(corr_matrix, cmap='coolwarm')
     plt.title(args.config_dict)
     plt.savefig(os.path.join(project_wd, 'BayOptPy', 'tpot', 'cross_corr_%s.png' % args.config_dict))
+
+    if args.gui:
+        plt.show()
 
