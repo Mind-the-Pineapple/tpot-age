@@ -40,7 +40,7 @@ def get_paths(debug, dataset):
         project_sink = None
     elif not debug and dataset == 'BANC_freesurf':
         project_wd = '/code'
-        project_data = os.path.join(os.sep, 'data')
+        project_data = os.path.join(os.sep, 'data', 'BANC_2016')
         project_sink = None
 
     else:
