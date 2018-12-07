@@ -6,6 +6,7 @@ import numpy as np
 #from dask.distributed import Client
 import seaborn as sns
 from matplotlib.pylab import plt
+import pickle
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
@@ -137,10 +138,14 @@ if __name__ == '__main__':
     print('Index of the models with the same prediction for all subjects: ' + str(np.squeeze(repeated_idx)))
     print('Number of models analysed: %d' % len(tpot.predictions))
     tpot_predictions = np.delete(np.array(tpot.predictions), np.squeeze(repeated_idx), axis=0)
+
     print('Number of models that will be used for cross-correlation: %s' % (tpot_predictions.shape,))
 
     # Cross correlate the predictions
     corr_matrix = np.corrcoef(tpot_predictions)
+    print('Dump correlation matrix')
+    with open('correlation_%s_%s.pckl' %(args.dataset, args.config_dict)):
+        pickle.dump(corr_matrix)
 
     print('Check the number of NaNs after deleting models with constant predictions: %d' % len(
         np.argwhere(np.isnan(corr_matrix))))
