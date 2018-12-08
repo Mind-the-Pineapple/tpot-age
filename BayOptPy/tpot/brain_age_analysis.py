@@ -62,7 +62,8 @@ parser.add_argument('-resamplefactor',
 parser.add_argument('-config_dict',
                     dest='config_dict',
                     help='Specify which TPOT config dict to use',
-                    choices=['None', 'light', 'custom', 'ligth_no_preproc', 'gpr']
+                    choices=['None', 'light', 'custom', 'ligth_no_preproc', 'gpr'],
+                    required=True
                     )
 
 args = parser.parse_args()
