@@ -7,6 +7,7 @@ import numpy as np
 import seaborn as sns
 from matplotlib.pylab import plt
 import pickle
+from joblib import dump
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
@@ -144,9 +145,7 @@ if __name__ == '__main__':
 
     # Cross correlate the predictions
     corr_matrix = np.corrcoef(tpot_predictions)
-    print('Dump correlation matrix')
-    with open('correlation_%s_%s.pckl' %(args.dataset, args.config_dict)):
-        pickle.dump(corr_matrix)
+
 
     print('Check the number of NaNs after deleting models with constant predictions: %d' % len(
         np.argwhere(np.isnan(corr_matrix))))
@@ -154,6 +153,15 @@ if __name__ == '__main__':
     sns.heatmap(corr_matrix, cmap='coolwarm')
     plt.title(args.config_dict)
     plt.savefig(os.path.join(project_wd, 'BayOptPy', 'tpot', 'cross_corr_%s.png' % args.config_dict))
+
+    # Dump tpot.pipelines and evaluated objects
+    print('Dump correlation matrix and tpot pipelines')
+    tpot_save = {}
+    tpot_save['predictions'] = tpot.predictions
+    tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
+    tpot_save['pipelines'] = tpot.pipelines
+    tpot_save['corr_matrix'] = corr_matrix
+    dump(tpot_save, 'tpot_%s_%s.dump' %(args.dataset, args.config_dict))
 
     if args.gui:
         plt.show()
