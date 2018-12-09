@@ -11,8 +11,6 @@ from joblib import dump
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
-from BayOptPy.tpot.custom_tpot_config_dict import tpot_config_custom
-from BayOptPy.tpot.gpr_tpot_config_dict import tpot_config_gpr
 
 
 parser = argparse.ArgumentParser()
@@ -63,7 +61,7 @@ parser.add_argument('-resamplefactor',
 parser.add_argument('-config_dict',
                     dest='config_dict',
                     help='Specify which TPOT config dict to use',
-                    choices=['None', 'light', 'custom', 'ligth_no_preproc', 'gpr'],
+                    choices=['None', 'light', 'custom', 'ligth_no_preproc', 'gpr', 'gpr_full'],
                     required=True
                     )
 
@@ -79,11 +77,16 @@ if __name__ == '__main__':
     elif args.config_dict == 'light':
         tpot_config = 'TPOT light'
     elif args.config_dict == 'custom':
+        from BayOptPy.tpot.custom_tpot_config_dict import tpot_config_custom
         tpot_config = tpot_config_custom
     elif args.config_dict == 'light_no_preproc':
         # this option uses the TPOT light definition without the preprocessing
         tpot_config = get_config_dictionary()
     elif args.config_dict == 'gpr':
+        from BayOptPy.tpot.gpr_tpot_config_dict import tpot_config_gpr
+        tpot_config = tpot_config_gpr
+    elif args.config_dict == 'gpr_full':
+        from BayOptPy.tpot.gpr_tpot_config_dict_full import tpot_config_gpr
         tpot_config = tpot_config_gpr
 
     random_seed = 42
