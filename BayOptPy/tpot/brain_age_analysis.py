@@ -102,7 +102,8 @@ if __name__ == '__main__':
         port = 8889
     else:
         port = 8787
-    if args.dask:
+    if args.dask and args.debug:
+        # TODO: These two ifs are not tested
         client = Client(threads_per_worker=1, diagnostics_port=port)
         client
 
@@ -132,7 +133,7 @@ if __name__ == '__main__':
     # njobs=-1 uses all cores present in the machine
     tpot.fit(Xtrain, Ytrain, Xtest)
     print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
-    tpot.export('tpot_simple_analysis_pipeline.py')
+    tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
 
     # Do some preprocessing to find models where all predictions have the same value and eliminate them, as those will correspond
@@ -164,7 +165,8 @@ if __name__ == '__main__':
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
     tpot_save['pipelines'] = tpot.pipelines
     tpot_save['corr_matrix'] = corr_matrix
-    dump(tpot_save, 'tpot_%s_%s.dump' %(args.dataset, args.config_dict))
+    tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
+    dump(tpot_save, os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_%s_%s.dump') %(args.dataset, args.config_dict))
 
     if args.gui:
         plt.show()
