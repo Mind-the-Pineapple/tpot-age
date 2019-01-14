@@ -12,7 +12,6 @@ from joblib import dump
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-gui',
                     dest='gui',
@@ -166,7 +165,8 @@ if __name__ == '__main__':
     tpot_save['pipelines'] = tpot.pipelines
     tpot_save['corr_matrix'] = corr_matrix
     tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
-    dump(tpot_save, os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_%s_%s.dump') %(args.dataset, args.config_dict))
+    dump(tpot_save, os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_%s_%s_%sgen_.dump') %(args.dataset, args.config_dict,
+                                                                                             args.generations))
 
     if args.gui:
         plt.show()
