@@ -3,9 +3,11 @@ import os
 import argparse
 from sklearn import model_selection
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.pylab import plt
 #from dask.distributed import Client
 import seaborn as sns
-from matplotlib.pylab import plt
 import pickle
 from joblib import dump
 
