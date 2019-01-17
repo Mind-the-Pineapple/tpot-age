@@ -1,10 +1,12 @@
 #!/bin/bash
 
 # check if the /data folder exists, and determine the data location accordingly
-if [ -d /data ]; then
+if [ -d /data ]; then #cluster path
     datapath=/data/project/brainage
-else
-    datapath=$HOME/NaN
+elif [ -d $HOME/myHome ]; then # vagrant path
+    datapath=$HOME/myHome
+else # beast path
+    datapath=$HOME
 fi
 echo "Data path is:"
 echo $datapath
