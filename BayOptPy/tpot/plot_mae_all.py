@@ -4,6 +4,20 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-decomposition',
+                    dest='decomposition',
+                    help='Dimensionality reduction algorithm',
+                    choices=['tSNE', 'PCA']
+                    )
+parser.add_argument('-nclusters',
+                    dest='nclusters',
+                    help='Number of clusters for k-means',
+                    type=int
+                    )
+args = parser.parse_args()
 
 # read in pickle with the saved results
 # with open('BANC_pipelines.pkl', 'rb') as handle:
@@ -23,6 +37,7 @@ plt.scatter(x, mae_all)
 plt.xlabel('Models')
 plt.ylabel('MAE')
 plt.savefig('/code/BayOptPy/tpot/MAE_all_models.png')
+plt.close()
 #plt.show()
 
 # Zoom in into the Y-axis
@@ -33,21 +48,56 @@ plt.savefig('/code/BayOptPy/tpot/MAE_all_models.png')
 # Get the space with the age prediction
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 age_prediction = np.zeros((len(banc_pickle_dump['predictions']), len(banc_pickle_dump['predictions'][0])))
 for test_subject in range(len(banc_pickle_dump['predictions'][0])):
     age_prediction[test_subject, :] = banc_pickle_dump['predictions'][test_subject]
 
-X_embedded = TSNE(n_components=2, random_state=0).fit_transform(age_prediction)
+# age_prediction is formatted so that you have model x subject
+age_prediction = np.transpose(age_prediction)
+print('Data shape: %s' %(age_prediction.shape,))
+# standardise age feature before feeding it to the dimensionality reduction
+# algorithms. This scales every feature separalty
+scaler = StandardScaler()
+scaled_age_predictions = scaler.fit_transform(age_prediction)
+
+print('Performing dimensionality reduction: %s' %(args.decomposition))
+if args.decomposition == 'tSNE':
+    X_embedded = TSNE(n_components=2,
+            random_state=0).fit_transform(scaled_age_predictions)
+elif args.decomposition == 'PCA':
+    pca = PCA(n_components=2, random_state=0)
+    X_embedded = pca.fit_transform(scaled_age_predictions)
+    print('  Explained variance: ' + ''.join([str(x) + ' ' for x in
+        pca.explained_variance_ratio_]))
+    print('Find features that mostly contribute to each PC')
+    pc0 = max(pca.components_[0], key=abs)
+    pc1 = max(pca.components_[1], key=abs)
+    idx_model_pc0 = np.where(pca.components_ == pc0)[1][0]
+    idx_model_pc1 = np.where(pca.components_ == pc1)[1][0]
+    print('The most influential model for PC0:')
+    print(banc_pickle_dump['pipelines'][idx_model_pc0])
+    print('The most influential model for PC1:')
+    print(banc_pickle_dump['pipelines'][idx_model_pc1])
+
+# Plot the embedded space
+plt.figure()
 plt.scatter(X_embedded[:, 0], X_embedded[:, 1])
+plt.title('%s' %(args.decomposition))
+plt.close()
 
 # Do very simple k-means to find the clusters and the belonging of each model
-kmeans = KMeans(n_clusters=3, random_state=0).fit(X_embedded)
+colours = ['b', 'o', 'g']
+kmeans = KMeans(n_clusters=args.nclusters, random_state=0).fit(X_embedded)
 # plot the embedded space with the kmeans
 plt.figure()
 plt.scatter(X_embedded[:, 0], X_embedded[:, 1], c=kmeans.labels_)
 plt.title('10 gen')
-plt.savefig('/code/BayOptPy/tpot/tSNE_analysis/tSNE_10gen_42seed_gpr.png')
+plt.savefig('/code/BayOptPy/tpot/%s_analysis/%s_10gen_42seed_gpr.png'
+        %(args.decomposition, args.decomposition))
+plt.close()
 
 print('Number of elements in each cluster')
 unique, counts = np.unique(kmeans.labels_, return_counts=True)
@@ -56,96 +106,74 @@ print(dict(zip(unique, counts)))
 #check predictions of the clusters with lower density
 # transform predictions into a numpy array
 predictions = np.array(banc_pickle_dump['predictions'])
-cluster0 = predictions[kmeans.labels_ == 0]
-cluster1 = predictions[kmeans.labels_ == 1]
-cluster2 = predictions[kmeans.labels_ == 2]
-
 # Calculate the difference between the predictions and the true age, for every
-with open('age_traindata.pickle', 'rb') as handle:
+with open('/code/BayOptPy/tpot/age_traindata.pickle', 'rb') as handle:
     Ytest = pickle.load(handle)
-# subtract the original age to the predicted age
-cluster0_corrected = cluster0 - Ytest
-cluster1_corrected = cluster1 - Ytest
-cluster2_corrected = cluster2 - Ytest
+corrected_predictions = predictions - Ytest
+corrected_predictions = np.transpose(corrected_predictions)
+predictions = np.transpose(predictions)
+cluster_predictions = {}
+cluster_corrected = {}
+for cluster in range(args.nclusters):
+    cluster_predictions[cluster] = predictions[kmeans.labels_ == cluster]
+    cluster_corrected[cluster] = corrected_predictions[kmeans.labels_ == cluster]
 
 # plot the distances to get a feeling for the data. Note: For the following
 # plots every colour represents a different model.
-plt.figure()
-for element in range(cluster0_corrected.shape[0]):
-    plt.scatter(range(len(predictions[kmeans.labels_ == 0][0])),
-            cluster0_corrected[element])
-plt.xlabel('Analysed Subjects')
-plt.ylabel('Predicted Age - True Age')
-plt.savefig('/code/BayOptPy/tpot/tSNE_analysis/age_overview_cluster0.png')
-
-plt.figure()
-for element in range(cluster1_corrected.shape[0]):
-    plt.scatter(range(len(predictions[kmeans.labels_ == 1][0])),
-            cluster1_corrected[element])
-plt.xlabel('Analysed Subjects')
-plt.ylabel('Predicted Age - True Age')
-plt.savefig('/code/BayOptPy/tpot/tSNE_analysis/age_overview_cluster1.png')
-
-plt.figure()
-for element in range(cluster2_corrected.shape[0]):
-    plt.scatter(range(len(predictions[kmeans.labels_ == 2][0])),
-            cluster2_corrected[element])
-plt.xlabel('Analysed Subjects')
-plt.ylabel('Predicted Age - True Age')
-plt.savefig('/code/BayOptPy/tpot/tSNE_analysis/age_overview_cluster2.png')
+for cluster in range(args.nclusters):
+    plt.figure()
+    for element in range(cluster_corrected[cluster].shape[0]):
+        plt.scatter(range(len(predictions[kmeans.labels_ == 0][0])),
+                cluster_corrected[cluster][element])
+    plt.xlabel('Analysed Models')
+    plt.ylabel('Predicted Age - True Age')
+    plt.title('%s' %args.decomposition)
+    plt.savefig('/code/BayOptPy/tpot/%s_analysis/age_overview_cluster%d.png'
+            %(args.decomposition, cluster))
+    plt.close()
 
 # Get the correlation between the age in the different cluster and true age
 from scipy.stats import pearsonr
 from sklearn.metrics import mean_absolute_error
 
-cluster0_correlation = []
-cluster0_mae = []
-for model in range(cluster0.shape[0]):
-    corr, _ = pearsonr(cluster0[model], Ytest)
-    cluster0_correlation.append(corr)
-    mae = mean_absolute_error(Ytest, cluster0[model])
-    cluster0_mae.append(mae)
+results = {}
+for cluster in range(args.nclusters):
+    print('Analysis cluster #%d' %cluster)
+    results[cluster] = {}
+    results[cluster]['correlation'] = []
+    results[cluster]['mae'] = []
 
-cluster1_correlation = []
-cluster1_mae = []
-for model in range(cluster1.shape[0]):
-    corr, _ = pearsonr(cluster1[model], Ytest)
-    cluster1_correlation.append(corr)
-    mae = mean_absolute_error(Ytest, cluster1[model])
-    cluster1_mae.append(mae)
-
-cluster2_correlation = []
-cluster2_mae = []
-for model in range(cluster2.shape[0]):
-    corr, _ = pearsonr(cluster2[model], Ytest)
-    cluster2_correlation.append(corr)
-    mae = mean_absolute_error(Ytest, cluster2[model])
-    cluster2_mae.append(mae)
+    for model in range(cluster_predictions[cluster].shape[1]):
+        corr, _ = pearsonr(cluster_predictions[cluster][:, model],
+                Ytest[kmeans.labels_ == cluster])
+        results[cluster]['correlation'].append(corr)
+        mae = mean_absolute_error(Ytest[kmeans.labels_ == cluster],
+                cluster_predictions[cluster][:, model])
+        results[cluster]['mae'].append(mae)
 
 # plot the correlations for the different clusters
 plt.figure()
-plt.scatter(range(predictions[kmeans.labels_ == 0].shape[0]), cluster0_correlation,
-        label='cluster0')
-plt.scatter(range(predictions[kmeans.labels_ == 1].shape[0]), cluster1_correlation,
-        label='cluster1')
-plt.scatter(range(predictions[kmeans.labels_ == 2].shape[0]), cluster2_correlation,
-        label='cluster2')
+for cluster in range(args.nclusters):
+    plt.scatter(range(predictions[kmeans.labels_ == cluster].shape[1]),
+            results[cluster]['correlation'], label='cluster%d' %cluster)
+
 plt.legend()
-plt.xlabel('Analysed Subjects')
+plt.xlabel('Analysed Models')
 plt.ylabel('Correlation')
-plt.savefig('/code/BayOptPy/tpot/tSNE_analysis/correlations.png')
+plt.title('%s' %args.decomposition)
+plt.savefig('/code/BayOptPy/tpot/%s_analysis/correlations.png'
+        %args.decomposition)
+plt.close()
 
  # get the mae. Note: A low MAE means good prediction acction. MAE represents
  # actual value - predicted valeu
 plt.figure()
-plt.scatter(range(predictions[kmeans.labels_ == 0].shape[0]), cluster0_mae,
-        label='cluster0')
-plt.scatter(range(predictions[kmeans.labels_ == 1].shape[0]), cluster1_mae,
-        label='cluster1')
-plt.scatter(range(predictions[kmeans.labels_ == 2].shape[0]), cluster2_mae,
-        label='cluster2')
+for cluster in range(args.nclusters):
+    plt.scatter(range(predictions[kmeans.labels_ == cluster].shape[1]),
+    results[cluster]['mae'], label='cluster%d' %cluster)
 plt.legend()
-plt.xlabel('Analysed Subjects')
+plt.xlabel('Analysed Models')
+plt.title('%s' %args.decomposition)
 plt.ylabel('MAE')
-plt.savefig('/code/BayOptPy/tpot/tSNE_analysis/mae.png')
-
+plt.savefig('/code/BayOptPy/tpot/%s_analysis/mae.png' %args.decomposition)
+plt.close()
