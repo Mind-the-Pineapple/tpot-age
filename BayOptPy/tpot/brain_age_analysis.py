@@ -65,6 +65,10 @@ parser.add_argument('-config_dict',
                     choices=['None', 'light', 'custom', 'ligth_no_preproc', 'gpr', 'gpr_full'],
                     required=True
                     )
+parser.add_argument('-njobs',
+                     dest='njobs',
+                     type=int,
+                     required=True)
 
 args = parser.parse_args()
 
@@ -120,7 +124,7 @@ if __name__ == '__main__':
 
     tpot = ExtendedTPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
-                         n_jobs=1,
+                         n_jobs=args.njobs,
                          cv=args.cv,
                          verbosity=2,
                          random_state=random_seed,
