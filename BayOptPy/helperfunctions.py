@@ -16,7 +16,7 @@ def get_paths(debug, dataset):
         project_sink = os.path.join(project_data, 'output')
     elif debug and dataset == 'BANC':
         project_wd = os.getcwd()
-        project_data = os.path.join(os.getenv('HOME'), 'NaN')
+        project_data = os.path.join(os.getenv('HOME'), 'NaN', 'BANC_2016')
         project_sink = os.path.join(project_data, 'output')
     elif debug and dataset == 'BOSTON':
         project_wd = os.getcwd()
@@ -24,7 +24,7 @@ def get_paths(debug, dataset):
         project_sink = None
     elif debug and dataset == 'BANC_freesurf':
         project_wd = os.getcwd()
-        project_data = os.path.join(os.getenv('HOME'), 'NaN')
+        project_data = os.path.join(os.getenv('HOME'), 'NaN', 'BANC_2016')
         project_sink = None
     elif not debug and dataset == 'OASIS':
         project_wd = '/code'

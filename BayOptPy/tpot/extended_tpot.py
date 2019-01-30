@@ -8,6 +8,10 @@ from sklearn.model_selection._split import check_cv
 from sklearn.metrics.scorer import check_scoring
 import warnings
 from sklearn.model_selection._validation import _fit_and_score
+from sklearn.gaussian_process.kernels import (RBF, Matern,
+                                             RationalQuadratic,
+                                             ExpSineSquared, DotProduct,
+                                             ConstantKernel)
 
 from functools import partial
 from multiprocessing import cpu_count

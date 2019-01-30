@@ -9,10 +9,10 @@ else # beast path
     datapath=$HOME
 fi
 echo "Data path is:"
-echo $datapath
 
+echo $datapath
 singularity exec -c \
             -B $HOME/BayOpt/:\code \
             -B $HOME/BayOpt/singularity:\sing \
-            -B $datapath:/data \
+            -B $datapath:/data/NaN \
             $(dirname $0)/BayOpt.img "$@"

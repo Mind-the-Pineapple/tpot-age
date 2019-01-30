@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # check if the /data folder exists, and determine the data location accordingly
 if [ -d /data ]; then # Cluster path
     datapath=/data/project/brainage
@@ -8,9 +9,10 @@ else # best path
     datapath=$HOME
 fi
 echo "Data path is:"
+
 echo $datapath
 singularity run -c \
             -B ~/BayOpt/:\code \
             -B ~/BayOpt/singularity:\sing \
-            -B $datapath:/data \
+            -B $datapath:/data/NaN \
             $(dirname $0)/BayOpt.img

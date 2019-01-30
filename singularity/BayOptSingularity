@@ -50,7 +50,7 @@ An Ubuntu 18.04 Singularity container with basic Python 3.6.6 and packages
  
     # Check if the project folder exists and if not create it
     if [ ! -d /code ]; then mkdir /code; fi
-    if [ ! -d /data ]; then mkdir -p /data; fi
+    if [ ! -d /data ]; then mkdir -p /data/NaN; fi
     if [ ! -d /sing ]; then mkdir -p /sing; fi
 
 
