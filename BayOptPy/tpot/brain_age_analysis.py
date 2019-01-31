@@ -141,38 +141,29 @@ if __name__ == '__main__':
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
 
-    # Do some preprocessing to find models where all predictions have the same value and eliminate them, as those will correspond
-    # to NaN entries or very small numbers on the correlation matrix.
-    repeated_idx = np.argwhere(
-        [np.array_equal(np.repeat(tpot.predictions[i][0], len(tpot.predictions[i])), tpot.predictions[i]) for i in
-         range(len(tpot.predictions))])
-    print('Index of the models with the same prediction for all subjects: ' + str(np.squeeze(repeated_idx)))
     print('Number of models analysed: %d' % len(tpot.predictions))
+    repeated_idx = np.argwhere(
+          [np.array_equal(np.repeat(tpot.predictions[i][0], len(tpot.predictions[i])),
+                          tpot.predictions[i]) for i in range(len(tpot.predictions))])
+    print('Index of the models with the same prediction for all subjects: ' + str(np.squeeze(repeated_idx)))
     tpot_predictions = np.delete(np.array(tpot.predictions), np.squeeze(repeated_idx), axis=0)
 
-    print('Number of models that will be used for cross-correlation: %s' % (tpot_predictions.shape,))
-
-    # Cross correlate the predictions
-    corr_matrix = np.corrcoef(tpot_predictions)
-
-
-    print('Check the number of NaNs after deleting models with constant predictions: %d' % len(
-        np.argwhere(np.isnan(corr_matrix))))
-    # colormap = sns.diverging_palette(220, 10, as_cmap=True)
-    sns.heatmap(corr_matrix, cmap='coolwarm')
-    plt.title(args.config_dict)
-    plt.savefig(os.path.join(project_wd, 'BayOptPy', 'tpot', 'cross_corr_%s.png' % args.config_dict))
-
     # Dump tpot.pipelines and evaluated objects
-    print('Dump correlation matrix and tpot pipelines')
+    print('Dump predictions, evaluated pipelines and sklearn objects')
     tpot_save = {}
+    tpot_pipelines = {}
     tpot_save['predictions'] = tpot.predictions
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
-    tpot_save['pipelines'] = tpot.pipelines
-    tpot_save['corr_matrix'] = corr_matrix
     tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
-    dump(tpot_save, os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_%s_%s_%sgen_.dump') %(args.dataset, args.config_dict,
-                                                                                             args.generations))
+    dump(tpot_save, os.path.join(project_wd, 'BayOptPy', 'tpot',
+                                 'tpot_%s_%s_%sgen.dump')
+                                 %(args.dataset, args.config_dict,
+                                   args.generations))
+    tpot_pipelines['pipelines'] = tpot.pipelines
+    dump(tpot_pipelines, os.path.join(project_wd, 'BayOptPy', 'tpot',
+                                      'tpot_%s_%s_%sgen_pipelines.dump')
+                                      %(args.dataset, args.config_dict,
+                                        args.generations))
 
     if args.gui:
         plt.show()
