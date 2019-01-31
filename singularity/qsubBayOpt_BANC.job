@@ -2,7 +2,7 @@
 # Defines if the job can be re-run, in case the host crashes
 #$ -r n
 # How much memory needed *per core*
-#$ -l h_vmem=10G
+#$ -l h_vmem=20G
 
 # Which operating system to use
 #$ -l cns_os=el7
@@ -10,13 +10,13 @@
 # Which queues the job should use:
 # NOTE: mpi use multiple cores on different machines
 #       smp use multiple cores on the same machine
-#$ -pe mpi 16
+#$ -pe mpi 24
 
 # Where to save the STDOUT and STDERR
 #$ -o ~/BayOpt/singularity/
 #$ -e ~/BayOpt/singularity/
 
-export OMP_NUM_THREADS=16
+export OMP_NUM_THREADS=24
 /home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
 /code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
--generations 5 -population_size 100 -config_dict gpr_full -njobs 16
+-generations 100 -population_size 100 -config_dict gpr_full -njobs 24

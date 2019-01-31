@@ -506,15 +506,17 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
         # Update the statistics with the new population
         record = stats.compile(population) if stats is not None else {}
         logbook.record(gen=gen, nevals=len(invalid_ind),
-                       avg= np.mean(fitnesses_only), std=np.std(fitnesses_only),
+                       avg=np.mean(fitnesses_only), std=np.std(fitnesses_only),
                        **record)
-        # Dump logbook
-        import pickle
-        import pandas as pd
-        deap_df = pd.DataFrame(logbook)
-        with open(os.path.join('BayOptPy', 'tpot', 'logbook.pkl'), 'wb') as file:
-            pickle.dump(deap_df, file)
-
+    # Dump logbook
+    import pickle
+    import pandas as pd
+    deap_df = pd.DataFrame(logbook)
+    #TODO: Ugly hack that will make it work on the cluster
+    save_path_df = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', 'logbook30.pkl')
+    with open(save_path_df, 'wb') as handle:
+        pickle.dump(deap_df, handle)
+    print('Saved logbook at %s' %save_path_df)
 
     return population, logbook
 
