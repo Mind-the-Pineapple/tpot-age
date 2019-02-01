@@ -6,11 +6,26 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns;
 sns.set()
+import argparse
 
 from BayOptPy.helperfunctions import get_paths
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-debug',
+                   dest='debug',
+                   action='store_true',
+                   help='Run debug with Pycharm'
+                   )
+parser.add_argument('-dataset',
+                   dest='dataset',
+                   help='Specify which dataset to use',
+                   choices=['OASIS', 'BANC',
+                            'BANC_freesurf']
+                   )
+args = parser.parse_args()
+
 # get corerct path
-project_wd, project_data, project_sink = get_paths(True,'BANC')
+project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
 tpot_path = os.path.join(project_wd, 'BayOptPy', 'tpot')
 
 colour_list = ['#588ef3']
