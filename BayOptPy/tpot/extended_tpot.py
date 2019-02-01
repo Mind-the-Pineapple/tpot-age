@@ -415,7 +415,7 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     variation.
     """
     logbook = tools.Logbook()
-    logbook.header = ['gen', 'nevals', 'avg', 'std'] + (stats.fields if stats else [])
+    logbook.header = ['gen', 'nevals', 'avg', 'std', 'min', 'max', 'raw'] + (stats.fields if stats else [])
 
     # Initialize statistics dict for the individuals in the population, to keep track of mutation/crossover operations and predecessor relations
     for ind in population:
@@ -442,6 +442,8 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     record = stats.compile(population) if stats is not None else {}
     logbook.record(gen=0, nevals=len(invalid_ind),
                    avg=np.mean(fitnesses_only), std=np.std(fitnesses_only),
+                   min=np.min(fitnesses_only), max=np.max(fitnesses_only),
+                   raw=fitnesses_only,
                    **record)
 
     # Begin the generational process
@@ -507,13 +509,16 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
         record = stats.compile(population) if stats is not None else {}
         logbook.record(gen=gen, nevals=len(invalid_ind),
                        avg=np.mean(fitnesses_only), std=np.std(fitnesses_only),
+                       min=np.min(fitnesses_only), max=np.max(fitnesses_only),
+                       raw=fitnesses_only,
                        **record)
     # Dump logbook
     import pickle
     import pandas as pd
     deap_df = pd.DataFrame(logbook)
     #TODO: Ugly hack that will make it work on the cluster
-    save_path_df = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', 'logbook30.pkl')
+    save_path_df = os.path.join('BayOptPy', 'tpot', 'logbook.pkl')
+    # save_path_df = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', 'logbook.pkl')
     with open(save_path_df, 'wb') as handle:
         pickle.dump(deap_df, handle)
     print('Saved logbook at %s' %save_path_df)
