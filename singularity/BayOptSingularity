@@ -45,11 +45,12 @@ An Ubuntu 18.04 Singularity container with basic Python 3.6.6 and packages
          dask-ml==0.10.0\
          dask-glm==0.1.0\
          joblib==0.12.5\
-         tornado==5.1.1"
+         tornado==5.1.1\
+         seaborn==0.9.0"
  
     # Check if the project folder exists and if not create it
     if [ ! -d /code ]; then mkdir /code; fi
-    if [ ! -d /data ]; then mkdir -p /data; fi
+    if [ ! -d /data ]; then mkdir -p /data/NaN; fi
     if [ ! -d /sing ]; then mkdir -p /sing; fi
 
 

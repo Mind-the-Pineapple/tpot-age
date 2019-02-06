@@ -1,19 +1,24 @@
 import multiprocessing
 import os
 import argparse
-from tpot import TPOTRegressor
 from sklearn import model_selection
 import numpy as np
-import pickle
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.pylab import plt
 #from dask.distributed import Client
+import seaborn as sns
+import pickle
+from joblib import dump
 
+from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-nogui',
-                    dest='nogui',
+parser.add_argument('-gui',
+                    dest='gui',
                     action='store_true',
-                    help='No gui'
+                    help='Use gui'
                     )
 parser.add_argument('-debug',
                     dest='debug',
@@ -28,7 +33,7 @@ parser.add_argument('-dask',
 parser.add_argument('-dataset',
                     dest='dataset',
                     help='Specify which dataset to use',
-                    choices=['OASIS', 'BANC']
+                    choices=['OASIS', 'BANC', 'BANC_freesurf']
                     )
 parser.add_argument('-cv',
                     dest='cv',
@@ -54,11 +59,21 @@ parser.add_argument('-resamplefactor',
                     type=int,
                     default=1 # no resampling is performed
                     )
-parser.add_argument('-nopreprocessing',
-                    dest='nopreprocessing',
-                    action='store_true',
-                    help='Use default TPOT light models without the preprocessing',
-                    default=False
+parser.add_argument('-config_dict',
+                    dest='config_dict',
+                    help='Specify which TPOT config dict to use',
+                    choices=['None', 'light', 'custom', 'ligth_no_preproc', 'gpr', 'gpr_full'],
+                    required=True
+                    )
+parser.add_argument('-njobs',
+                     dest='njobs',
+                     type=int,
+                     required=True)
+parser.add_argument('-random_seed',
+                    dest='random_seed',
+                    help='Specify random seed to use',
+                    type=int,
+                    required=True
                     )
 
 args = parser.parse_args()
@@ -67,8 +82,26 @@ if __name__ == '__main__':
 
     print('The current args are: %s' %args)
 
+    # check which TPOT dictionary containing the operators and parameters to be used was passed as argument
+    if args.config_dict == 'None':
+        tpot_config = None
+    elif args.config_dict == 'light':
+        tpot_config = 'TPOT light'
+    elif args.config_dict == 'custom':
+        from BayOptPy.tpot.custom_tpot_config_dict import tpot_config_custom
+        tpot_config = tpot_config_custom
+    elif args.config_dict == 'light_no_preproc':
+        # this option uses the TPOT light definition without the preprocessing
+        tpot_config = get_config_dictionary()
+    elif args.config_dict == 'gpr':
+        from BayOptPy.tpot.gpr_tpot_config_dict import tpot_config_gpr
+        tpot_config = tpot_config_gpr
+    elif args.config_dict == 'gpr_full':
+        from BayOptPy.tpot.gpr_tpot_config_dict_full import tpot_config_gpr
+        tpot_config = tpot_config_gpr
+
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-    demographics, imgs, maskedData = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
+    demographics, imgs, data = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
 
     print('Running regression analyis with TPOT')
     # split train-test dataset
@@ -78,12 +111,14 @@ if __name__ == '__main__':
         port = 8889
     else:
         port = 8787
-    if args.dask:
+    if args.dask and args.debug:
+        # TODO: These two ifs are not tested
         client = Client(threads_per_worker=1, diagnostics_port=port)
         client
 
     # To ensure the example runs quickly, we'll make the training dataset relatively small
-    Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(maskedData, targetAttribute, test_size=.5, random_state=42)
+    Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(data, targetAttribute, test_size=.25,
+                                                                    random_state=args.random_seed)
     print('Divided dataset into test and training')
     print('Check train test split sizes')
     print('X_train: ' + str(Xtrain.shape))
@@ -91,33 +126,50 @@ if __name__ == '__main__':
     print('Y_train: ' + str(Ytrain.shape))
     print('Y_test: '  + str(Ytest.shape))
 
-    # if no preprocessing is passed as argument do not perform any preprocessing on the pipelines
-    if args.nopreprocessing:
-        config_dic = get_config_dictionary()
-    else:
-        config_dic = 'TPOT light'
-
-    tpot = TPOTRegressor(generations=args.generations,
+    tpot = ExtendedTPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
-                         n_jobs=1,
+                         n_jobs=args.njobs,
                          cv=args.cv,
                          verbosity=2,
-                         # max_time_mins=20,
-                         random_state=42,
-                         config_dict=config_dic,
+                         random_state=args.random_seed,
+                         config_dict=tpot_config,
                          scoring='neg_mean_absolute_error',
-                         use_dask=args.dask
-                         # memory='auto'
+                         use_dask=args.dask,
+                         debug=False
                         )
     print('Number of cross-validation: %d' %args.cv)
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
     # njobs=-1 uses all cores present in the machine
-    tpot.fit(Xtrain, Ytrain)
-    print(tpot.score(Xtest, Ytest))
-    tpot.export('tpot_simple_analysis_pipeline.py')
+    tpot.fit(Xtrain, Ytrain, Xtest)
+    print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
+    tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
 
-    # Pickle dictionary with the the list of evaluated pipelines
-    with open(os.path.join(project_wd, 'BayOptPy', 'tpot', '%s_pipelines.pkl' %args.dataset), 'wb') as handle:
-        pickle.dump(tpot.evaluated_individuals_, handle)
+    print('Number of models analysed: %d' % len(tpot.predictions))
+    repeated_idx = np.argwhere(
+          [np.array_equal(np.repeat(tpot.predictions[i][0], len(tpot.predictions[i])),
+                          tpot.predictions[i]) for i in range(len(tpot.predictions))])
+    print('Index of the models with the same prediction for all subjects: ' + str(np.squeeze(repeated_idx)))
+    tpot_predictions = np.delete(np.array(tpot.predictions), np.squeeze(repeated_idx), axis=0)
+
+    # Dump tpot.pipelines and evaluated objects
+    print('Dump predictions, evaluated pipelines and sklearn objects')
+    tpot_save = {}
+    tpot_pipelines = {}
+    tpot_save['predictions'] = tpot.predictions
+    tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
+    tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
+    dump(tpot_save, os.path.join(project_wd, 'BayOptPy', 'tpot',
+                                 'tpot_%s_%s_%sgen.dump')
+                                 %(args.dataset, args.config_dict,
+                                   args.generations))
+    tpot_pipelines['pipelines'] = tpot.pipelines
+    dump(tpot_pipelines, os.path.join(project_wd, 'BayOptPy', 'tpot',
+                                      'tpot_%s_%s_%sgen_pipelines.dump')
+                                      %(args.dataset, args.config_dict,
+                                        args.generations))
+
+    if args.gui:
+        plt.show()
+

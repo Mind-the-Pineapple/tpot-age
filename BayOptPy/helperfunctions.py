@@ -13,19 +13,39 @@ def get_paths(debug, dataset):
     if debug and dataset == 'OASIS':
         project_wd = os.getcwd()
         project_data = os.path.join(project_wd, 'data')
+        project_sink = os.path.join(project_data, 'output')
     elif debug and dataset == 'BANC':
         project_wd = os.getcwd()
-        project_data = os.path.join(os.getenv('HOME'), 'NaN')
+        project_data = os.path.join(os.getenv('HOME'), 'NaN', 'BANC_2016')
+        project_sink = os.path.join(project_data, 'output')
+    elif debug and dataset == 'BOSTON':
+        project_wd = os.getcwd()
+        project_data = None
+        project_sink = None
+    elif debug and dataset == 'BANC_freesurf':
+        project_wd = os.getcwd()
+        project_data = os.path.join(os.getenv('HOME'), 'NaN', 'BANC_2016')
+        project_sink = None
     elif not debug and dataset == 'OASIS':
         project_wd = '/code'
-        project_data = os.path.join(os.sep, 'data')
+        project_data = os.path.join(os.sep, 'NaN', 'data')
+        project_sink = os.path.join(project_data, 'output')
     elif not debug and dataset == 'BANC':
         project_wd = '/code'
-        project_data = os.path.join(os.sep, 'data', 'BANC_2016')
+        project_data = os.path.join(os.sep, 'data', 'NaN', 'BANC_2016')
+        project_sink = os.path.join(project_data, 'output')
+    elif not debug and dataset == 'BOSTON':
+        project_wd = '/code'
+        project_data = None
+        project_sink = None
+    elif not debug and dataset == 'BANC_freesurf':
+        project_wd = '/code'
+        project_data = os.path.join(os.sep, 'data', 'NaN', 'BANC_2016')
+        project_sink = None
+
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
 
-    project_sink = os.path.join(project_data, 'output')
     print('Code Path: %s' %project_wd)
     print('Data Path: %s' %project_data)
     print('Data Out: %s' %project_sink )
@@ -59,9 +79,12 @@ def get_data_covariates(dataPath, rawsubjectsId, dataset):
         # remove the demographic data from the missing subjects
         demographics = demographics.loc[~demographics['ID'].isin(missingsubjectsId)]
         selectedSubId = rawsubjectsId
-
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
+
+    # do some sanity checks
+    # Check if you have the same number of selectedsubjectsid as the demographic information
+    assert(len(selectedSubId) == len(demographics))
 
     return demographics, selectedSubId
 
@@ -175,6 +198,15 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
         # Load image proxies
         with Pool() as p:
             imgs = list(tqdm(p.imap(_load_nibabel, subjectsFile), total=len(selectedSubId)))
+
+    elif dataset == 'BANC_freesurf':
+        freesurf_df = pd.read_csv(os.path.join(project_wd, 'aparc_aseg_stats_BANC.csv'), delimiter=',', index_col=0)
+        rawsubjectsId = freesurf_df.index
+        # Load the demographics for each subject
+        demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
+        # return numpy array of the dataframe
+        return demographics, None, freesurf_df.values
+
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
 

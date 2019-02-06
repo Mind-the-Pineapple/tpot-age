@@ -1,0 +1,12 @@
+#!/bin/bash --login
+#$ -r n
+#$ -l h_vmem=64G
+#$ -l cns_os=u1604
+#$ -pe smp 4
+#$ -q global
+#$ -o ~/BayOpt/singularity/digits
+#$ -e ~/BayOpt/singularity/digits
+
+export OMP_NUM_THREADS=4
+/home/k1506210/BayOpt/singularity/digits/exec_BOSTON.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/example_tpot_joblib.py
