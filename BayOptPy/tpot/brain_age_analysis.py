@@ -160,12 +160,19 @@ if __name__ == '__main__':
     tpot_save['predictions'] = tpot.predictions
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
     tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
-    dump(tpot_save, os.path.join(project_wd, 'BayOptPy', 'tpot',
-                                 'tpot_%s_%s_%sgen.dump')
+
+    # Create appropriate folder and dump results
+
+    tpot_path = os.path.join(project_wd, 'BayOptPy', 'tpot', 'random_seed_%d') %args.random_seed
+    # check if saving paths exists otherwise create it
+    if not os.path.exists(os.path.join(tpot_path)):
+        os.makedirs(os.path.join(tpot_path))
+
+    dump(tpot_save, os.path.join(tpot_path, 'tpot_%s_%s_%sgen.dump')
                                  %(args.dataset, args.config_dict,
                                    args.generations))
     tpot_pipelines['pipelines'] = tpot.pipelines
-    dump(tpot_pipelines, os.path.join(project_wd, 'BayOptPy', 'tpot',
+    dump(tpot_pipelines, os.path.join(tpot_path,
                                       'tpot_%s_%s_%sgen_pipelines.dump')
                                       %(args.dataset, args.config_dict,
                                         args.generations))
