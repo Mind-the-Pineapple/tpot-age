@@ -29,6 +29,24 @@ from tpot.config.regressor import regressor_config_dict
 
 
 class ExtendedTPOTBase(TPOTBase):
+    def __init__(self, generations=100, population_size=100,
+                 offspring_size=None, mutation_rate=0.9, crossover_rate=0.1,
+                 scoring=None, cv=5, subsample=1.0, n_jobs=1,
+                 max_time_mins=None, max_eval_time_mins=5, random_state=None,
+                 config_dict=None, warm_start=False, memory=None,
+                 use_dask=False, periodic_checkpoint_folder=None,
+                 early_stop=None, verbosity=0, disable_update_check=False,
+                 debug=False):
+        super().__init__(generations, population_size,
+                         offspring_size, mutation_rate,
+                         crossover_rate, scoring, cv, subsample,
+                         n_jobs, max_time_mins, max_eval_time_mins,
+                         random_state, config_dict, warm_start,
+                         memory, use_dask,
+                         periodic_checkpoint_folder, early_stop,
+                         verbosity, disable_update_check)
+        self.debug = debug
+        print(use_dask, warm_start, verbosity)
 
     def _fit_init(self):
         super()._fit_init()
@@ -169,7 +187,9 @@ class ExtendedTPOTBase(TPOTBase):
                     pbar=self._pbar,
                     halloffame=self._pareto_front,
                     verbose=self.verbosity,
-                    per_generation_function=self._check_periodic_pipeline
+                    per_generation_function=self._check_periodic_pipeline,
+                    debug = self.debug,
+                    random_seed = self.random_state
                 )
 
             # store population for the next call
@@ -369,7 +389,9 @@ def _wrapped_cross_val_score(sklearn_pipeline, features, target,
 
 # Modify original eaMuPlusLambda, so that the logbook can be saved. And add the mean and std to the logbook
 def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, pbar,
-                   stats=None, halloffame=None, verbose=0, per_generation_function=None):
+                           stats=None, halloffame=None, verbose=0,
+                           per_generation_function=None, debug=False,
+                           random_seed=None):
     """This is the :math:`(\mu + \lambda)` evolutionary algorithm.
     :param population: A list of individuals.
     :param toolbox: A :class:`~deap.base.Toolbox` that contains the evolution
@@ -414,6 +436,10 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     registered in the toolbox. This algorithm uses the :func:`varOr`
     variation.
     """
+
+    if random_seed == None:
+        raise ValueError("No fixed random seed was used!")
+
     logbook = tools.Logbook()
     logbook.header = ['gen', 'nevals', 'avg', 'std', 'min', 'max', 'raw'] + (stats.fields if stats else [])
 
@@ -517,8 +543,12 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     import pandas as pd
     deap_df = pd.DataFrame(logbook)
     #TODO: Ugly hack that will make it work on the cluster
-    save_path_df = os.path.join('BayOptPy', 'tpot', 'logbook.pkl')
-    # save_path_df = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', 'logbook.pkl')
+    if debug:
+        save_path_df = os.path.join('BayOptPy', 'tpot',
+                                    'logbook_rnd_seed%d.pkl') %random_seed
+    else:
+        save_path_df = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot',
+                                    'logbook_rnd_seed_%d.pkl') %random_seed
     with open(save_path_df, 'wb') as handle:
         pickle.dump(deap_df, handle)
     print('Saved logbook at %s' %save_path_df)

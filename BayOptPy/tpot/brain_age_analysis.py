@@ -69,6 +69,12 @@ parser.add_argument('-njobs',
                      dest='njobs',
                      type=int,
                      required=True)
+parser.add_argument('-random_seed',
+                    dest='random_seed',
+                    help='Specify random seed to use',
+                    type=int,
+                    required=True
+                    )
 
 args = parser.parse_args()
 
@@ -94,8 +100,6 @@ if __name__ == '__main__':
         from BayOptPy.tpot.gpr_tpot_config_dict_full import tpot_config_gpr
         tpot_config = tpot_config_gpr
 
-    random_seed = 42
-
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
     demographics, imgs, data = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
 
@@ -114,7 +118,7 @@ if __name__ == '__main__':
 
     # To ensure the example runs quickly, we'll make the training dataset relatively small
     Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(data, targetAttribute, test_size=.25,
-                                                                    random_state=random_seed)
+                                                                    random_state=args.random_seed)
     print('Divided dataset into test and training')
     print('Check train test split sizes')
     print('X_train: ' + str(Xtrain.shape))
@@ -127,10 +131,11 @@ if __name__ == '__main__':
                          n_jobs=args.njobs,
                          cv=args.cv,
                          verbosity=2,
-                         random_state=random_seed,
+                         random_state=args.random_seed,
                          config_dict=tpot_config,
                          scoring='neg_mean_absolute_error',
-                         use_dask=args.dask
+                         use_dask=args.dask,
+                         debug=False
                         )
     print('Number of cross-validation: %d' %args.cv)
     print('Number of generations: %d' %args.generations)
