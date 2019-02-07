@@ -28,5 +28,5 @@ module load openmpi/openmpi_v3
 export NUMPEXPR_NUM_THREADS=1
 /home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
 /code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
--generations 50 -population_size 100 -config_dict gpr_full -njobs 16 \
+-generations 50 -population_size 100 -config_dict gpr_full -njobs 1 \
 -random_seed $SGE_TASK_ID -dask

@@ -15,4 +15,5 @@ singularity run -c \
             -B ~/BayOpt/:\code \
             -B ~/BayOpt/singularity:\sing \
             -B $datapath:/data/NaN \
+            -B /opt/sge/:/opt/sge \
             $(dirname $0)/BayOpt.img

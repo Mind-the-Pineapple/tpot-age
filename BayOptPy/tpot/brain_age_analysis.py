@@ -6,10 +6,12 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib.pylab import plt
-#from dask.distributed import Client
+from dask.distributed import Client
+from dask_jobqueue import SGECluster
 import seaborn as sns
 import pickle
-from joblib import dump
+from sklearn.externals import joblib
+import distributed.joblib
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
@@ -79,7 +81,6 @@ parser.add_argument('-random_seed',
 args = parser.parse_args()
 
 if __name__ == '__main__':
-
     print('The current args are: %s' %args)
 
     # check which TPOT dictionary containing the operators and parameters to be used was passed as argument
@@ -110,7 +111,24 @@ if __name__ == '__main__':
         print('Start DASK client')
         port = 8889
     else:
-        port = 8787
+        port = 8686
+        # cluster = LocalECluster(n_workers=24, processes=1,threads_per_worker=1)
+        cluster = SGECluster(queue='global@nanlnx7',
+                             cores=10,
+                             local_directory='$HOME',
+                             memory='20GB',
+                             process=1,
+                             resource_spec='h_vmem=20G',
+                             walltime='24:00',
+                             shebang='#!/bin/bash --login')
+        client = Client(cluster, diagnostics_port=port)
+        # print sge submission script
+        print(cluster.job_script())
+        cluster.job_file()
+        cluster.job_script()
+        cluster.scale(10)
+
+        print('Start DASK client')
     if args.dask and args.debug:
         # TODO: These two ifs are not tested
         client = Client(threads_per_worker=1, diagnostics_port=port)
@@ -141,6 +159,7 @@ if __name__ == '__main__':
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
     # njobs=-1 uses all cores present in the machine
+    # with joblib.parallel_backend('dask'):
     tpot.fit(Xtrain, Ytrain, Xtest)
     print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
@@ -168,11 +187,11 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.join(tpot_path)):
         os.makedirs(os.path.join(tpot_path))
 
-    dump(tpot_save, os.path.join(tpot_path, 'tpot_%s_%s_%sgen.dump')
+    joblib.dump(tpot_save, os.path.join(tpot_path, 'tpot_%s_%s_%sgen.dump')
                                  %(args.dataset, args.config_dict,
                                    args.generations))
     tpot_pipelines['pipelines'] = tpot.pipelines
-    dump(tpot_pipelines, os.path.join(tpot_path,
+    joblib.dump(tpot_pipelines, os.path.join(tpot_path,
                                       'tpot_%s_%s_%sgen_pipelines.dump')
                                       %(args.dataset, args.config_dict,
                                         args.generations))
