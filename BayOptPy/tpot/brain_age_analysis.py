@@ -13,6 +13,9 @@ import pickle
 from sklearn.externals import joblib
 import distributed.joblib
 
+import sys
+sys.path.append('/home/k1506210/BayOpt')
+
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
 
@@ -24,8 +27,9 @@ parser.add_argument('-gui',
                     )
 parser.add_argument('-debug',
                     dest='debug',
-                    action='store_true',
-                    help='Run debug with Pycharm'
+                    help='Run debug with Pycharm',
+                    choices=['sing', 'pycharm', 'dask'],
+                    required=True
                     )
 parser.add_argument('-dask',
                     dest='dask',
@@ -35,7 +39,8 @@ parser.add_argument('-dask',
 parser.add_argument('-dataset',
                     dest='dataset',
                     help='Specify which dataset to use',
-                    choices=['OASIS', 'BANC', 'BANC_freesurf']
+                    choices=['OASIS', 'BANC', 'BANC_freesurf'],
+                    required=True
                     )
 parser.add_argument('-cv',
                     dest='cv',
@@ -119,7 +124,7 @@ if __name__ == '__main__':
                              memory='20GB',
                              process=1,
                              resource_spec='h_vmem=20G',
-                             walltime='24:00',
+                             walltime='24:00:00',
                              shebang='#!/bin/bash --login')
         client = Client(cluster, diagnostics_port=port)
         # print sge submission script

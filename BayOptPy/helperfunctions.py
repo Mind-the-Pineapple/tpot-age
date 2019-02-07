@@ -10,37 +10,41 @@ from tqdm import tqdm
 
 def get_paths(debug, dataset):
 
-    if debug and dataset == 'OASIS':
+    if debug == 'pycharm' and dataset == 'OASIS':
         project_wd = os.getcwd()
         project_data = os.path.join(project_wd, 'data')
         project_sink = os.path.join(project_data, 'output')
-    elif debug and dataset == 'BANC':
+    elif debug == 'pycharm' and dataset == 'BANC':
         project_wd = os.getcwd()
         project_data = os.path.join(os.getenv('HOME'), 'NaN', 'BANC_2016')
         project_sink = os.path.join(project_data, 'output')
-    elif debug and dataset == 'BOSTON':
+    elif debug=='pycharm' and dataset == 'BOSTON':
         project_wd = os.getcwd()
         project_data = None
         project_sink = None
-    elif debug and dataset == 'BANC_freesurf':
+    elif debug=='pycharm' and dataset == 'BANC_freesurf':
         project_wd = os.getcwd()
         project_data = os.path.join(os.getenv('HOME'), 'NaN', 'BANC_2016')
         project_sink = None
-    elif not debug and dataset == 'OASIS':
+    elif debug=='sing' and dataset == 'OASIS':
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'NaN', 'data')
         project_sink = os.path.join(project_data, 'output')
-    elif not debug and dataset == 'BANC':
+    elif debug=='sing'and dataset == 'BANC':
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'data', 'NaN', 'BANC_2016')
         project_sink = os.path.join(project_data, 'output')
-    elif not debug and dataset == 'BOSTON':
+    elif debug=='sing'and dataset == 'BOSTON':
         project_wd = '/code'
         project_data = None
         project_sink = None
-    elif not debug and dataset == 'BANC_freesurf':
+    elif debug=='sing'and dataset == 'BANC_freesurf':
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'data', 'NaN', 'BANC_2016')
+        project_sink = None
+    elif debug=='dask'and dataset == 'BANC_freesurf':
+        project_wd = os.getcwd()
+        project_data = '/data/project/brainage/BANC_2016'
         project_sink = None
 
     else:
