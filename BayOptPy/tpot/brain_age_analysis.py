@@ -9,7 +9,9 @@ from matplotlib.pylab import plt
 #from dask.distributed import Client
 import seaborn as sns
 import pickle
-from joblib import dump
+# from sklearn.externals import joblib
+import joblib
+
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
@@ -141,7 +143,8 @@ if __name__ == '__main__':
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
     # njobs=-1 uses all cores present in the machine
-    tpot.fit(Xtrain, Ytrain, Xtest)
+    with joblib.parallel_backend('loky'):
+        tpot.fit(Xtrain, Ytrain, Xtest)
     print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
@@ -168,11 +171,11 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.join(tpot_path)):
         os.makedirs(os.path.join(tpot_path))
 
-    dump(tpot_save, os.path.join(tpot_path, 'tpot_%s_%s_%sgen.dump')
+    joblib.dump(tpot_save, os.path.join(tpot_path, 'tpot_%s_%s_%sgen.dump')
                                  %(args.dataset, args.config_dict,
                                    args.generations))
     tpot_pipelines['pipelines'] = tpot.pipelines
-    dump(tpot_pipelines, os.path.join(tpot_path,
+    joblib.dump(tpot_pipelines, os.path.join(tpot_path,
                                       'tpot_%s_%s_%sgen_pipelines.dump')
                                       %(args.dataset, args.config_dict,
                                         args.generations))
