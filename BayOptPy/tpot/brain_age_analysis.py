@@ -112,31 +112,29 @@ if __name__ == '__main__':
     print('Running regression analyis with TPOT')
     # split train-test dataset
     targetAttribute = np.array(demographics['Age'])
-    if args.debug and args.dask:
+    if args.dask:
         print('Start DASK client')
-        port = 8889
-    else:
-        port = 8686
-        # cluster = LocalECluster(n_workers=24, processes=1,threads_per_worker=1)
-        cluster = SGECluster(queue='global@nanlnx7',
-                             cores=10,
-                             local_directory='$HOME',
-                             memory='20GB',
-                             process=1,
-                             resource_spec='h_vmem=20G',
-                             walltime='24:00:00',
-                             shebang='#!/bin/bash --login')
-        client = Client(cluster, diagnostics_port=port)
-        # print sge submission script
-        print(cluster.job_script())
-        cluster.job_file()
-        cluster.job_script()
-        cluster.scale(10)
+        if args.debug:
+            port = 8889
+            client = Client(diagnostics_port=port)
+        else:
+            port = 8686
+            # cluster = LocalECluster(n_workers=24, processes=1,threads_per_worker=1)
+            cluster = SGECluster(queue='global@nanlnx7',
+                                 cores=10,
+                                 local_directory='$HOME',
+                                 memory='20GB',
+                                 process=1,
+                                 resource_spec='h_vmem=20G',
+                                 walltime='24:00:00',
+                                 shebang='#!/bin/bash --login')
+            client = Client(cluster, diagnostics_port=port)
+            # print sge submission script
+            print(cluster.job_script())
+            cluster.job_file()
+            cluster.job_script()
+            cluster.scale(10)
 
-        print('Start DASK client')
-    if args.dask and args.debug:
-        # TODO: These two ifs are not tested
-        client = Client(threads_per_worker=1, diagnostics_port=port)
         client
 
     # To ensure the example runs quickly, we'll make the training dataset relatively small
