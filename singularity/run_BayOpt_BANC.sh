@@ -4,9 +4,9 @@
 if [ -d /data ]; then # Cluster path
     datapath=/data/project/brainage
 elif [ -d $HOME/myHome ]; then # vagrant path
-    datapath=$HOME/myHome
+    datapath=$HOME/myHome/NaN
 else # best path
-    datapath=$HOME
+    datapath=$HOME/NaN
 fi
 echo "Data path is:"
 
