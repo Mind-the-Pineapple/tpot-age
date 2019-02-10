@@ -7,12 +7,11 @@
 # Which operating system to use
 #$ -l cns_os=el7
 
-#####$ -q global@nanlnx7
+#$ -q global@nanlnx7
 # Which queues the job should use:
 # NOTE: mpi use multiple cores on different machines
 #       smp use multiple cores on the same machine
 ##$ -pe smp 1
-#$ -q global
 
 # Where to save the STDOUT and STDERR
 #$ -o ~/BayOpt/singularity/
@@ -21,13 +20,13 @@
 # Create 2 job submissions
 #-t 200-445:5
 # lower bound 200, upper bound 445, step of 5
-#$ -t 1-41:10
+######$ -t 1-41:10
 
 # Load necessary modules
 module load singularity
 
 /home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
 /code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
--generations 50 -population_size 100 -config_dict gpr_full -njobs 1 \
--random_seed $SGE_TASK_ID
+-generations 50 -population_size 100 -config_dict gpr_full -njobs 16 \
+-random_seed 5
 

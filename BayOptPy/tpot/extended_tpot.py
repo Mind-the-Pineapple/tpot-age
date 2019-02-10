@@ -15,7 +15,7 @@ from sklearn.gaussian_process.kernels import (RBF, Matern,
 
 from functools import partial
 from multiprocessing import cpu_count
-from sklearn.externals.joblib import Parallel, delayed
+from joblib import Parallel, delayed
 from sklearn.model_selection import train_test_split
 from datetime import datetime
 import random
@@ -275,7 +275,9 @@ class ExtendedTPOTBase(TPOTBase):
                 for chunk_idx in range(0, len(sklearn_pipeline_list), chunk_size):
                     self._stop_by_max_time_mins()
 
-                    parallel = Parallel(n_jobs=self._n_jobs, verbose=0, pre_dispatch='2*n_jobs')
+                    parallel = Parallel(n_jobs=self._n_jobs, prefer='threads',
+                                        verbose=0, pre_dispatch='2*n_jobs',
+                                        batch_size=1)
                     tmp_result_scores = parallel(
                         delayed(partial_wrapped_cross_val_score)(sklearn_pipeline=sklearn_pipeline)
                         for sklearn_pipeline in sklearn_pipeline_list[chunk_idx:chunk_idx + chunk_size])
