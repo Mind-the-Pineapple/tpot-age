@@ -6,7 +6,6 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib.pylab import plt
-#from dask.distributed import Client
 import seaborn as sns
 import pickle
 # from sklearn.externals import joblib
@@ -137,14 +136,13 @@ if __name__ == '__main__':
                          config_dict=tpot_config,
                          scoring='neg_mean_absolute_error',
                          use_dask=args.dask,
-                         debug=False
+                         debug=args.debug
                         )
     print('Number of cross-validation: %d' %args.cv)
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
     # njobs=-1 uses all cores present in the machine
-    with joblib.parallel_backend('loky'):
-        tpot.fit(Xtrain, Ytrain, Xtest)
+    tpot.fit(Xtrain, Ytrain, Xtest)
     print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')

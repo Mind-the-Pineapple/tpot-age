@@ -20,19 +20,13 @@
 # Create 2 job submissions
 #-t 200-445:5
 # lower bound 200, upper bound 445, step of 5
-#$ -t 1-21:10
+####$ -t 1-21:10
 
 # Load necessary modules
 module load singularity
-module load openmpi/openmpi_v3
 
-export OMP_NUM_THREADS=1
-export OPENBLAS_NUM_THREADS=1
-export VECLIB_MAXIMUM_THREADS=1
-export MKL_NUM_THREADS=1
-export NUMEXPR_NUM_THREADS=1
 /home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
 /code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
--generations 50 -population_size 100 -config_dict gpr_full -njobs 19 \
--random_seed $SGE_TASK_ID
+-generations 50 -population_size 100 -config_dict gpr_full -njobs 16 \
+-random_seed 5
 
