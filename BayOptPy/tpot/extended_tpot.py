@@ -545,13 +545,12 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     import pickle
     import pandas as pd
     deap_df = pd.DataFrame(logbook)
-    #TODO: Ugly hack that will make it work on the cluster
     if debug:
         save_path_df = os.path.join('BayOptPy', 'tpot',
-                                    'logbook_rnd_seed%d.pkl') %random_seed
+                                    'logbook_rnd_seed%02d.pkl') %random_seed
     else:
         save_path_df = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot',
-                                    'logbook_rnd_seed_%d.pkl') %random_seed
+                                    'logbook_rnd_seed_%02d.pkl') %random_seed
     with open(save_path_df, 'wb') as handle:
         pickle.dump(deap_df, handle)
     print('Saved logbook at %s' %save_path_df)
