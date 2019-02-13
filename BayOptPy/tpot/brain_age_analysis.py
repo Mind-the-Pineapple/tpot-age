@@ -6,13 +6,16 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib.pylab import plt
-#from dask.distributed import Client
 import seaborn as sns
 import pickle
-from joblib import dump
+# from sklearn.externals import joblib
+import joblib
+
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
-from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
+from BayOptPy.helperfunctions import (get_data, get_paths,
+                                      get_config_dictionary, get_output_path,
+                                      get_best_pipeline_paths)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-gui',
@@ -75,6 +78,12 @@ parser.add_argument('-random_seed',
                     type=int,
                     required=True
                     )
+parser.add_argument('-analysis',
+                    dest='analysis',
+                    help='Specify which type of analysis to use',
+                    choices=['vanilla'],
+                    required=True
+                    )
 
 args = parser.parse_args()
 
@@ -100,8 +109,15 @@ if __name__ == '__main__':
         from BayOptPy.tpot.gpr_tpot_config_dict_full import tpot_config_gpr
         tpot_config = tpot_config_gpr
 
+    # Get data paths, the actual data and check if the output paths exists
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
+    output_path = get_output_path(args.analysis, args.generations, args.random_seed, args.debug)
     demographics, imgs, data = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
+    # Path to the folder where to save the best pipeline will be saved
+    # Note: The pipeline will only be saved if it is different from the one in
+    # the previous generation
+    best_pipe_paths = get_best_pipeline_paths(args.analyis, args.generations,
+                                             args.random_seed, args.debug)
 
     print('Running regression analyis with TPOT')
     # split train-test dataset
@@ -134,8 +150,10 @@ if __name__ == '__main__':
                          random_state=args.random_seed,
                          config_dict=tpot_config,
                          scoring='neg_mean_absolute_error',
+                         periodic_checkpoint_folder=best_pipe_paths,
                          use_dask=args.dask,
-                         debug=False
+                         debug=args.debug,
+                         analysis=args.analysis,
                         )
     print('Number of cross-validation: %d' %args.cv)
     print('Number of generations: %d' %args.generations)
@@ -160,13 +178,14 @@ if __name__ == '__main__':
     tpot_save['predictions'] = tpot.predictions
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
     tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
-    dump(tpot_save, os.path.join(project_wd, 'BayOptPy', 'tpot',
-                                 'tpot_%s_%s_%sgen.dump')
+
+    # Dump results
+    joblib.dump(tpot_save, os.path.join(output_path, 'tpot_%s_%s_%03dgen.dump')
                                  %(args.dataset, args.config_dict,
                                    args.generations))
     tpot_pipelines['pipelines'] = tpot.pipelines
-    dump(tpot_pipelines, os.path.join(project_wd, 'BayOptPy', 'tpot',
-                                      'tpot_%s_%s_%sgen_pipelines.dump')
+    joblib.dump(tpot_pipelines, os.path.join(output_path,
+                                      'tpot_%s_%s_%03dgen_pipelines.dump')
                                       %(args.dataset, args.config_dict,
                                         args.generations))
 
