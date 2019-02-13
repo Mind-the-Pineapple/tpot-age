@@ -13,7 +13,9 @@ import joblib
 
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
-from BayOptPy.helperfunctions import get_data, get_paths, get_config_dictionary
+from BayOptPy.helperfunctions import (get_data, get_paths,
+                                      get_config_dictionary, get_output_path,
+                                      get_best_pipeline_paths)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-gui',
@@ -76,6 +78,12 @@ parser.add_argument('-random_seed',
                     type=int,
                     required=True
                     )
+parser.add_argument('-analysis',
+                    dest='analysis',
+                    help='Specify which type of analysis to use',
+                    choices=['vanilla'],
+                    required=True
+                    )
 
 args = parser.parse_args()
 
@@ -101,8 +109,15 @@ if __name__ == '__main__':
         from BayOptPy.tpot.gpr_tpot_config_dict_full import tpot_config_gpr
         tpot_config = tpot_config_gpr
 
+    # Get data paths, the actual data and check if the output paths exists
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
+    output_path = get_output_path(args.analysis, args.generations, args.random_seed, args.debug)
     demographics, imgs, data = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
+    # Path to the folder where to save the best pipeline will be saved
+    # Note: The pipeline will only be saved if it is different from the one in
+    # the previous generation
+    best_pipe_paths = get_best_pipeline_paths(args.analyis, args.generations,
+                                             args.random_seed, args.debug)
 
     print('Running regression analyis with TPOT')
     # split train-test dataset
@@ -136,7 +151,8 @@ if __name__ == '__main__':
                          config_dict=tpot_config,
                          scoring='neg_mean_absolute_error',
                          use_dask=args.dask,
-                         debug=args.debug
+                         debug=args.debug,
+                         analysis=args.analysis,
                         )
     print('Number of cross-validation: %d' %args.cv)
     print('Number of generations: %d' %args.generations)
@@ -162,19 +178,13 @@ if __name__ == '__main__':
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
     tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
 
-    # Create appropriate folder and dump results
-
-    tpot_path = os.path.join(project_wd, 'BayOptPy', 'tpot', 'random_seed_%d') %args.random_seed
-    # check if saving paths exists otherwise create it
-    if not os.path.exists(os.path.join(tpot_path)):
-        os.makedirs(os.path.join(tpot_path))
-
-    joblib.dump(tpot_save, os.path.join(tpot_path, 'tpot_%s_%s_%sgen.dump')
+    # Dump results
+    joblib.dump(tpot_save, os.path.join(output_path, 'tpot_%s_%s_%03dgen.dump')
                                  %(args.dataset, args.config_dict,
                                    args.generations))
     tpot_pipelines['pipelines'] = tpot.pipelines
-    joblib.dump(tpot_pipelines, os.path.join(tpot_path,
-                                      'tpot_%s_%s_%sgen_pipelines.dump')
+    joblib.dump(tpot_pipelines, os.path.join(output_path,
+                                      'tpot_%s_%s_%03dgen_pipelines.dump')
                                       %(args.dataset, args.config_dict,
                                         args.generations))
 

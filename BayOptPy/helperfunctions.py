@@ -1,4 +1,5 @@
 import os
+import shutil
 import re
 import pandas as pd
 from multiprocessing import Process, Pool
@@ -51,6 +52,53 @@ def get_paths(debug, dataset):
     print('Data Out: %s' %project_sink )
     return project_wd, project_data, project_sink
 
+def get_output_path(analysis, ngen, random_seed, debug):
+    # Check if output path exits, otherwise create it
+    if debug:
+        output_path = os.path.join('BayOptPy', 'tpot', analysis,
+                                   '%03d_generations' %ngen,
+                                   'random_seed_%03d' %random_seed)
+    else:
+        output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+                                   '%03d_generations' %ngen,
+                                  'random_seed_%03d' %random_seed)
+
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    return output_path
+
+def get_all_random_seed_paths(analysis, ngen, debug):
+    # As they should have been created by the get_output_path, do not create
+    # path but just find its location
+    if debug:
+        output_path = os.path.join('BayOptPy', 'tpot', analysis,
+                                   '%03d_generations' %ngen)
+    else:
+        output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+                                   '%03d_generations' %ngen)
+    return output_path
+
+def get_best_pipeline_paths(analysis, ngen, random_seed, debug):
+    # check if folder exists and in case yes, remove it as new runs will save
+    # new files without overwritting
+    if debug:
+        output_path = os.path.join('BayOptPy', 'tpot', analysis,
+                                   '%03d_generations' %ngen,
+                                   'random_seed_%03d' %random_seed,
+                                   'checkpoint_folder')
+    else:
+        output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+                                   '%03d_generations' %ngen,
+                                   'random_seed_%03d' %random_seed,
+                                   'checkpoint_folder')
+    if os.path.exits(output_path):
+        shutil.rmtree(output_path)
+        print('Deleted pre-exiting checkpoint folder')
+
+    if os.path.exists(output_path):
+        os.makedirs(output_path)
+    return output_path
 
 def get_data_covariates(dataPath, rawsubjectsId, dataset):
     if dataset == 'OASIS':

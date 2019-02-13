@@ -36,7 +36,7 @@ class ExtendedTPOTBase(TPOTBase):
                  config_dict=None, warm_start=False, memory=None,
                  use_dask=False, periodic_checkpoint_folder=None,
                  early_stop=None, verbosity=0, disable_update_check=False,
-                 debug=False):
+                 debug=False, analysis=None):
         super().__init__(generations, population_size,
                          offspring_size, mutation_rate,
                          crossover_rate, scoring, cv, subsample,
@@ -46,7 +46,8 @@ class ExtendedTPOTBase(TPOTBase):
                          periodic_checkpoint_folder, early_stop,
                          verbosity, disable_update_check)
         self.debug = debug
-        print(use_dask, warm_start, verbosity)
+        # specify type of analysis being used
+        self.analysis = analysis
 
     def _fit_init(self):
         super()._fit_init()
@@ -188,8 +189,9 @@ class ExtendedTPOTBase(TPOTBase):
                     halloffame=self._pareto_front,
                     verbose=self.verbosity,
                     per_generation_function=self._check_periodic_pipeline,
-                    debug = self.debug,
-                    random_seed = self.random_state
+                    debug=self.debug,
+                    random_seed=self.random_state,
+                    analysis=self.analysis,
                 )
 
             # store population for the next call
@@ -394,7 +396,7 @@ def _wrapped_cross_val_score(sklearn_pipeline, features, target,
 def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, pbar,
                            stats=None, halloffame=None, verbose=0,
                            per_generation_function=None, debug=False,
-                           random_seed=None):
+                           random_seed=None, analysis=None):
     """This is the :math:`(\mu + \lambda)` evolutionary algorithm.
     :param population: A list of individuals.
     :param toolbox: A :class:`~deap.base.Toolbox` that contains the evolution
@@ -546,11 +548,11 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     import pandas as pd
     deap_df = pd.DataFrame(logbook)
     if debug:
-        save_path_df = os.path.join('BayOptPy', 'tpot',
-                                    'logbook_rnd_seed%02d.pkl') %random_seed
+        save_path_df = os.path.join('BayOptPy', 'tpot', analysis,  '%03d_generation' %ngen,
+                                    'logbook_rnd_seed%03d.pkl') %random_seed
     else:
-        save_path_df = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot',
-                                    'logbook_rnd_seed_%02d.pkl') %random_seed
+        save_path_df = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis, '%03d_generation' %ngen,
+                                    'logbook_rnd_seed_%03d.pkl') %random_seed
     with open(save_path_df, 'wb') as handle:
         pickle.dump(deap_df, handle)
     print('Saved logbook at %s' %save_path_df)

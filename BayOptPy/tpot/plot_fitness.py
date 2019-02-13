@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import math
 
-from BayOptPy.helperfunctions import get_paths
+from BayOptPy.helperfunctions import get_paths, get_all_random_seed_paths
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-debug',
@@ -25,13 +25,25 @@ parser.add_argument('-dataset',
                    choices=['OASIS', 'BANC',
                             'BANC_freesurf']
                    )
+parser.add_argument('-analysis',
+                    dest='analysis',
+                    help='Specify which type of analysis to use',
+                    choices=['vanilla'],
+                    required=True
+                    )
+parser.add_argument('-generations',
+                    dest='generations',
+                    help='Specify number of generations to use',
+                    type=int,
+                    required=True
+                    )
 args = parser.parse_args()
 
 random_seeds = [0, 5, 10, 20, 30, 42, 60, 80]
 
 # get corerct path
 project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-tpot_path = os.path.join(project_wd, 'BayOptPy', 'tpot',)
+tpot_path = get_all_random_seed_paths(args.analysis, args.generations, args.debug)
 
 colour_list = ['#588ef3']
 def plt_filled_std(ax, data, data_mean, data_std, color):
@@ -52,7 +64,7 @@ for random_seed in random_seeds:
         os.makedirs(os.path.join(generation_analysis_path))
 
     # Load dumped file
-    with open(os.path.join(tpot_path, 'logbook_rnd_seed_%d.pkl') %random_seed, 'rb') as handle:
+    with open(os.path.join(tpot_path, 'logbook_rnd_seed_%03d.pkl') %random_seed, 'rb') as handle:
         fitness = pickle.load(handle)
 
     # plot the mean and std of the fitness over different generations
