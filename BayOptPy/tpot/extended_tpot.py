@@ -177,6 +177,7 @@ class ExtendedTPOTBase(TPOTBase):
             with warnings.catch_warnings():
                 self._setup_memory()
                 warnings.simplefilter('ignore')
+
                 pop, _ = extendedeaMuPlusLambda(
                     population=pop,
                     toolbox=self._toolbox,
@@ -531,7 +532,7 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
 
         # calculate average fitness for the generation
         # ignore the -inf models
-        fitnesses_only = np.array([fitnesses[i][1] for i in range(len(population))])
+        fitnesses_only = np.array([fitnesses[i][1] for i in range(len(offspring))])
         n_inf = np.sum(np.isinf(fitnesses_only))
         print('Number of invalid pipelines: %d' %n_inf)
         fitnesses_only = fitnesses_only[~np.isinf(fitnesses_only)]

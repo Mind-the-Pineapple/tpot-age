@@ -56,6 +56,13 @@ parser.add_argument('-population_size',
                     type=int,
                     default=100 # use the same default as TPOT default population value
                     )
+parser.add_argument('-offspring_size',
+                    dest='offspring_size',
+                    help='Specify offspring size to use',
+                    type=int,
+                    default=None # When None is passed use the same as
+                                 # population_size (TPOT default)
+                    )
 parser.add_argument('-resamplefactor',
                     dest='resamplefactor',
                     help='Specify resampling rate for the image affine',
@@ -81,7 +88,7 @@ parser.add_argument('-random_seed',
 parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
-                    choices=['vanilla'],
+                    choices=['vanilla', 'population', 'test'],
                     required=True
                     )
 
@@ -144,6 +151,7 @@ if __name__ == '__main__':
 
     tpot = ExtendedTPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
+                         offspring_size=args.offspring_size,
                          n_jobs=args.njobs,
                          cv=args.cv,
                          verbosity=2,
@@ -158,6 +166,7 @@ if __name__ == '__main__':
     print('Number of cross-validation: %d' %args.cv)
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
+    print('Offspring Size: %d' %args.offspring_size)
     # njobs=-1 uses all cores present in the machine
     tpot.fit(Xtrain, Ytrain, Xtest)
     print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
