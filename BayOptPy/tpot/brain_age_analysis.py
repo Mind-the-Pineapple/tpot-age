@@ -150,6 +150,7 @@ if __name__ == '__main__':
                          random_state=args.random_seed,
                          config_dict=tpot_config,
                          scoring='neg_mean_absolute_error',
+                         periodic_checkpoint_folder=best_pipe_paths,
                          use_dask=args.dask,
                          debug=args.debug,
                          analysis=args.analysis,
