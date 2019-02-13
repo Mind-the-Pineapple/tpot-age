@@ -116,7 +116,7 @@ if __name__ == '__main__':
     # Path to the folder where to save the best pipeline will be saved
     # Note: The pipeline will only be saved if it is different from the one in
     # the previous generation
-    best_pipe_paths = get_best_pipeline_paths(args.analyis, args.generations,
+    best_pipe_paths = get_best_pipeline_paths(args.analysis, args.generations,
                                              args.random_seed, args.debug)
 
     print('Running regression analyis with TPOT')

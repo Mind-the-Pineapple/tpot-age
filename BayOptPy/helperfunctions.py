@@ -53,7 +53,7 @@ def get_paths(debug, dataset):
     return project_wd, project_data, project_sink
 
 def get_output_path(analysis, ngen, random_seed, debug):
-    # Check if output path exits, otherwise create it
+    # Check if output path exists, otherwise create it
     if debug:
         output_path = os.path.join('BayOptPy', 'tpot', analysis,
                                    '%03d_generations' %ngen,
@@ -92,7 +92,7 @@ def get_best_pipeline_paths(analysis, ngen, random_seed, debug):
                                    '%03d_generations' %ngen,
                                    'random_seed_%03d' %random_seed,
                                    'checkpoint_folder')
-    if os.path.exits(output_path):
+    if os.path.exists(output_path):
         shutil.rmtree(output_path)
         print('Deleted pre-exiting checkpoint folder')
 
