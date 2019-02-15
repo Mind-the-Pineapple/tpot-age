@@ -25,6 +25,7 @@ from tpot.gp_deap import initialize_stats_dict, varOr
 import os
 
 
+from BayOptPy.helperfunctions import get_all_random_seed_paths
 from tpot.config.regressor import regressor_config_dict
 
 
@@ -548,12 +549,9 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     import pickle
     import pandas as pd
     deap_df = pd.DataFrame(logbook)
-    if debug:
-        save_path_df = os.path.join('BayOptPy', 'tpot', analysis,  '%03d_generation' %ngen,
-                                    'logbook_rnd_seed%03d.pkl') %random_seed
-    else:
-        save_path_df = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis, '%03d_generation' %ngen,
-                                    'logbook_rnd_seed_%03d.pkl') %random_seed
+    save_path = get_all_random_seed_paths(analysis, ngen, len(population), debug)
+    save_path_df = os.path.join(save_path, 'logbook_rnd_seed%03d.pkl'
+                                %random_seed)
     with open(save_path_df, 'wb') as handle:
         pickle.dump(deap_df, handle)
     print('Saved logbook at %s' %save_path_df)

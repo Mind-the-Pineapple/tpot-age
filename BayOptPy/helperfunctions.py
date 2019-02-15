@@ -52,53 +52,60 @@ def get_paths(debug, dataset):
     print('Data Out: %s' %project_sink )
     return project_wd, project_data, project_sink
 
-def get_output_path(analysis, ngen, random_seed, debug):
+def get_output_path(analysis, ngen, random_seed, population_size, debug):
     # Check if output path exists, otherwise create it
-    if debug:
-        output_path = os.path.join('BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen,
-                                   'random_seed_%03d' %random_seed)
-    else:
-        output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen,
-                                  'random_seed_%03d' %random_seed)
+    rnd_seed_path = get_all_random_seed_paths(analysis, ngen, population_size,
+                                              debug)
+    output_path = os.path.join(rnd_seed_path, 'random_seed_%03d' %random_seed)
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
     return output_path
 
-def get_all_random_seed_paths(analysis, ngen, debug):
+def get_all_random_seed_paths(analysis, ngen, population_size, debug):
     # As they should have been created by the get_output_path, do not create
     # path but just find its location
-    if debug:
-        output_path = os.path.join('BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen)
-    else:
-        output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen)
+    if analysis == 'vanilla':
+        if debug:
+            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+                                       '%03d_generations' %ngen)
+        else:
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+                                       '%03d_generations' %ngen)
+    if analysis == 'population':
+        if debug:
+            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+                                       '%05d_population_size' %population_size,
+                                       '%03d_generations' %ngen)
+        else:
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+                                       '%05d_population_size' %population_size,
+                                       '%03d_generations' %ngen)
+
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
     return output_path
 
-def get_best_pipeline_paths(analysis, ngen, random_seed, debug):
+def get_best_pipeline_paths(analysis, ngen, random_seed, population_size, debug):
     # check if folder exists and in case yes, remove it as new runs will save
     # new files without overwritting
-    if debug:
-        output_path = os.path.join('BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen,
-                                   'random_seed_%03d' %random_seed,
-                                   'checkpoint_folder')
-    else:
-        output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen,
-                                   'random_seed_%03d' %random_seed,
-                                   'checkpoint_folder')
-    if os.path.exists(output_path):
-        shutil.rmtree(output_path)
+
+    output_path = get_output_path(analysis, ngen, random_seed, population_size,
+                                  debug)
+    checkpoint_path = os.path.join(output_path, 'checkpoint_folder')
+
+    # Delete folder if it already exists and create a new one
+    if os.path.exists(checkpoint_path):
+        shutil.rmtree(checkpoint_path)
         print('Deleted pre-exiting checkpoint folder')
 
-    if os.path.exists(output_path):
-        os.makedirs(output_path)
-    return output_path
+    if not os.path.exists(checkpoint_path):
+        os.makedirs(checkpoint_path)
+        print('Creating checkpoint folder')
+
+    return checkpoint_path
 
 def get_data_covariates(dataPath, rawsubjectsId, dataset):
     if dataset == 'OASIS':

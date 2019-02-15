@@ -28,7 +28,7 @@ parser.add_argument('-dataset',
 parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
-                    choices=['vanilla'],
+                    choices=['vanilla', 'population'],
                     required=True
                     )
 parser.add_argument('-generations',
@@ -37,13 +37,29 @@ parser.add_argument('-generations',
                     type=int,
                     required=True
                     )
+parser.add_argument('-population_size',
+                    dest='population_size',
+                    help='Specify population size to use',
+                    type=int,
+                    default=100 # use the same default as TPOT default population value
+                    )
+parser.add_argument('-random_seeds',
+                    dest='random_seeds',
+                    help='Specify list of random seeds to use',
+                    nargs='+',
+                    required=True,
+                    type=int
+                   )
 args = parser.parse_args()
 
-random_seeds = [0, 5, 10, 20, 30, 42, 60, 80]
+#random_seeds = [0, 5, 10, 20, 30, 42, 60, 80]
+#random_seeds = [30]
 
 # get corerct path
 project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-tpot_path = get_all_random_seed_paths(args.analysis, args.generations, args.debug)
+tpot_path = get_all_random_seed_paths(args.analysis, args.generations,
+                                      args.population_size,
+                                      args.debug)
 
 colour_list = ['#588ef3']
 def plt_filled_std(ax, data, data_mean, data_std, color):
@@ -56,8 +72,8 @@ def plt_filled_std(ax, data, data_mean, data_std, color):
 
 # load file
 avg_max_fitness = []
-for random_seed in random_seeds:
-    generation_analysis_path = os.path.join(tpot_path, 'random_seed_%02d', 'generation_analysis') %random_seed
+for random_seed in args.random_seeds:
+    generation_analysis_path = os.path.join(tpot_path, 'random_seed_%03d', 'generation_analysis') %random_seed
 
     # check if saving paths exists otherwise create it
     if not os.path.exists(os.path.join(generation_analysis_path)):

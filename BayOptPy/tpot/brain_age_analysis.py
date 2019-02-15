@@ -118,13 +118,16 @@ if __name__ == '__main__':
 
     # Get data paths, the actual data and check if the output paths exists
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-    output_path = get_output_path(args.analysis, args.generations, args.random_seed, args.debug)
+    output_path = get_output_path(args.analysis, args.generations, args.random_seed,
+                                  args.population_size, args.debug)
     demographics, imgs, data = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
     # Path to the folder where to save the best pipeline will be saved
     # Note: The pipeline will only be saved if it is different from the one in
     # the previous generation
     best_pipe_paths = get_best_pipeline_paths(args.analysis, args.generations,
-                                             args.random_seed, args.debug)
+                                              args.random_seed,
+                                              args.population_size,
+                                              args.debug)
 
     print('Running regression analyis with TPOT')
     # split train-test dataset
