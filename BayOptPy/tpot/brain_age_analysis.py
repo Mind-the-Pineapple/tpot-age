@@ -96,6 +96,7 @@ args = parser.parse_args()
 
 if __name__ == '__main__':
 
+
     print('The current args are: %s' %args)
 
     # check which TPOT dictionary containing the operators and parameters to be used was passed as argument
@@ -128,6 +129,8 @@ if __name__ == '__main__':
                                               args.random_seed,
                                               args.population_size,
                                               args.debug)
+    print('Checkpoint folder path')
+    print(best_pipe_paths)
 
     print('Running regression analyis with TPOT')
     # split train-test dataset
@@ -142,7 +145,6 @@ if __name__ == '__main__':
         client = Client(threads_per_worker=1, diagnostics_port=port)
         client
 
-    # To ensure the example runs quickly, we'll make the training dataset relatively small
     Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(data, targetAttribute, test_size=.25,
                                                                     random_state=args.random_seed)
     print('Divided dataset into test and training')
@@ -187,6 +189,8 @@ if __name__ == '__main__':
     print('Dump predictions, evaluated pipelines and sklearn objects')
     tpot_save = {}
     tpot_pipelines = {}
+    tpot_save['Xtest'] = Xtest
+    tpot_save['Ytest'] = Ytest
     tpot_save['predictions'] = tpot.predictions
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
     tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_

@@ -23,10 +23,13 @@ from tqdm import tqdm
 from deap import tools
 from tpot.gp_deap import initialize_stats_dict, varOr
 import os
+import errno
 
 
 from BayOptPy.helperfunctions import get_all_random_seed_paths
 from tpot.config.regressor import regressor_config_dict
+from tpot.export_utils import generate_pipeline_code, generate_pipeline_code, export_pipeline, expr_to_tree
+
 
 
 class ExtendedTPOTBase(TPOTBase):
@@ -49,12 +52,17 @@ class ExtendedTPOTBase(TPOTBase):
         self.debug = debug
         # specify type of analysis being used
         self.analysis = analysis
+        # Set random seed
+        if random_state is not None:
+            print('Setting random seed')
+            np.random.seed(random_state)
 
     def _fit_init(self):
         super()._fit_init()
         # Initialise list to save the predictions and pipelines analysed by TPOT
         self.predictions = []
         self.pipelines = []
+        self._exported_pipeline_text = []
 
         # Add the Gaussian kernels so that they can be used by TPOT
         self.operators_context['RBF'] = eval('RBF')
@@ -297,6 +305,67 @@ class ExtendedTPOTBase(TPOTBase):
                  self.evaluated_individuals_[str(individual)]['internal_cv_score'])
                 for individual in individuals]
 
+    def _check_periodic_pipeline(self, gen):
+        """If enough time has passed, save a new optimized pipeline.
+        Currently used in the per generation hook in the optimization
+        loop.
+        Parameters
+        ----------
+        gen: int Generation number
+
+        Returns
+        -------
+        None
+        """
+        self._update_top_pipeline()
+        if self.periodic_checkpoint_folder is not None:
+            total_since_last_pipeline_save =(datetime.now()  - self._last_pipeline_write).total_seconds()
+            if total_since_last_pipeline_save > self._output_best_pipeline_period_seconds:
+                self._last_pipeline_write = datetime.now()
+                self._save_periodic_pipeline(gen)
+
+        if self.early_stop is not None:
+            if self._last_optimized_pareto_front_n_gens >= self.early_stop:
+                raise StopIteration("The optimized pipeline was not improved after evaluating {} more generations.  "
+                                    "Will end the optimization process.\n".format(self.early_stop))
+
+    def _save_periodic_pipeline(self, gen):
+        try:
+            #self._create_periodic_checkpoint_folder()
+            for pipeline, pipeline_scores in zip(self._pareto_front.items,
+                                                 reversed(self._pareto_front.keys)):
+                idx = self._pareto_front.items.index(pipeline)
+                pareto_front_pipeline_score = pipeline_scores.wvalues[1]
+                sklearn_pipeline_str = generate_pipeline_code(expr_to_tree(pipeline, self._pset), self.operators)
+                to_write = export_pipeline(pipeline, self.operators, self._pset,
+                                           self._imputed,
+                                           pareto_front_pipeline_score,
+                                           self.random_state)
+                # dont export a pipeline you had
+                if self._exported_pipeline_text.count(sklearn_pipeline_str):
+                    self._update_pbar(pbar_num=0, pbar_msg='Periodic pipeline was not saved, probably saved before...')
+                else:
+                    filename = os.path.join(self.periodic_checkpoint_folder,
+                                            'pipeline_gen_{}_idx_{}_{}.py'.format(gen, idx, datetime.now().strftime('%Y.%m.%d_%H-%M-%S')))
+                    self._update_pbar(pbar_num=0, pbar_msg='Saving periodic pipeline from pareto front to {}'.format(filename))
+                    with open(filename, 'w') as output_file:
+                        output_file.write(to_write)
+                    self._exported_pipeline_text.append(sklearn_pipeline_str)
+
+        except Exception as e:
+            self._update_pbar(pbar_num=0, pbar_msg='Failed saving periodic pipeline,   exception:\n{}'.format(str(e)[:250]))
+
+    def _create_periodic_checkpoint_folder(self):
+        try:
+            os.makedirs(self.periodic_checkpoint_folder)
+            self._update_pbar(pbar_msg='Created new folder to save periodic pipeline: {}'.format(self.periodic_checkpoint_folder))
+        except OSError as e:
+            if e.errno == errno.EEXIST and os.path.isdir(self.speriodic_checkpoint_folder):
+                pass # Folder already exists.  User probably created it.
+            else:
+                raise ValueError('Failed creating the periodic_checkpoint_folder:\n{}'.format(e))
+
+
 @threading_timeoutable(default="Timeout")
 def _wrapped_cross_val_score(sklearn_pipeline, features, target,
                              cv, scoring_function, sample_weight=None,
@@ -483,7 +552,7 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     for gen in range(1, ngen + 1):
         # after each population save a periodic pipeline
         if per_generation_function is not None:
-            per_generation_function()
+            per_generation_function(gen)
 
         # Vary the population
         offspring = varOr(population, toolbox, lambda_, cxpb, mutpb)
