@@ -27,6 +27,10 @@ def get_paths(debug, dataset):
         project_wd = os.getcwd()
         project_data = os.path.join(os.getenv('HOME'), 'NaN', 'BANC_2016')
         project_sink = None
+    elif debug and dataset == 'UKBIO_freesurf':
+        project_wd = os.getcwd()
+        project_data = os.path.join('UKBIO')
+        project_sink = None
     elif not debug and dataset == 'OASIS':
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'NaN', 'data')
@@ -42,6 +46,10 @@ def get_paths(debug, dataset):
     elif not debug and dataset == 'BANC_freesurf':
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'data', 'NaN', 'BANC_2016')
+        project_sink = None
+    elif not debug and dataset == 'UKBIO_freesurf':
+        project_wd = '/code'
+        project_data = os.path.join(os.sep, 'code', 'UKBIO')
         project_sink = None
 
     else:
@@ -218,6 +226,16 @@ def get_mean_age(df):
     print('Mean Age %.2f +- %.2f' %(mean_age, std_age))
 
 def get_data(project_data, dataset, debug, project_wd, resamplefactor):
+    ''' Load the csv files and return
+    :param project_data:
+    :param dataset:
+    :param debug:
+    :param project_wd:
+    :param resamplefactor:
+    :return: demographics:
+    :return: demographics:
+    :return: dataframe.values: Just the numeric values of the dataframe
+    '''
     print('Loading Brain image data')
     if dataset == 'OASIS':
         # remove the file end and get list of all used subjects
@@ -260,7 +278,11 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
         # return numpy array of the dataframe
-        return demographics, None, freesurf_df.values
+        return demographics, None, freesurf_df.values,freesurf_df
+
+    elif dataset == 'UKBIO_freesurf':
+        freesurf_df = pd.read_csv(os.path.join(project_wd, 'UKBIO', 'UKB_10k_FS_4844.csv'), delimiter=',')
+        return None, None, freesurf_df.values, freesurf_df
 
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
@@ -298,3 +320,4 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
     maskedData = np.array(maskedData)
 
     return demographics, imgs, maskedData
+

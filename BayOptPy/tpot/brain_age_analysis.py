@@ -121,7 +121,7 @@ if __name__ == '__main__':
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
     output_path = get_output_path(args.analysis, args.generations, args.random_seed,
                                   args.population_size, args.debug)
-    demographics, imgs, data = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
+    demographics, imgs, data, _ = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
     # Path to the folder where to save the best pipeline will be saved
     # Note: The pipeline will only be saved if it is different from the one in
     # the previous generation
@@ -159,7 +159,7 @@ if __name__ == '__main__':
                          offspring_size=args.offspring_size,
                          n_jobs=args.njobs,
                          cv=args.cv,
-                         verbosity=3,
+                         verbosity=2,
                          random_state=args.random_seed,
                          config_dict=tpot_config,
                          scoring='neg_mean_absolute_error',
