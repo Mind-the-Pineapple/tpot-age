@@ -10,8 +10,41 @@ sns.set()
 import argparse
 import numpy as np
 import math
+import re
 
 from BayOptPy.helperfunctions import get_paths, get_all_random_seed_paths
+
+def get_mae_for_all_generations():
+    # Load the scores for the best models
+    checkpoint_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed, 'checkpoint_folder')
+    # Find the saved dictionary with the MAE for each generation and Load the MAE on the test-dataset
+    # Note that if a value is not present for a generation, that means that the score did not change from the previous
+    # generation
+    fileList = os.listdir(checkpoint_path)
+    saved_files = [re.sub(r'^pipeline_log_gen_(.*?)\_.pckl', '\\1', file) for
+                   file in fileList if file.endswith('.pckl')]
+    # sort the array in ascending order
+    saved_files.sort()
+    mae = []
+    gen = []
+    for file in saved_files:
+        with open(os.path.join(checkpoint_path, file), 'rb') as handle:
+            tmp = pickle.load(handle)
+        mae.append(tmp['pipeline_test_mae'])
+        gen.append(tmp['gen'])
+
+    # Iterate over the the list of saved MAEs and repeat the values where one generation is missed
+    all_mae = []
+    curr_gen_idx = 0
+    # all generations
+    for generation in range(args.generations+1):
+        if generation == gen[curr_gen_idx]:
+            all_mae.append(mae[curr_gen_idx])
+            if len(mae) > 1:
+                curr_gen_idx += 1
+        else:
+            all_mae.append(all_mae[-1])
+    return all_mae
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-debug',
@@ -80,7 +113,7 @@ for random_seed in args.random_seeds:
         os.makedirs(os.path.join(generation_analysis_path))
 
     # Load dumped file
-    with open(os.path.join(tpot_path, 'logbook_rnd_seed_%03d.pkl') %random_seed, 'rb') as handle:
+    with open(os.path.join(tpot_path, 'logbook_rnd_seed%03d.pkl') %random_seed, 'rb') as handle:
         fitness = pickle.load(handle)
 
     # plot the mean and std of the fitness over different generations
@@ -91,9 +124,14 @@ for random_seed in args.random_seeds:
     plt.savefig(os.path.join(generation_analysis_path, 'mean_std.png'))
     plt.close()
 
-    # plot the max fitness over different generations
+    # plot the max fitness over different generations for the training and test dataset
+    all_mae_test_set = get_mae_for_all_generations()
     plt.figure()
-    plt.plot(range(len(fitness)), fitness['max'], marker='o')
+    plt.plot(range(len(fitness)), fitness['max'], marker='o', label='traning set')
+    # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
+    #          label='avg_training')
+    plt.plot(range(len(all_mae_test_set)), all_mae_test_set, marker='o', label='test set')
+    plt.legend()
     plt.xlabel('Generation')
     plt.ylabel('Fitness')
     plt.title('Random Seed %d' %random_seed)
@@ -171,3 +209,6 @@ plt.xlabel('Generation')
 plt.ylabel('Fitness')
 plt.savefig(os.path.join(tpot_path, 'all_seeds_mean_std.png'))
 plt.close()
+
+
+

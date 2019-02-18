@@ -325,9 +325,9 @@ class ExtendedTPOTBase(TPOTBase):
         """
         self._update_top_pipeline()
         log = {}
+        filename = None
         if self.periodic_checkpoint_folder is not None:
             total_since_last_pipeline_save =(datetime.now()  - self._last_pipeline_write).total_seconds()
-            filename = None
             if total_since_last_pipeline_save > self._output_best_pipeline_period_seconds:
                 self._last_pipeline_write = datetime.now()
                 log, filename = self._save_periodic_pipeline(gen, log)
@@ -361,12 +361,13 @@ class ExtendedTPOTBase(TPOTBase):
                 sklearn_pipeline.fit(self.features, self.target)
                 ypredict = sklearn_pipeline.predict(self.features_test)
                 from sklearn.metrics import mean_absolute_error
-                mae = mean_absolute_error(self.target_test, ypredict)
+                mae = - mean_absolute_error(self.target_test, ypredict)
 
                 # dump a pickle with current pareto value and the pipeline name
                 log['pipeline_name'] = sklearn_pipeline_str
                 log['pipeline_score'] = pipeline_scores.wvalues[1]
                 log['pipeline_test_mae'] = mae
+                log['gen'] = gen
                 # dont export a pipeline you had
                 if self._exported_pipeline_text.count(sklearn_pipeline_str):
                     self._update_pbar(pbar_num=0, pbar_msg='Periodic pipeline was not saved, probably saved before...')
@@ -577,6 +578,9 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
                    raw=fitnesses_only,
                    **record)
 
+    # save the optimal model for initial pipeline
+    gen = 0
+    per_generation_function(gen)
     # Begin the generational process
     for gen in range(1, ngen + 1):
         # after each population save a periodic pipeline
