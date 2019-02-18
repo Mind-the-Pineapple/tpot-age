@@ -159,7 +159,7 @@ if __name__ == '__main__':
                          offspring_size=args.offspring_size,
                          n_jobs=args.njobs,
                          cv=args.cv,
-                         verbosity=2,
+                         verbosity=3,
                          random_state=args.random_seed,
                          config_dict=tpot_config,
                          scoring='neg_mean_absolute_error',
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     print('Population Size: %d' %args.population_size)
     print('Offspring Size: %d' %args.offspring_size)
     # njobs=-1 uses all cores present in the machine
-    tpot.fit(Xtrain, Ytrain, Xtest)
+    tpot.fit(Xtrain, Ytrain, Xtest, Ytest)
     print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')

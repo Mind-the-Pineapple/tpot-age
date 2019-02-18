@@ -24,11 +24,12 @@ from deap import tools
 from tpot.gp_deap import initialize_stats_dict, varOr
 import os
 import errno
+import pickle
 
 
 from BayOptPy.helperfunctions import get_all_random_seed_paths
 from tpot.config.regressor import regressor_config_dict
-from tpot.export_utils import generate_pipeline_code, generate_pipeline_code, export_pipeline, expr_to_tree
+from tpot.export_utils import generate_pipeline_code, export_pipeline, expr_to_tree
 
 
 
@@ -63,6 +64,9 @@ class ExtendedTPOTBase(TPOTBase):
         self.predictions = []
         self.pipelines = []
         self._exported_pipeline_text = []
+        # Save training sample on the TPOT Object
+        self.features = None
+        self.target = None
 
         # Add the Gaussian kernels so that they can be used by TPOT
         self.operators_context['RBF'] = eval('RBF')
@@ -73,7 +77,7 @@ class ExtendedTPOTBase(TPOTBase):
         self.operators_context['ConstantKernel'] = eval('ConstantKernel')
 
 
-    def fit(self, features, target, features_test, sample_weight=None, groups=None):
+    def fit(self, features, target, features_test, target_test, sample_weight=None, groups=None):
         # Pass the features of the test set so that they can be used for the predictions
         self.features_test = features_test
         """Fit an optimized machine learning pipeline.
@@ -115,7 +119,9 @@ class ExtendedTPOTBase(TPOTBase):
         """
         self._fit_init()
 
-        features, target = self._check_dataset(features, target, sample_weight)
+        self.features, self.target = self._check_dataset(features, target, sample_weight)
+        # save true prections from the target test
+        self.target_test = target_test
 
         # Randomly collect a subsample of training samples for pipeline optimization process.
         if self.subsample < 1.0:
@@ -318,18 +324,26 @@ class ExtendedTPOTBase(TPOTBase):
         None
         """
         self._update_top_pipeline()
+        log = {}
         if self.periodic_checkpoint_folder is not None:
             total_since_last_pipeline_save =(datetime.now()  - self._last_pipeline_write).total_seconds()
+            filename = None
             if total_since_last_pipeline_save > self._output_best_pipeline_period_seconds:
                 self._last_pipeline_write = datetime.now()
-                self._save_periodic_pipeline(gen)
+                log, filename = self._save_periodic_pipeline(gen, log)
 
         if self.early_stop is not None:
             if self._last_optimized_pareto_front_n_gens >= self.early_stop:
                 raise StopIteration("The optimized pipeline was not improved after evaluating {} more generations.  "
                                     "Will end the optimization process.\n".format(self.early_stop))
+        # save log only if it has not been saved previously. Use the previusly saved python script to check wheater to
+        # save the log
+        if filename is not None:
+            log_path = os.path.join(self.periodic_checkpoint_folder, 'pipeline_log_gen_%03d.pckl' %gen)
+            with open(log_path, 'wb') as handle:
+                pickle.dump(log, handle)
 
-    def _save_periodic_pipeline(self, gen):
+    def _save_periodic_pipeline(self, gen, log):
         try:
             #self._create_periodic_checkpoint_folder()
             for pipeline, pipeline_scores in zip(self._pareto_front.items,
@@ -341,9 +355,22 @@ class ExtendedTPOTBase(TPOTBase):
                                            self._imputed,
                                            pareto_front_pipeline_score,
                                            self.random_state)
+
+                # fit the pipeline again and get the test score
+                sklearn_pipeline = self._toolbox.compile(expr=pipeline)
+                sklearn_pipeline.fit(self.features, self.target)
+                ypredict = sklearn_pipeline.predict(self.features_test)
+                from sklearn.metrics import mean_absolute_error
+                mae = mean_absolute_error(self.target_test, ypredict)
+
+                # dump a pickle with current pareto value and the pipeline name
+                log['pipeline_name'] = sklearn_pipeline_str
+                log['pipeline_score'] = pipeline_scores.wvalues[1]
+                log['pipeline_test_mae'] = mae
                 # dont export a pipeline you had
                 if self._exported_pipeline_text.count(sklearn_pipeline_str):
                     self._update_pbar(pbar_num=0, pbar_msg='Periodic pipeline was not saved, probably saved before...')
+                    filename = None
                 else:
                     filename = os.path.join(self.periodic_checkpoint_folder,
                                             'pipeline_gen_{}_idx_{}_{}.py'.format(gen, idx, datetime.now().strftime('%Y.%m.%d_%H-%M-%S')))
@@ -354,6 +381,8 @@ class ExtendedTPOTBase(TPOTBase):
 
         except Exception as e:
             self._update_pbar(pbar_num=0, pbar_msg='Failed saving periodic pipeline,   exception:\n{}'.format(str(e)[:250]))
+
+        return log, filename
 
     def _create_periodic_checkpoint_folder(self):
         try:
