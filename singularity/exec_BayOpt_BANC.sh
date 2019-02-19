@@ -11,7 +11,7 @@ fi
 echo "Data path is:"
 
 echo $datapath
-singularity exec -c \
+/opt/singularity/bin/singularity exec -c \
             -B $HOME/BayOpt/:\code \
             -B $HOME/BayOpt/singularity:\sing \
             -B $datapath:/data/NaN \
