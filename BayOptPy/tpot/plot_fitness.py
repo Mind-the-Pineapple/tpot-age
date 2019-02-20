@@ -14,6 +14,19 @@ import re
 
 from BayOptPy.helperfunctions import get_paths, get_all_random_seed_paths
 
+def set_publication_style():
+    # Se font size to paper size
+    sns.set_context('paper')
+
+    # Set the font to be serif, rahter than sans
+    sns.set(font='serif')
+
+    # Make background white, and specify the specific font family
+    sns.set_style("white", {
+                      "font.family": "serif",
+                      "font.serif": ["Times", "Palatino", "serif"]
+                                    })
+
 def get_mae_for_all_generations():
     # Load the scores for the best models
     checkpoint_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed, 'checkpoint_folder')
@@ -37,10 +50,10 @@ def get_mae_for_all_generations():
     all_mae = []
     curr_gen_idx = 0
     # all generations
-    for generation in range(args.generations+1):
+    for generation in range(args.generations):
         if generation == gen[curr_gen_idx]:
             all_mae.append(mae[curr_gen_idx])
-            if len(mae) > 1:
+            if len(mae) > 1 and (len(gen) > curr_gen_idx + 1):
                 curr_gen_idx += 1
         else:
             all_mae.append(all_mae[-1])
@@ -84,6 +97,9 @@ parser.add_argument('-random_seeds',
                     type=int
                    )
 args = parser.parse_args()
+
+# Set plot styles
+#set_publication_style()
 
 #random_seeds = [0, 5, 10, 20, 30, 42, 60, 80]
 #random_seeds = [30]
