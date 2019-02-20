@@ -24,7 +24,7 @@ from deap import tools
 from tpot.gp_deap import initialize_stats_dict, varOr
 import os
 import errno
-import pickle
+import joblib
 
 
 from BayOptPy.helperfunctions import get_all_random_seed_paths
@@ -339,9 +339,8 @@ class ExtendedTPOTBase(TPOTBase):
         # save log only if it has not been saved previously. Use the previusly saved python script to check wheater to
         # save the log
         if filename is not None:
-            log_path = os.path.join(self.periodic_checkpoint_folder, 'pipeline_log_gen_%03d.pckl' %gen)
-            with open(log_path, 'wb') as handle:
-                pickle.dump(log, handle)
+            log_path = os.path.join(self.periodic_checkpoint_folder, 'pipeline_log_gen_%03d.joblib' %gen)
+            joblib.dump(log, log_path)
 
     def _save_periodic_pipeline(self, gen, log):
         try:
@@ -367,6 +366,7 @@ class ExtendedTPOTBase(TPOTBase):
                 log['pipeline_name'] = sklearn_pipeline_str
                 log['pipeline_score'] = pipeline_scores.wvalues[1]
                 log['pipeline_test_mae'] = mae
+                log['pipeline_sklearn_obj'] = self._compile_to_sklearn(pipeline)
                 log['gen'] = gen
                 # dont export a pipeline you had
                 if self._exported_pipeline_text.count(sklearn_pipeline_str):
