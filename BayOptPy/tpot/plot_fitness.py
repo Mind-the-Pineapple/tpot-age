@@ -28,9 +28,13 @@ def set_publication_style():
                                     })
 
 def get_mae_for_all_generations():
+    '''
+    Get the MAE values for both the training and test dataset
+    :return:
+    '''
     # Load the scores for the best models
     checkpoint_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed, 'checkpoint_folder')
-    # Find the saved dictionary with the MAE for each generation and Load the MAE on the test-dataset
+    # Find the saved dictionary with the MAE for each generation and load the MAE on the test-dataset
     # Note that if a value is not present for a generation, that means that the score did not change from the previous
     # generation
     fileList = os.listdir(checkpoint_path)
@@ -38,26 +42,32 @@ def get_mae_for_all_generations():
                    file in fileList if file.endswith('.pckl')]
     # sort the array in ascending order
     saved_files.sort()
-    mae = []
+    mae_test = []
+    mae_train = []
     gen = []
     for file in saved_files:
         with open(os.path.join(checkpoint_path, file), 'rb') as handle:
             tmp = pickle.load(handle)
-        mae.append(tmp['pipeline_test_mae'])
+        mae_test.append(tmp['pipeline_test_mae'])
+        mae_train.append(tmp['pipeline_score'])
         gen.append(tmp['gen'])
 
     # Iterate over the the list of saved MAEs and repeat the values where one generation is missed
-    all_mae = []
+    all_mae_test = []
+    all_mae_train = []
     curr_gen_idx = 0
     # all generations
     for generation in range(args.generations):
         if generation == gen[curr_gen_idx]:
-            all_mae.append(mae[curr_gen_idx])
-            if len(mae) > 1 and (len(gen) > curr_gen_idx + 1):
+            all_mae_test.append(mae_test[curr_gen_idx])
+            all_mae_train.append(mae_train[curr_gen_idx])
+            if len(mae_test) > 1 and (len(gen) > curr_gen_idx + 1):
                 curr_gen_idx += 1
         else:
-            all_mae.append(all_mae[-1])
-    return all_mae
+            # repeat the same last value
+            all_mae_test.append(all_mae_test[-1])
+            all_mae_train.append(all_mae_train[-1])
+    return all_mae_test, all_mae_train
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-debug',
@@ -141,9 +151,9 @@ for random_seed in args.random_seeds:
     plt.close()
 
     # plot the max fitness over different generations for the training and test dataset
-    all_mae_test_set = get_mae_for_all_generations()
+    all_mae_test_set, all_mae_train_set = get_mae_for_all_generations()
     plt.figure()
-    plt.plot(range(len(fitness)), fitness['max'], marker='o', label='traning set')
+    plt.plot(range(len(all_mae_train_set)), all_mae_train_set, marker='o', label='traning set')
     # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
     #          label='avg_training')
     plt.plot(range(len(all_mae_test_set)), all_mae_test_set, marker='o', label='test set')
@@ -151,10 +161,23 @@ for random_seed in args.random_seeds:
     plt.xlabel('Generation')
     plt.ylabel('Fitness')
     plt.title('Random Seed %d' %random_seed)
-    plt.savefig(os.path.join(generation_analysis_path, 'max_fitness.png'))
+    plt.savefig(os.path.join(generation_analysis_path, 'train_test_fitness.png'))
     # Save the current random_see max fitness for further analysis
     avg_max_fitness.append(fitness['max'])
 
+    # plot the cross-validated MAE for the training and test dataset
+    all_mae_test_set = get_mae_for_all_generations()
+    plt.figure()
+    plt.plot(range(len(fitness)), fitness['max'], marker='o', label='traning set')
+    # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
+    #          label='avg_training')
+    plt.legend()
+    plt.xlabel('Generation')
+    plt.ylabel('Fitness')
+    plt.title('Random Seed %d' %random_seed)
+    plt.savefig(os.path.join(generation_analysis_path, 'max_fitness.png'))
+    # Save the current random_see max fitness for further analysis
+    avg_max_fitness.append(fitness['max'])
 
     # # find the maximum and minimum histogram count
     # max_n = 0
