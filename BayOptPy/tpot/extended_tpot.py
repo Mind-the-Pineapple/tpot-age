@@ -12,6 +12,7 @@ from sklearn.gaussian_process.kernels import (RBF, Matern,
                                              RationalQuadratic,
                                              ExpSineSquared, DotProduct,
                                              ConstantKernel)
+from sklearn.metrics import mean_absolute_error
 
 from functools import partial
 from multiprocessing import cpu_count
@@ -67,6 +68,8 @@ class ExtendedTPOTBase(TPOTBase):
         # Save training sample on the TPOT Object
         self.features = None
         self.target = None
+        self.evaluated_individuals = {}
+        self.curr_generations = 0
 
         # Add the Gaussian kernels so that they can be used by TPOT
         self.operators_context['RBF'] = eval('RBF')
@@ -305,6 +308,9 @@ class ExtendedTPOTBase(TPOTBase):
                         result_score_list = self._update_val(val, result_score_list)
 
         self._update_evaluated_individuals_(result_score_list, eval_individuals_str, operator_counts, stats_dicts)
+        # Create an additional dictionary to save all analaysed models per geneartion
+        self.evaluated_individuals[self.curr_generations] = stats_dicts
+        self.curr_generations += 1
 
         """Look up the operator count and cross validation score to use in the optimization"""
         return [(self.evaluated_individuals_[str(individual)]['operator_count'],
@@ -327,7 +333,7 @@ class ExtendedTPOTBase(TPOTBase):
         log = {}
         filename = None
         if self.periodic_checkpoint_folder is not None:
-            total_since_last_pipeline_save =(datetime.now()  - self._last_pipeline_write).total_seconds()
+            total_since_last_pipeline_save =(datetime.now() - self._last_pipeline_write).total_seconds()
             if total_since_last_pipeline_save > self._output_best_pipeline_period_seconds:
                 self._last_pipeline_write = datetime.now()
                 log, filename = self._save_periodic_pipeline(gen, log)
@@ -359,7 +365,6 @@ class ExtendedTPOTBase(TPOTBase):
                 sklearn_pipeline = self._toolbox.compile(expr=pipeline)
                 sklearn_pipeline.fit(self.features, self.target)
                 ypredict = sklearn_pipeline.predict(self.features_test)
-                from sklearn.metrics import mean_absolute_error
                 mae = - mean_absolute_error(self.target_test, ypredict)
 
                 # dump a pickle with current pareto value and the pipeline name
@@ -368,6 +373,7 @@ class ExtendedTPOTBase(TPOTBase):
                 log['pipeline_test_mae'] = mae
                 log['pipeline_sklearn_obj'] = self._compile_to_sklearn(pipeline)
                 log['gen'] = gen
+
                 # dont export a pipeline you had
                 if self._exported_pipeline_text.count(sklearn_pipeline_str):
                     self._update_pbar(pbar_num=0, pbar_msg='Periodic pipeline was not saved, probably saved before...')
@@ -570,7 +576,6 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     print('Number of invalid pipelines: %d' %n_inf)
     fitnesses_only = fitnesses_only[~np.isinf(fitnesses_only)]
 
-
     record = stats.compile(population) if stats is not None else {}
     logbook.record(gen=0, nevals=len(invalid_ind),
                    avg=np.mean(fitnesses_only), std=np.std(fitnesses_only),
@@ -580,7 +585,8 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
 
     # save the optimal model for initial pipeline
     gen = 0
-    per_generation_function(gen)
+    if per_generation_function is not None:
+        per_generation_function(gen)
     # Begin the generational process
     for gen in range(1, ngen + 1):
         # after each population save a periodic pipeline

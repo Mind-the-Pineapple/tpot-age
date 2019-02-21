@@ -194,6 +194,7 @@ if __name__ == '__main__':
     tpot_save['predictions'] = tpot.predictions
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
     tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
+    tpot_save['evaluated_individuals'] = tpot.evaluated_individuals
 
     # Dump results
     joblib.dump(tpot_save, os.path.join(output_path, 'tpot_%s_%s_%03dgen.dump')
