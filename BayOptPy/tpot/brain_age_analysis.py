@@ -192,15 +192,19 @@ if __name__ == '__main__':
     tpot_save['Xtest'] = Xtest
     tpot_save['Ytest'] = Ytest
     tpot_save['predictions'] = tpot.predictions
+    # List of
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
+    # Best pipeline at the end of the genetic algorithm
     tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
+    # List of evaluated invidivuals per generation
     tpot_save['evaluated_individuals'] = tpot.evaluated_individuals
+    # List of best model per generation
+    tpot_pipelines['log'] = tpot.log
 
     # Dump results
     joblib.dump(tpot_save, os.path.join(output_path, 'tpot_%s_%s_%03dgen.dump')
                                  %(args.dataset, args.config_dict,
                                    args.generations))
-    tpot_pipelines['pipelines'] = tpot.pipelines
     joblib.dump(tpot_pipelines, os.path.join(output_path,
                                       'tpot_%s_%s_%03dgen_pipelines.dump')
                                       %(args.dataset, args.config_dict,
