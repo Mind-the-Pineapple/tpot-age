@@ -1,11 +1,12 @@
 import os
 import pickle
+import joblib
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-import seaborn as sns;
+import seaborn as sns
 sns.set()
 import argparse
 import numpy as np
@@ -33,25 +34,39 @@ def get_mae_for_all_generations():
     :return:
     '''
     # Load the scores for the best models
-    checkpoint_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed, 'checkpoint_folder')
+    checkpoint_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed,
+                                   'checkpoint_folder')
     # Find the saved dictionary with the MAE for each generation and load the MAE on the test-dataset
     # Note that if a value is not present for a generation, that means that the score did not change from the previous
     # generation
     fileList = os.listdir(checkpoint_path)
-    saved_files = [re.sub(r'^pipeline_log_gen_(.*?)\_.pckl', '\\1', file) for
-                   file in fileList if file.endswith('.pckl')]
+    saved_files = [re.sub(r'^pipeline_log_gen_(.*?)\_.joblib', '\\1', file) for
+                   file in fileList if file.endswith('.joblib')]
     # sort the array in ascending order
     saved_files.sort()
     mae_test = []
     mae_train = []
     gen = []
+    best_pipelines = []
+    best_pipelines_sklearn = []
+
+    import pdb
     for file in saved_files:
-        with open(os.path.join(checkpoint_path, file), 'rb') as handle:
-            tmp = pickle.load(handle)
+        file_path = os.path.join(checkpoint_path, file)
+        tmp = joblib.load(file_path)
         mae_test.append(tmp['pipeline_test_mae'])
         mae_train.append(tmp['pipeline_score'])
         gen.append(tmp['gen'])
+        best_pipelines.append(tmp['pipeline_name'])
+        best_pipelines_sklearn.append(tmp['pipeline_sklearn_obj'])
+    print('There are %d optminal pipelines' %len(gen))
+    print('These are the best pipelines: %s' %best_pipelines)
 
+    best_pipelines_obj_file = os.path.join(checkpoint_path,
+                                           'best_pipelines_sklearn_obj.joblib_dump')
+    joblib.dump(best_pipelines_sklearn, best_pipelines_obj_file)
+    print('Dictionary with the best pipelines has been saved here: %s'
+          %best_pipelines_obj_file)
     # Iterate over the the list of saved MAEs and repeat the values where one generation is missed
     all_mae_test = []
     all_mae_train = []
@@ -166,7 +181,6 @@ for random_seed in args.random_seeds:
     avg_max_fitness.append(fitness['max'])
 
     # plot the cross-validated MAE for the training and test dataset
-    all_mae_test_set = get_mae_for_all_generations()
     plt.figure()
     plt.plot(range(len(fitness)), fitness['max'], marker='o', label='traning set')
     # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
