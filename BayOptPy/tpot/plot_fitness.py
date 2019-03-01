@@ -12,6 +12,7 @@ import argparse
 import numpy as np
 import math
 import re
+import joblib
 
 from BayOptPy.helperfunctions import get_paths, get_all_random_seed_paths
 
@@ -28,55 +29,37 @@ def set_publication_style():
                       "font.serif": ["Times", "Palatino", "serif"]
                                     })
 
-def get_mae_for_all_generations():
+def get_mae_for_all_generations(dataset, random_seed, generations):
     '''
     Get the MAE values for both the training and test dataset
     :return:
     '''
     # Load the scores for the best models
-    checkpoint_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed,
-                                   'checkpoint_folder')
-    # Find the saved dictionary with the MAE for each generation and load the MAE on the test-dataset
-    # Note that if a value is not present for a generation, that means that the score did not change from the previous
-    # generation
-    fileList = os.listdir(checkpoint_path)
-    saved_files = [re.sub(r'^pipeline_log_gen_(.*?)\_.joblib', '\\1', file) for
-                   file in fileList if file.endswith('.joblib')]
+    saved_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed,
+                                   'tpot_%s_gpr_full_%03dgen_pipelines.dump'
+                                    %(dataset, generations))
+    # Note that if a value is not present for a generation, that means that the
+    # score did not change from the previous generation
     # sort the array in ascending order
-    saved_files.sort()
-    mae_test = []
-    mae_train = []
-    gen = []
-    best_pipelines = []
-    best_pipelines_sklearn = []
+    logbook = joblib.load(saved_path)
+    gen = list(logbook['log'].keys())
 
-    import pdb
-    for file in saved_files:
-        file_path = os.path.join(checkpoint_path, file)
-        tmp = joblib.load(file_path)
-        mae_test.append(tmp['pipeline_test_mae'])
-        mae_train.append(tmp['pipeline_score'])
-        gen.append(tmp['gen'])
-        best_pipelines.append(tmp['pipeline_name'])
-        best_pipelines_sklearn.append(tmp['pipeline_sklearn_obj'])
     print('There are %d optminal pipelines' %len(gen))
-    print('These are the best pipelines: %s' %best_pipelines)
+    print('These are the best pipelines')
+    for generation in gen:
+        print(logbook['log'][generation]['pipeline_name'])
 
-    best_pipelines_obj_file = os.path.join(checkpoint_path,
-                                           'best_pipelines_sklearn_obj.joblib_dump')
-    joblib.dump(best_pipelines_sklearn, best_pipelines_obj_file)
-    print('Dictionary with the best pipelines has been saved here: %s'
-          %best_pipelines_obj_file)
-    # Iterate over the the list of saved MAEs and repeat the values where one generation is missed
+    # Iterate over the the list of saved MAEs and repeat the values where one
+    # generation is missed
     all_mae_test = []
     all_mae_train = []
     curr_gen_idx = 0
     # all generations
-    for generation in range(args.generations):
+    for generation in range(generations):
         if generation == gen[curr_gen_idx]:
-            all_mae_test.append(mae_test[curr_gen_idx])
-            all_mae_train.append(mae_train[curr_gen_idx])
-            if len(mae_test) > 1 and (len(gen) > curr_gen_idx + 1):
+            all_mae_test.append(logbook['log'][gen[curr_gen_idx]]['pipeline_test_mae'])
+            all_mae_train.append(logbook['log'][gen[curr_gen_idx]]['pipeline_score'])
+            if len(gen) > 1 and (len(gen) > curr_gen_idx + 1):
                 curr_gen_idx += 1
         else:
             # repeat the same last value
@@ -166,7 +149,9 @@ for random_seed in args.random_seeds:
     plt.close()
 
     # plot the max fitness over different generations for the training and test dataset
-    all_mae_test_set, all_mae_train_set = get_mae_for_all_generations()
+    all_mae_test_set, all_mae_train_set = get_mae_for_all_generations(args.dataset,
+                                                                random_seed,
+                                                                args.generations)
     plt.figure()
     plt.plot(range(len(all_mae_train_set)), all_mae_train_set, marker='o', label='traning set')
     # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
@@ -252,6 +237,61 @@ for random_seed in args.random_seeds:
     ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
     plt.savefig(os.path.join(generation_analysis_path, 'boxplot.png'))
+    plt.close()
+
+    # plot the MAE for the first generation
+    tpot_obj_path = os.path.join(tpot_path, 'random_seed_%03d',
+                                  'tpot_BANC_freesurf_gpr_full_%03dgen.dump'
+                                 ) %(random_seed, args.generations)
+    tpot_obj = joblib.load(tpot_obj_path)
+    first_gen_mae = [tpot_obj['evaluated_individuals'][0][model]['internal_cv_score'] for model in
+                     tpot_obj['evaluated_individuals'][0].keys()]
+    # Devide mae into 3 groups according to their values
+    group_first_gen_mae = [0 if x>-9 else 1 if x<-19 else 2 for x in
+                           first_gen_mae]
+    print('Show group belongings')
+    print(group_first_gen_mae)
+
+
+    # Print the models in the first groups
+    cluster_mae_name = {k:[] for k in range(3)}
+    cluster_mae = {k:[] for k in range(3)}
+    cluster_idx = {k:[] for k in range(3)}
+    # Note: From Python 3.6 forwards dictionary are ordered
+    for idx, key in enumerate(tpot_obj['evaluated_individuals'][0]):
+        if group_first_gen_mae[idx] == 0:
+            cluster_idx[0].append(idx)
+            cluster_mae_name[0].append(key)
+            cluster_mae[0].append(first_gen_mae[idx])
+
+        if group_first_gen_mae[idx] == 1:
+            cluster_idx[1].append(idx)
+            cluster_mae_name[1].append(key)
+            cluster_mae[1].append(first_gen_mae[idx])
+
+        if group_first_gen_mae[idx] == 2:
+            cluster_idx[2].append(idx)
+            cluster_mae_name[2].append(key)
+            cluster_mae[2].append(first_gen_mae[idx])
+
+    print('First MAE Group:')
+    print('Number of models: %d' %len(cluster_mae_name[0]))
+    print(cluster_mae_name[0])
+    print('Second MAE Group')
+    print('Number of models: %d' %len(cluster_mae_name[1]))
+    print(cluster_mae_name[1])
+    print('Third MAE Group')
+    print('Number of models: %d' %len(cluster_mae_name[2]))
+    print(cluster_mae_name[2])
+
+    plt.figure()
+    # plt.scatter(range(len(first_gen_mae)), first_gen_mae, c=group_first_gen_mae)
+    marker = ['^', 'o', 'v']
+    for group in np.unique(group_first_gen_mae):
+        plt.scatter(cluster_idx[group], cluster_mae[group], marker=marker[group])
+    plt.ylabel('Fitness')
+    plt.xlabel('Models')
+    plt.savefig(os.path.join(generation_analysis_path, 'first_gen_mae.png'))
     plt.close()
 
 # Plot max statiscal max fitness for the different random seeds

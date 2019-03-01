@@ -263,7 +263,9 @@ class ExtendedTPOTBase(TPOTBase):
             use_dask=self.use_dask,
             predictions=self.predictions,
             pipelines=self.pipelines,
-            features_test=self.features_test
+            features_test=self.features_test,
+            random_state=self.random_state
+
         )
 
         result_score_list = []
@@ -309,7 +311,9 @@ class ExtendedTPOTBase(TPOTBase):
                         result_score_list = self._update_val(val, result_score_list)
 
         self._update_evaluated_individuals_(result_score_list, eval_individuals_str, operator_counts, stats_dicts)
-        # Create an additional dictionary to save all analaysed models per geneartion
+        # Create an additional dictionary to save all analysed models per geneartion
+        for idx, model in enumerate(stats_dicts.keys()):
+            stats_dicts[model]['internal_cv_score'] = result_score_list[idx]
         self.evaluated_individuals[self.curr_generations] = stats_dicts
         self.curr_generations += 1
 
@@ -398,7 +402,9 @@ class ExtendedTPOTBase(TPOTBase):
 @threading_timeoutable(default="Timeout")
 def _wrapped_cross_val_score(sklearn_pipeline, features, target,
                              cv, scoring_function, sample_weight=None,
-                             groups=None, use_dask=False, predictions=None, pipelines=None, features_test=None):
+                             groups=None, use_dask=False, predictions=None,
+                             pipelines=None, features_test=None,
+                             random_state=None):
     """Fit estimator and compute scores for a given dataset split.
 
     Parameters
@@ -425,6 +431,10 @@ def _wrapped_cross_val_score(sklearn_pipeline, features, target,
     use_dask : bool, default False
         Whether to use dask
     """
+    # Re-set random seeds inside the threads
+    if random_state is not None:
+        np.random.seed(random_state)
+
     sample_weight_dict = set_sample_weight(sklearn_pipeline.steps, sample_weight)
 
     features, target, groups = indexable(features, target, groups)
