@@ -10,24 +10,19 @@ import seaborn as sns
 sns.set()
 import argparse
 import numpy as np
-import math
-import re
 import joblib
 
 from BayOptPy.helperfunctions import get_paths, get_all_random_seed_paths
 
 def set_publication_style():
     # Se font size to paper size
-    sns.set_context('paper')
+    plt.style.use(['seaborn-white', 'seaborn-talk'])
+    matplotlib.rc("font", family="Times New Roman")
+    # Remove the spines
+    sns.set_style('white', {"axes.spines.top": False,
+                            "axes.spines.right": False,
+                            "axes.labelsize": 'large'})
 
-    # Set the font to be serif, rahter than sans
-    sns.set(font='serif')
-
-    # Make background white, and specify the specific font family
-    sns.set_style("white", {
-                      "font.family": "serif",
-                      "font.serif": ["Times", "Palatino", "serif"]
-                                    })
 
 def get_mae_for_all_generations(dataset, random_seed, generations):
     '''
@@ -57,14 +52,14 @@ def get_mae_for_all_generations(dataset, random_seed, generations):
     # all generations
     for generation in range(generations):
         if generation == gen[curr_gen_idx]:
-            all_mae_test.append(logbook['log'][gen[curr_gen_idx]]['pipeline_test_mae'])
-            all_mae_train.append(logbook['log'][gen[curr_gen_idx]]['pipeline_score'])
+            all_mae_test.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_test_mae']))
+            all_mae_train.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_score']))
             if len(gen) > 1 and (len(gen) > curr_gen_idx + 1):
                 curr_gen_idx += 1
         else:
             # repeat the same last value
-            all_mae_test.append(all_mae_test[-1])
-            all_mae_train.append(all_mae_train[-1])
+            all_mae_test.append(abs(all_mae_test[-1]))
+            all_mae_train.append(abs(all_mae_train[-1]))
     return all_mae_test, all_mae_train
 
 parser = argparse.ArgumentParser()
@@ -107,7 +102,7 @@ parser.add_argument('-random_seeds',
 args = parser.parse_args()
 
 # Set plot styles
-#set_publication_style()
+set_publication_style()
 
 #random_seeds = [0, 5, 10, 20, 30, 42, 60, 80]
 #random_seeds = [30]
@@ -159,7 +154,7 @@ for random_seed in args.random_seeds:
     plt.plot(range(len(all_mae_test_set)), all_mae_test_set, marker='o', label='test set')
     plt.legend()
     plt.xlabel('Generation')
-    plt.ylabel('Fitness')
+    plt.ylabel('MAE')
     plt.title('Random Seed %d' %random_seed)
     plt.savefig(os.path.join(generation_analysis_path, 'train_test_fitness.png'))
     # Save the current random_see max fitness for further analysis
@@ -167,12 +162,12 @@ for random_seed in args.random_seeds:
 
     # plot the cross-validated MAE for the training and test dataset
     plt.figure()
-    plt.plot(range(len(fitness)), fitness['max'], marker='o', label='traning set')
+    plt.plot(range(len(fitness)), abs(fitness['max']), marker='o', label='traning set')
     # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
     #          label='avg_training')
     plt.legend()
     plt.xlabel('Generation')
-    plt.ylabel('Fitness')
+    plt.ylabel('MAE')
     plt.title('Random Seed %d' %random_seed)
     plt.savefig(os.path.join(generation_analysis_path, 'max_fitness.png'))
     # Save the current random_see max fitness for further analysis
@@ -190,17 +185,17 @@ for random_seed in args.random_seeds:
 
 
     # plot Histogram
-    for generation in range(len(fitness)):
-        plt.figure()
-        plt.hist(fitness['raw'][generation], bins=50, range=(np.min(fitness['min']), np.max(fitness['max'])), histtype='bar')
-        #yint = range(int(min_n), int(max_n+2), 10)
-        yint = range(0, -60, 10)
-        plt.yticks(yint)
-        plt.xlabel('Fitness')
-        plt.ylabel('Counts')
-        plt.title('Generation %d' %generation)
-        plt.savefig(os.path.join(generation_analysis_path, 'histo_%d.png') %generation)
-        plt.close()
+    # for generation in range(len(fitness)):
+    #     plt.figure()
+    #     plt.hist(fitness['raw'][generation], bins=50, range=(np.min(fitness['min']), np.max(fitness['max'])), histtype='bar')
+    #     #yint = range(int(min_n), int(max_n+2), 10)
+    #     yint = range(0, -60, 10)
+    #     plt.yticks(yint)
+    #     plt.xlabel('Fitness')
+    #     plt.ylabel('Counts')
+    #     plt.title('Generation %d' %generation)
+    #     plt.savefig(os.path.join(generation_analysis_path, 'histo_%d.png') %generation)
+    #     plt.close()
 
 
     # Plot All histograms in one plot
@@ -225,18 +220,55 @@ for random_seed in args.random_seeds:
 
     #Plot Boxplot
     plt.figure()
-    data = [fitness['raw'][generation] for generation in range(len(fitness))]
+    data = [abs(fitness['raw'][generation]) for generation in range(len(fitness))]
     plt.title('Basic Plot')
     fig, ax = plt.subplots(1,1)
-    plt.boxplot(data, positions=range(0, len(fitness)))
-    plt.ylabel('Fitness')
-    plt.xlabel('Generations')
+    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
+    plt.boxplot(data, positions=range(0, len(fitness)), vert=False, showfliers=True, flierprops=outliers)
+    plt.xlabel('MAE')
+    plt.ylabel('Generations')
     plt.title('Random Seed %d' %random_seed)
     # TODO: improve how you determine this threshold (there are models that are worse)
-    plt.ylim(-45, 0)
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
-    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
     plt.savefig(os.path.join(generation_analysis_path, 'boxplot.png'))
+    plt.close()
+
+    #Plot Boxplot
+    plt.figure()
+    plt.title('Basic Plot')
+    fig, ax = plt.subplots(1,1)
+    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
+    plt.boxplot(data, positions=range(0, len(fitness)), vert=False, showfliers=True, flierprops=outliers)
+    plt.xlabel('MAE')
+    plt.ylabel('Generations')
+    plt.title('Random Seed %d' %random_seed)
+    # TODO: improve how you determine this threshold (there are models that are worse)
+    plt.xlim(4, 45)
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+    plt.savefig(os.path.join(generation_analysis_path, 'boxplot2.png'))
+    plt.close()
+
+    # Plot violin plot
+    plt.figure()
+    fig, ax = plt.subplots(1, 1)
+    plt.violinplot(data, positions=range(0, len(fitness)), vert=False, showmedians=True)
+    plt.xlabel('MAE')
+    plt.ylabel('Generations')
+    plt.title('Random Seed %d' % random_seed)
+    plt.savefig(os.path.join(generation_analysis_path, 'violin.png'))
+    plt.close()
+
+    # Plot violin plot2
+    plt.figure()
+    fig, ax = plt.subplots(1, 1)
+    plt.violinplot(data, positions=range(0, len(fitness)),vert=False, showmedians=True)
+    plt.xlabel('MAE')
+    plt.ylabel('Generations')
+    plt.title('Random Seed %d' % random_seed)
+    plt.xlim(4, 45)
+    plt.savefig(os.path.join(generation_analysis_path, 'violin2.png'))
     plt.close()
 
     # plot the MAE for the first generation
@@ -262,17 +294,17 @@ for random_seed in args.random_seeds:
         if group_first_gen_mae[idx] == 0:
             cluster_idx[0].append(idx)
             cluster_mae_name[0].append(key)
-            cluster_mae[0].append(first_gen_mae[idx])
+            cluster_mae[0].append(abs(first_gen_mae[idx]))
 
         if group_first_gen_mae[idx] == 1:
             cluster_idx[1].append(idx)
             cluster_mae_name[1].append(key)
-            cluster_mae[1].append(first_gen_mae[idx])
+            cluster_mae[1].append(abs(first_gen_mae[idx]))
 
         if group_first_gen_mae[idx] == 2:
             cluster_idx[2].append(idx)
             cluster_mae_name[2].append(key)
-            cluster_mae[2].append(first_gen_mae[idx])
+            cluster_mae[2].append(abs(first_gen_mae[idx]))
 
     print('First MAE Group:')
     print('Number of models: %d' %len(cluster_mae_name[0]))
@@ -286,10 +318,12 @@ for random_seed in args.random_seeds:
 
     plt.figure()
     # plt.scatter(range(len(first_gen_mae)), first_gen_mae, c=group_first_gen_mae)
-    marker = ['^', 'o', 'v']
+    markers = 'o'
+    hatchs = [None, '|', '|||']
+    sns.set_palette('OrRd')
     for group in np.unique(group_first_gen_mae):
-        plt.scatter(cluster_idx[group], cluster_mae[group], marker=marker[group])
-    plt.ylabel('Fitness')
+        plt.scatter(cluster_idx[group], cluster_mae[group], marker=markers, hatch=hatchs[group])
+    plt.ylabel('MAE')
     plt.xlabel('Models')
     plt.savefig(os.path.join(generation_analysis_path, 'first_gen_mae.png'))
     plt.close()
@@ -299,7 +333,7 @@ for random_seed in args.random_seeds:
 fig, ax = plt.subplots(1)
 plt_filled_std(ax, range(len(fitness)), np.mean(avg_max_fitness, axis=0), np.std(avg_max_fitness, axis=0), colour_list[0])
 plt.xlabel('Generation')
-plt.ylabel('Fitness')
+plt.ylabel('MAE')
 plt.savefig(os.path.join(tpot_path, 'all_seeds_mean_std.png'))
 plt.close()
 
