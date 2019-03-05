@@ -122,6 +122,21 @@ if __name__ == '__main__':
     output_path = get_output_path(args.analysis, args.generations, args.random_seed,
                                   args.population_size, args.debug)
     demographics, imgs, data, _ = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
+
+    # Show mean std and F/M count for each dataset used
+    aggregations = {
+        'Age': ['mean', 'std', 'min', 'max'],
+        'sex': 'size'
+    }
+    demographics.groupby(['original_dataset', 'sex']).aggregate(aggregations)
+
+    # Print total N per dataset
+    for dataset in np.unique(demographics['original_dataset']):
+        print('%s: %d' % (dataset, sum(demographics['original_dataset'] == dataset)))
+
+    # Print demographics for the final dataset
+    demographics.groupby(['sex']).aggregate(aggregations)
+
     # Path to the folder where to save the best pipeline will be saved
     # Note: The pipeline will only be saved if it is different from the one in
     # the previous generation
