@@ -56,6 +56,13 @@ parser.add_argument('-population_size',
                     type=int,
                     default=100 # use the same default as TPOT default population value
                     )
+parser.add_argument('-offspring_size',
+                    dest='offspring_size',
+                    help='Specify offspring size to use',
+                    type=int,
+                    default=None # When None is passed use the same as
+                                 # population_size (TPOT default)
+                    )
 parser.add_argument('-resamplefactor',
                     dest='resamplefactor',
                     help='Specify resampling rate for the image affine',
@@ -81,13 +88,14 @@ parser.add_argument('-random_seed',
 parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
-                    choices=['vanilla'],
+                    choices=['vanilla', 'population', 'test'],
                     required=True
                     )
 
 args = parser.parse_args()
 
 if __name__ == '__main__':
+
 
     print('The current args are: %s' %args)
 
@@ -111,13 +119,18 @@ if __name__ == '__main__':
 
     # Get data paths, the actual data and check if the output paths exists
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-    output_path = get_output_path(args.analysis, args.generations, args.random_seed, args.debug)
-    demographics, imgs, data = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
+    output_path = get_output_path(args.analysis, args.generations, args.random_seed,
+                                  args.population_size, args.debug)
+    demographics, imgs, data, _ = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
     # Path to the folder where to save the best pipeline will be saved
     # Note: The pipeline will only be saved if it is different from the one in
     # the previous generation
     best_pipe_paths = get_best_pipeline_paths(args.analysis, args.generations,
-                                             args.random_seed, args.debug)
+                                              args.random_seed,
+                                              args.population_size,
+                                              args.debug)
+    print('Checkpoint folder path')
+    print(best_pipe_paths)
 
     print('Running regression analyis with TPOT')
     # split train-test dataset
@@ -132,7 +145,6 @@ if __name__ == '__main__':
         client = Client(threads_per_worker=1, diagnostics_port=port)
         client
 
-    # To ensure the example runs quickly, we'll make the training dataset relatively small
     Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(data, targetAttribute, test_size=.25,
                                                                     random_state=args.random_seed)
     print('Divided dataset into test and training')
@@ -144,6 +156,7 @@ if __name__ == '__main__':
 
     tpot = ExtendedTPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
+                         offspring_size=args.offspring_size,
                          n_jobs=args.njobs,
                          cv=args.cv,
                          verbosity=2,
@@ -158,8 +171,9 @@ if __name__ == '__main__':
     print('Number of cross-validation: %d' %args.cv)
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
+    print('Offspring Size: %d' %args.offspring_size)
     # njobs=-1 uses all cores present in the machine
-    tpot.fit(Xtrain, Ytrain, Xtest)
+    tpot.fit(Xtrain, Ytrain, Xtest, Ytest)
     print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
@@ -175,15 +189,22 @@ if __name__ == '__main__':
     print('Dump predictions, evaluated pipelines and sklearn objects')
     tpot_save = {}
     tpot_pipelines = {}
+    tpot_save['Xtest'] = Xtest
+    tpot_save['Ytest'] = Ytest
     tpot_save['predictions'] = tpot.predictions
+    # List of
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
+    # Best pipeline at the end of the genetic algorithm
     tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
+    # List of evaluated invidivuals per generation
+    tpot_save['evaluated_individuals'] = tpot.evaluated_individuals
+    # List of best model per generation
+    tpot_pipelines['log'] = tpot.log
 
     # Dump results
     joblib.dump(tpot_save, os.path.join(output_path, 'tpot_%s_%s_%03dgen.dump')
                                  %(args.dataset, args.config_dict,
                                    args.generations))
-    tpot_pipelines['pipelines'] = tpot.pipelines
     joblib.dump(tpot_pipelines, os.path.join(output_path,
                                       'tpot_%s_%s_%03dgen_pipelines.dump')
                                       %(args.dataset, args.config_dict,

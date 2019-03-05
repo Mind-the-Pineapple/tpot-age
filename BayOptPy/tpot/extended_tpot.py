@@ -12,6 +12,7 @@ from sklearn.gaussian_process.kernels import (RBF, Matern,
                                              RationalQuadratic,
                                              ExpSineSquared, DotProduct,
                                              ConstantKernel)
+from sklearn.metrics import mean_absolute_error
 
 from functools import partial
 from multiprocessing import cpu_count
@@ -23,9 +24,14 @@ from tqdm import tqdm
 from deap import tools
 from tpot.gp_deap import initialize_stats_dict, varOr
 import os
+import errno
+import joblib
 
 
+from BayOptPy.helperfunctions import get_all_random_seed_paths
 from tpot.config.regressor import regressor_config_dict
+from tpot.export_utils import generate_pipeline_code, export_pipeline, expr_to_tree
+
 
 
 class ExtendedTPOTBase(TPOTBase):
@@ -48,12 +54,23 @@ class ExtendedTPOTBase(TPOTBase):
         self.debug = debug
         # specify type of analysis being used
         self.analysis = analysis
+        # Set random seed
+        if random_state is not None:
+            print('Setting random seed')
+            np.random.seed(random_state)
 
     def _fit_init(self):
         super()._fit_init()
         # Initialise list to save the predictions and pipelines analysed by TPOT
         self.predictions = []
         self.pipelines = []
+        self._exported_pipeline_text = []
+        # Save training sample on the TPOT Object
+        self.features = None
+        self.target = None
+        self.evaluated_individuals = {}
+        self.curr_generations = 0
+        self.log = {}
 
         # Add the Gaussian kernels so that they can be used by TPOT
         self.operators_context['RBF'] = eval('RBF')
@@ -64,7 +81,7 @@ class ExtendedTPOTBase(TPOTBase):
         self.operators_context['ConstantKernel'] = eval('ConstantKernel')
 
 
-    def fit(self, features, target, features_test, sample_weight=None, groups=None):
+    def fit(self, features, target, features_test, target_test, sample_weight=None, groups=None):
         # Pass the features of the test set so that they can be used for the predictions
         self.features_test = features_test
         """Fit an optimized machine learning pipeline.
@@ -106,7 +123,9 @@ class ExtendedTPOTBase(TPOTBase):
         """
         self._fit_init()
 
-        features, target = self._check_dataset(features, target, sample_weight)
+        self.features, self.target = self._check_dataset(features, target, sample_weight)
+        # save true prections from the target test
+        self.target_test = target_test
 
         # Randomly collect a subsample of training samples for pipeline optimization process.
         if self.subsample < 1.0:
@@ -177,6 +196,7 @@ class ExtendedTPOTBase(TPOTBase):
             with warnings.catch_warnings():
                 self._setup_memory()
                 warnings.simplefilter('ignore')
+
                 pop, _ = extendedeaMuPlusLambda(
                     population=pop,
                     toolbox=self._toolbox,
@@ -243,7 +263,9 @@ class ExtendedTPOTBase(TPOTBase):
             use_dask=self.use_dask,
             predictions=self.predictions,
             pipelines=self.pipelines,
-            features_test=self.features_test
+            features_test=self.features_test,
+            random_state=self.random_state
+
         )
 
         result_score_list = []
@@ -289,16 +311,100 @@ class ExtendedTPOTBase(TPOTBase):
                         result_score_list = self._update_val(val, result_score_list)
 
         self._update_evaluated_individuals_(result_score_list, eval_individuals_str, operator_counts, stats_dicts)
+        # Create an additional dictionary to save all analysed models per geneartion
+        for idx, model in enumerate(stats_dicts.keys()):
+            stats_dicts[model]['internal_cv_score'] = result_score_list[idx]
+        self.evaluated_individuals[self.curr_generations] = stats_dicts
+        self.curr_generations += 1
 
         """Look up the operator count and cross validation score to use in the optimization"""
         return [(self.evaluated_individuals_[str(individual)]['operator_count'],
                  self.evaluated_individuals_[str(individual)]['internal_cv_score'])
                 for individual in individuals]
 
+    def _check_periodic_pipeline(self, gen):
+        """If enough time has passed, save a new optimized pipeline.
+        Currently used in the per generation hook in the optimization
+        loop.
+        Parameters
+        ----------
+        gen: int Generation number
+
+        Returns
+        -------
+        None
+        """
+        self._update_top_pipeline()
+        if self.periodic_checkpoint_folder is not None:
+            total_since_last_pipeline_save =(datetime.now() - self._last_pipeline_write).total_seconds()
+            if total_since_last_pipeline_save > self._output_best_pipeline_period_seconds:
+                self._last_pipeline_write = datetime.now()
+                self._save_periodic_pipeline(gen)
+
+        if self.early_stop is not None:
+            if self._last_optimized_pareto_front_n_gens >= self.early_stop:
+                raise StopIteration("The optimized pipeline was not improved after evaluating {} more generations.  "
+                                    "Will end the optimization process.\n".format(self.early_stop))
+
+    def _save_periodic_pipeline(self, gen):
+        try:
+            #self._create_periodic_checkpoint_folder()
+            for pipeline, pipeline_scores in zip(self._pareto_front.items,
+                                                 reversed(self._pareto_front.keys)):
+                idx = self._pareto_front.items.index(pipeline)
+                pareto_front_pipeline_score = pipeline_scores.wvalues[1]
+                sklearn_pipeline_str = generate_pipeline_code(expr_to_tree(pipeline, self._pset), self.operators)
+                to_write = export_pipeline(pipeline, self.operators, self._pset,
+                                           self._imputed,
+                                           pareto_front_pipeline_score,
+                                           self.random_state)
+
+                # fit the pipeline again and get the test score
+                sklearn_pipeline = self._toolbox.compile(expr=pipeline)
+                sklearn_pipeline.fit(self.features, self.target)
+                ypredict = sklearn_pipeline.predict(self.features_test)
+                mae = - mean_absolute_error(self.target_test, ypredict)
+
+
+                # dont export a pipeline you had
+                if self._exported_pipeline_text.count(sklearn_pipeline_str):
+                    self._update_pbar(pbar_num=0, pbar_msg='Periodic pipeline was not saved, probably saved before...')
+                else:
+                    filename = os.path.join(self.periodic_checkpoint_folder,
+                                            'pipeline_gen_{}_idx_{}_{}.py'.format(gen, idx, datetime.now().strftime('%Y.%m.%d_%H-%M-%S')))
+                    self._update_pbar(pbar_num=0, pbar_msg='Saving periodic pipeline from pareto front to {}'.format(filename))
+                    with open(filename, 'w') as output_file:
+                        output_file.write(to_write)
+                    self._exported_pipeline_text.append(sklearn_pipeline_str)
+
+                    # dump a pickle with current pareto value and the pipeline, it is not yet saved
+                    self.log[gen] = {}
+                    self.log[gen]['pipeline_name'] = sklearn_pipeline_str
+                    self.log[gen]['pipeline_score'] = pipeline_scores.wvalues[1]
+                    self.log[gen]['pipeline_test_mae'] = mae
+                    self.log[gen]['pipeline_sklearn_obj'] = self._compile_to_sklearn(pipeline)
+
+        except Exception as e:
+            self._update_pbar(pbar_num=0, pbar_msg='Failed saving periodic pipeline,   exception:\n{}'.format(str(e)[:250]))
+
+
+    def _create_periodic_checkpoint_folder(self):
+        try:
+            os.makedirs(self.periodic_checkpoint_folder)
+            self._update_pbar(pbar_msg='Created new folder to save periodic pipeline: {}'.format(self.periodic_checkpoint_folder))
+        except OSError as e:
+            if e.errno == errno.EEXIST and os.path.isdir(self.speriodic_checkpoint_folder):
+                pass # Folder already exists.  User probably created it.
+            else:
+                raise ValueError('Failed creating the periodic_checkpoint_folder:\n{}'.format(e))
+
+
 @threading_timeoutable(default="Timeout")
 def _wrapped_cross_val_score(sklearn_pipeline, features, target,
                              cv, scoring_function, sample_weight=None,
-                             groups=None, use_dask=False, predictions=None, pipelines=None, features_test=None):
+                             groups=None, use_dask=False, predictions=None,
+                             pipelines=None, features_test=None,
+                             random_state=None):
     """Fit estimator and compute scores for a given dataset split.
 
     Parameters
@@ -325,6 +431,10 @@ def _wrapped_cross_val_score(sklearn_pipeline, features, target,
     use_dask : bool, default False
         Whether to use dask
     """
+    # Re-set random seeds inside the threads
+    if random_state is not None:
+        np.random.seed(random_state)
+
     sample_weight_dict = set_sample_weight(sklearn_pipeline.steps, sample_weight)
 
     features, target, groups = indexable(features, target, groups)
@@ -469,7 +579,6 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     print('Number of invalid pipelines: %d' %n_inf)
     fitnesses_only = fitnesses_only[~np.isinf(fitnesses_only)]
 
-
     record = stats.compile(population) if stats is not None else {}
     logbook.record(gen=0, nevals=len(invalid_ind),
                    avg=np.mean(fitnesses_only), std=np.std(fitnesses_only),
@@ -477,11 +586,15 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
                    raw=fitnesses_only,
                    **record)
 
+    # save the optimal model for initial pipeline
+    gen = 0
+    if per_generation_function is not None:
+        per_generation_function(gen)
     # Begin the generational process
     for gen in range(1, ngen + 1):
         # after each population save a periodic pipeline
         if per_generation_function is not None:
-            per_generation_function()
+            per_generation_function(gen)
 
         # Vary the population
         offspring = varOr(population, toolbox, lambda_, cxpb, mutpb)
@@ -531,7 +644,7 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
 
         # calculate average fitness for the generation
         # ignore the -inf models
-        fitnesses_only = np.array([fitnesses[i][1] for i in range(len(population))])
+        fitnesses_only = np.array([fitnesses[i][1] for i in range(len(offspring))])
         n_inf = np.sum(np.isinf(fitnesses_only))
         print('Number of invalid pipelines: %d' %n_inf)
         fitnesses_only = fitnesses_only[~np.isinf(fitnesses_only)]
@@ -547,12 +660,9 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     import pickle
     import pandas as pd
     deap_df = pd.DataFrame(logbook)
-    if debug:
-        save_path_df = os.path.join('BayOptPy', 'tpot', analysis,  '%03d_generation' %ngen,
-                                    'logbook_rnd_seed%03d.pkl') %random_seed
-    else:
-        save_path_df = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis, '%03d_generation' %ngen,
-                                    'logbook_rnd_seed_%03d.pkl') %random_seed
+    save_path = get_all_random_seed_paths(analysis, ngen, len(population), debug)
+    save_path_df = os.path.join(save_path, 'logbook_rnd_seed%03d.pkl'
+                                %random_seed)
     with open(save_path_df, 'wb') as handle:
         pickle.dump(deap_df, handle)
     print('Saved logbook at %s' %save_path_df)

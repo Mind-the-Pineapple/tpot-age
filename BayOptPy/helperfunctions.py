@@ -27,6 +27,10 @@ def get_paths(debug, dataset):
         project_wd = os.getcwd()
         project_data = os.path.join(os.getenv('HOME'), 'NaN', 'BANC_2016')
         project_sink = None
+    elif debug and dataset == 'UKBIO_freesurf':
+        project_wd = os.getcwd()
+        project_data = os.path.join('UKBIO')
+        project_sink = None
     elif not debug and dataset == 'OASIS':
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'NaN', 'data')
@@ -43,6 +47,10 @@ def get_paths(debug, dataset):
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'data', 'NaN', 'BANC_2016')
         project_sink = None
+    elif not debug and dataset == 'UKBIO_freesurf':
+        project_wd = '/code'
+        project_data = os.path.join(os.sep, 'code', 'UKBIO')
+        project_sink = None
 
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
@@ -52,53 +60,60 @@ def get_paths(debug, dataset):
     print('Data Out: %s' %project_sink )
     return project_wd, project_data, project_sink
 
-def get_output_path(analysis, ngen, random_seed, debug):
+def get_output_path(analysis, ngen, random_seed, population_size, debug):
     # Check if output path exists, otherwise create it
-    if debug:
-        output_path = os.path.join('BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen,
-                                   'random_seed_%03d' %random_seed)
-    else:
-        output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen,
-                                  'random_seed_%03d' %random_seed)
+    rnd_seed_path = get_all_random_seed_paths(analysis, ngen, population_size,
+                                              debug)
+    output_path = os.path.join(rnd_seed_path, 'random_seed_%03d' %random_seed)
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
     return output_path
 
-def get_all_random_seed_paths(analysis, ngen, debug):
+def get_all_random_seed_paths(analysis, ngen, population_size, debug):
     # As they should have been created by the get_output_path, do not create
     # path but just find its location
-    if debug:
-        output_path = os.path.join('BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen)
-    else:
-        output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen)
+    if analysis == 'vanilla':
+        if debug:
+            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+                                       '%03d_generations' %ngen)
+        else:
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+                                       '%03d_generations' %ngen)
+    if analysis == 'population':
+        if debug:
+            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+                                       '%05d_population_size' %population_size,
+                                       '%03d_generations' %ngen)
+        else:
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+                                       '%05d_population_size' %population_size,
+                                       '%03d_generations' %ngen)
+
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
     return output_path
 
-def get_best_pipeline_paths(analysis, ngen, random_seed, debug):
+def get_best_pipeline_paths(analysis, ngen, random_seed, population_size, debug):
     # check if folder exists and in case yes, remove it as new runs will save
     # new files without overwritting
-    if debug:
-        output_path = os.path.join('BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen,
-                                   'random_seed_%03d' %random_seed,
-                                   'checkpoint_folder')
-    else:
-        output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
-                                   '%03d_generations' %ngen,
-                                   'random_seed_%03d' %random_seed,
-                                   'checkpoint_folder')
-    if os.path.exists(output_path):
-        shutil.rmtree(output_path)
+
+    output_path = get_output_path(analysis, ngen, random_seed, population_size,
+                                  debug)
+    checkpoint_path = os.path.join(output_path, 'checkpoint_folder')
+
+    # Delete folder if it already exists and create a new one
+    if os.path.exists(checkpoint_path):
+        shutil.rmtree(checkpoint_path)
         print('Deleted pre-exiting checkpoint folder')
 
-    if os.path.exists(output_path):
-        os.makedirs(output_path)
-    return output_path
+    if not os.path.exists(checkpoint_path):
+        os.makedirs(checkpoint_path)
+        print('Creating checkpoint folder')
+
+    return checkpoint_path
 
 def get_data_covariates(dataPath, rawsubjectsId, dataset):
     if dataset == 'OASIS':
@@ -211,6 +226,16 @@ def get_mean_age(df):
     print('Mean Age %.2f +- %.2f' %(mean_age, std_age))
 
 def get_data(project_data, dataset, debug, project_wd, resamplefactor):
+    ''' Load the csv files and return
+    :param project_data:
+    :param dataset:
+    :param debug:
+    :param project_wd:
+    :param resamplefactor:
+    :return: demographics:
+    :return: demographics:
+    :return: dataframe.values: Just the numeric values of the dataframe
+    '''
     print('Loading Brain image data')
     if dataset == 'OASIS':
         # remove the file end and get list of all used subjects
@@ -253,7 +278,11 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
         # return numpy array of the dataframe
-        return demographics, None, freesurf_df.values
+        return demographics, None, freesurf_df.values,freesurf_df
+
+    elif dataset == 'UKBIO_freesurf':
+        freesurf_df = pd.read_csv(os.path.join(project_wd, 'UKBIO', 'UKB_10k_FS_4844.csv'), delimiter=',')
+        return None, None, freesurf_df.values, freesurf_df
 
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
@@ -291,3 +320,4 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
     maskedData = np.array(maskedData)
 
     return demographics, imgs, maskedData
+
