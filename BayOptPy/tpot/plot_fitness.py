@@ -24,15 +24,15 @@ def set_publication_style():
                             "axes.labelsize": 'large'})
 
 
-def get_mae_for_all_generations(dataset, random_seed, generations):
+def get_mae_for_all_generations(dataset, random_seed, generations, config_dict):
     '''
     Get the MAE values for both the training and test dataset
     :return:
     '''
     # Load the scores for the best models
     saved_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed,
-                                   'tpot_%s_gpr_full_%03dgen_pipelines.dump'
-                                    %(dataset, generations))
+                                   'tpot_%s_%s_%03dgen_pipelines.dump'
+                                    %(dataset, config_dict, generations))
     # Note that if a value is not present for a generation, that means that the
     # score did not change from the previous generation
     # sort the array in ascending order
@@ -98,6 +98,13 @@ parser.add_argument('-random_seeds',
                     nargs='+',
                     required=True,
                     type=int
+                   ),
+parser.add_argument('-config_dict',
+                    dest='config_dict',
+                    help='Specify the list of models to use',
+                    required=True,
+                    choices=['None', 'light', 'custom', 'gpr', 'gpr_full',
+                        'brain']
                    )
 args = parser.parse_args()
 
@@ -146,7 +153,8 @@ for random_seed in args.random_seeds:
     # plot the max fitness over different generations for the training and test dataset
     all_mae_test_set, all_mae_train_set = get_mae_for_all_generations(args.dataset,
                                                                 random_seed,
-                                                                args.generations)
+                                                                args.generations,
+                                                                args.config_dict)
     plt.figure()
     plt.plot(range(len(all_mae_train_set)), all_mae_train_set, marker='o', label='traning set')
     # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
@@ -271,62 +279,66 @@ for random_seed in args.random_seeds:
     plt.savefig(os.path.join(generation_analysis_path, 'violin2.png'))
     plt.close()
 
-    # plot the MAE for the first generation
+    # plot the MAE for a selected number of generations
+    selected_gens = np.arange(0,args.generations+1,5)
     tpot_obj_path = os.path.join(tpot_path, 'random_seed_%03d',
-                                  'tpot_BANC_freesurf_gpr_full_%03dgen.dump'
-                                 ) %(random_seed, args.generations)
+                                  'tpot_BANC_freesurf_%s_%03dgen.dump'
+                                 ) %(random_seed, args.config_dict, args.generations)
     tpot_obj = joblib.load(tpot_obj_path)
-    first_gen_mae = [tpot_obj['evaluated_individuals'][0][model]['internal_cv_score'] for model in
-                     tpot_obj['evaluated_individuals'][0].keys()]
-    # Devide mae into 3 groups according to their values
-    group_first_gen_mae = [0 if x>-9 else 1 if x<-19 else 2 for x in
-                           first_gen_mae]
-    print('Show group belongings')
-    print(group_first_gen_mae)
+    for selected_gen in selected_gens:
+        curr_gen_mae = \
+        [tpot_obj['evaluated_individuals'][selected_gen][model]['internal_cv_score']
+                for model in
+                         tpot_obj['evaluated_individuals'][selected_gen].keys()]
+        # Devide mae into 3 groups according to their values
+        group_selected_gen_mae = [0 if x>-9 else 1 if x<-19 else 2 for x in
+                               curr_gen_mae]
+        print('Show group belongings')
+        print(group_selected_gen_mae)
 
 
-    # Print the models in the first groups
-    cluster_mae_name = {k:[] for k in range(3)}
-    cluster_mae = {k:[] for k in range(3)}
-    cluster_idx = {k:[] for k in range(3)}
-    # Note: From Python 3.6 forwards dictionary are ordered
-    for idx, key in enumerate(tpot_obj['evaluated_individuals'][0]):
-        if group_first_gen_mae[idx] == 0:
-            cluster_idx[0].append(idx)
-            cluster_mae_name[0].append(key)
-            cluster_mae[0].append(abs(first_gen_mae[idx]))
+        # Print the models in the first groups
+        cluster_mae_name = {k:[] for k in range(3)}
+        cluster_mae = {k:[] for k in range(3)}
+        cluster_idx = {k:[] for k in range(3)}
+        # Note: From Python 3.6 forwards dictionary are ordered
+        for idx, key in enumerate(tpot_obj['evaluated_individuals'][selected_gen]):
+            if group_selected_gen_mae[idx] == 0:
+                cluster_idx[0].append(idx)
+                cluster_mae_name[0].append(key)
+                cluster_mae[0].append(abs(curr_gen_mae[idx]))
 
-        if group_first_gen_mae[idx] == 1:
-            cluster_idx[1].append(idx)
-            cluster_mae_name[1].append(key)
-            cluster_mae[1].append(abs(first_gen_mae[idx]))
+            if group_selected_gen_mae[idx] == 1:
+                cluster_idx[1].append(idx)
+                cluster_mae_name[1].append(key)
+                cluster_mae[1].append(abs(curr_gen_mae[idx]))
 
-        if group_first_gen_mae[idx] == 2:
-            cluster_idx[2].append(idx)
-            cluster_mae_name[2].append(key)
-            cluster_mae[2].append(abs(first_gen_mae[idx]))
+            if group_selected_gen_mae[idx] == 2:
+                cluster_idx[2].append(idx)
+                cluster_mae_name[2].append(key)
+                cluster_mae[2].append(abs(curr_gen_mae[idx]))
 
-    print('First MAE Group:')
-    print('Number of models: %d' %len(cluster_mae_name[0]))
-    print(cluster_mae_name[0])
-    print('Second MAE Group')
-    print('Number of models: %d' %len(cluster_mae_name[1]))
-    print(cluster_mae_name[1])
-    print('Third MAE Group')
-    print('Number of models: %d' %len(cluster_mae_name[2]))
-    print(cluster_mae_name[2])
+        print('First MAE Group:')
+        print('Number of models: %d' %len(cluster_mae_name[0]))
+        print(cluster_mae_name[0])
+        print('Second MAE Group')
+        print('Number of models: %d' %len(cluster_mae_name[1]))
+        print(cluster_mae_name[1])
+        print('Third MAE Group')
+        print('Number of models: %d' %len(cluster_mae_name[2]))
+        print(cluster_mae_name[2])
 
-    plt.figure()
-    # plt.scatter(range(len(first_gen_mae)), first_gen_mae, c=group_first_gen_mae)
-    markers = 'o'
-    hatchs = [None, '|', '|||']
-    sns.set_palette('OrRd')
-    for group in np.unique(group_first_gen_mae):
-        plt.scatter(cluster_idx[group], cluster_mae[group], marker=markers, hatch=hatchs[group])
-    plt.ylabel('MAE')
-    plt.xlabel('Models')
-    plt.savefig(os.path.join(generation_analysis_path, 'first_gen_mae.png'))
-    plt.close()
+        plt.figure()
+        markers = 'o'
+        hatchs = [None, '|', '|||']
+        sns.set_palette('OrRd')
+        for group in np.unique(group_selected_gen_mae):
+            plt.scatter(cluster_idx[group], cluster_mae[group], marker=markers, hatch=hatchs[group])
+        plt.ylabel('MAE')
+        plt.xlabel('Models')
+        plt.savefig(os.path.join(generation_analysis_path, '%d_gen_mae.png'
+            %selected_gen))
+        plt.close()
 
 # Plot max statiscal max fitness for the different random seeds
 # plot the mean and std of the fitness over different generations
