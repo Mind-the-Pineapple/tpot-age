@@ -383,6 +383,9 @@ class ExtendedTPOTBase(TPOTBase):
                     self.log[gen]['pipeline_score'] = pipeline_scores.wvalues[1]
                     self.log[gen]['pipeline_test_mae'] = mae
                     self.log[gen]['pipeline_sklearn_obj'] = self._compile_to_sklearn(pipeline)
+                    # This can ge used to the pipeline complexity
+                    self.log[gen]['pipeline_tree'] = expr_to_tree(pipeline,
+                            self._pset)
 
         except Exception as e:
             self._update_pbar(pbar_num=0, pbar_msg='Failed saving periodic pipeline,   exception:\n{}'.format(str(e)[:250]))

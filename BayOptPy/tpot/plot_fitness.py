@@ -48,19 +48,26 @@ def get_mae_for_all_generations(dataset, random_seed, generations, config_dict):
     # generation is missed
     all_mae_test = []
     all_mae_train = []
+    pipeline_complexity = []
     curr_gen_idx = 0
     # all generations
     for generation in range(generations):
         if generation == gen[curr_gen_idx]:
             all_mae_test.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_test_mae']))
             all_mae_train.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_score']))
+            pipeline_complexity.append(len(logbook['log'][gen[curr_gen_idx]]['pipeline_tree']))
             if len(gen) > 1 and (len(gen) > curr_gen_idx + 1):
                 curr_gen_idx += 1
         else:
             # repeat the same last value
-            all_mae_test.append(abs(all_mae_test[-1]))
-            all_mae_train.append(abs(all_mae_train[-1]))
-    return all_mae_test, all_mae_train
+            all_mae_test.append(all_mae_test[-1])
+            all_mae_train.append(all_mae_train[-1])
+            pipeline_complexity.append(pipeline_complexity[-1])
+
+    # transform the pipeline_complexity into a numpy array, in order to perform
+    # fancy indexing
+    pipeline_complexity = np.array(pipeline_complexity)
+    return all_mae_test, all_mae_train, pipeline_complexity
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-debug',
@@ -150,11 +157,13 @@ for random_seed in args.random_seeds:
     plt.savefig(os.path.join(generation_analysis_path, 'mean_std.png'))
     plt.close()
 
+
     # plot the max fitness over different generations for the training and test dataset
-    all_mae_test_set, all_mae_train_set = get_mae_for_all_generations(args.dataset,
-                                                                random_seed,
-                                                                args.generations,
-                                                                args.config_dict)
+    all_mae_test_set, all_mae_train_set, pipeline_complexity = \
+            get_mae_for_all_generations(args.dataset,
+                                        random_seed,
+                                        args.generations,
+                                        args.config_dict)
     plt.figure()
     plt.plot(range(len(all_mae_train_set)), all_mae_train_set, marker='o', label='traning set')
     # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
@@ -167,6 +176,29 @@ for random_seed in args.random_seeds:
     plt.savefig(os.path.join(generation_analysis_path, 'train_test_fitness.png'))
     # Save the current random_see max fitness for further analysis
     avg_max_fitness.append(fitness['max'])
+
+    # Plot the different MAE for each generation and use the complexity of the
+    # model as hue
+    # plt.figure()
+    # import pdb
+    # pdb.set_trace()
+    # n_complexities = np.unique(pipeline_complexity)
+    # for complexity in n_complexities:
+    #     plt.scatter(range(len(pipeline_complexity)),
+    #             all_mae_train_set[n_complexities==complexity], marker='o',
+    #             c=complexity, label=complexity)
+    # plt.xlabel('Generation')
+    # plt.ylabel('MAE')
+    # plt.legend()
+    # plt.savefig(os.path.join(generation_analysis_path, 'pipeline_complexity.png'))
+
+    # Plot complexity as a bar plot for each generation
+    plt.figure()
+    plt.bar(range(len(pipeline_complexity)), pipeline_complexity)
+    plt.xlabel('Generation')
+    plt.ylabel('Pipeline complexity')
+    plt.savefig(os.path.join(generation_analysis_path, 'pipeline_complexity.png'))
+
 
     # plot the cross-validated MAE for the training and test dataset
     plt.figure()
