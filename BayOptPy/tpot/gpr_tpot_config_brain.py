@@ -52,6 +52,34 @@ tpot_config_gpr = {
         'alpha': [1.0, 10.0, 100.0],
         'random_state': [42],
         },
+    # Additional models
+    'sklearn.linear_model.ElasticNetCV': {
+        'l1_ratio': np.arange(0.0, 1.01, 0.05),
+        'tol': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
+        'random_state': [42],
+    },
+    'sklearn.ensemble.ExtraTreesRegressor': {
+        'n_estimators': [100],
+        'max_features': np.arange(0.05, 1.01, 0.05),
+        'min_samples_split': range(2, 21),
+        'min_samples_leaf': range(1, 21),
+        'random_state': [42],
+        'bootstrap': [True, False]
+    },
+    'sklearn.neighbors.KNeighborsRegressor': {
+         'n_neighbors': range(1,101),
+          'weights': ["uniform", "distance"],
+          'p': [1, 2]
+    },
+    'sklearn.linear_model.LassoLarsCV': {
+           'normalize': [True, False]
+    },
+        'sklearn.tree.DecisionTreeRegressor': {
+           'max_depth': range(1, 11),
+           'min_samples_split': range(2, 21),
+           'random_state': [42],
+           'min_samples_leaf': range(1, 21)
+    },
 ###############################################################################
 # Preprocessors
 ###############################################################################
