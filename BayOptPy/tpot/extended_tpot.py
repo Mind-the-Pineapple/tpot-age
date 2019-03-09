@@ -466,6 +466,7 @@ def _wrapped_cross_val_score(sklearn_pipeline, features, target,
     """
     # Re-set random seeds inside the threads
     if random_state is not None:
+        random.seed(random_state) # deap uses random
         np.random.seed(random_state)
 
     sample_weight_dict = set_sample_weight(sklearn_pipeline.steps, sample_weight)
