@@ -13,6 +13,7 @@ from sklearn.gaussian_process.kernels import (RBF, Matern,
                                              ExpSineSquared, DotProduct,
                                              ConstantKernel)
 from sklearn.metrics import mean_absolute_error
+import skrvm
 
 from functools import partial
 from multiprocessing import cpu_count

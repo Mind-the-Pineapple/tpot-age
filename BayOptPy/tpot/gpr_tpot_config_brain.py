@@ -3,6 +3,8 @@ import numpy as np
 import pdb
 from itertools import product
 
+from skrvm import RVR
+
 # Define list of Kernels
 from sklearn.gaussian_process.kernels import (RBF, Matern, RationalQuadratic,
                                               ExpSineSquared, DotProduct,
@@ -21,8 +23,14 @@ tpot_config_gpr = {
     'sklearn.gaussian_process.GaussianProcessRegressor': {
         'kernel': kernels,
         'random_state': [42],
-        'alpha': [1e-10, 1e-8, 1e-5, 1e-3, 1e-2, 1e0]
+        'alpha': [1e-100, 1e-20, 1e-12, 1e-10, 1e-5, 1e-3]
     },
+    'skrvm.RVR': {
+           'kernel': kernels,
+           'alpha': [1e-10, 1e-06, 1e-02, 1],
+           'beta': [1e-10, 1e-06, 1e-02, 1],
+
+                 },
     'sklearn.svm.LinearSVR': {
            'loss': ["epsilon_insensitive",
                     "squared_epsilon_insensitive"],
@@ -97,28 +105,4 @@ tpot_config_gpr = {
         'sklearn.preprocessing.Normalizer':{
             'norm':['l1', 'l2', 'max']
     },
-###############################################################################
-# Feature Selection
-###############################################################################
-
-        'sklearn.decomposition.PCA':{
-            'svd_solver': ['randomized'],
-            'iterated_power':range(1,11)
-    },
-        'sklearn.decomposition.FastICA':{
-                'tol': np.arange(0.0, 2.02, 0.05)
-    },
-        'sklearn.feature_selection.SelectFwe':{
-                'alpha': np.arange(0, 0.05, 0.001),
-                'score_func': {
-                    'sklearn.feature_selection.f_regression': None}
-    },
-        'sklearn.feature_selection.SelectPercentile': {
-                'percentile': range(1, 100),
-                'score_func': {
-                    'sklearn.feature_selection.f_regression': None}
-    },
-        'sklearn.feature_selection.VarianceThreshold':{
-             'threshold': [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1,
-                            0.2] },
 }
