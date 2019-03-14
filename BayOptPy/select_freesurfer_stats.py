@@ -8,9 +8,10 @@ from BayOptPy.helperfunctions import get_data_covariates, get_paths
 # This script assumes that you already have the aseg and aparc lh and rh for the subjects of interest. It then selects
 # the stats for the subjects that are present in the BANC2016 dataset
 
+freesurfer_path = '/data/NaN/BANC_2016/freesurfer'
 # Load the freesurfer aparc stats, remove the file endings and analyse the number of subjects
 print('Analysing and cleaning the aparc - LH file')
-aparc_data_lh = pd.read_csv('data/freesurfer_BANC2016/aparc_stats_lh.txt', sep='\t')
+aparc_data_lh = pd.read_csv(os.path.join(freesurfer_path, 'aparc_stats_lh.txt'), sep='\t')
 aparc_data_lh['lh.aparc.thickness'] = aparc_data_lh['lh.aparc.thickness'].str.replace(r'_*.nii', '')
 # get rid of the T1
 aparc_data_lh['lh.aparc.thickness'] = aparc_data_lh['lh.aparc.thickness'].str.replace(r'_*.T1', '')
@@ -23,7 +24,7 @@ print('aparc shape: (%d, %d)' %(aparc_data_lh.shape[0], aparc_data_lh.shape[1]))
 print(' ')
 
 print('Analysing and cleaning the aparc - RH file')
-aparc_data_rh = pd.read_csv('data/freesurfer_BANC2016/aparc_stats_rh.txt', sep='\t')
+aparc_data_rh = pd.read_csv(os.path.join(freesurfer_path, 'aparc_stats_rh.txt'), sep='\t')
 aparc_data_rh['rh.aparc.thickness'] = aparc_data_rh['rh.aparc.thickness'].str.replace(r'_*.nii', '')
 # get rid of the T1
 aparc_data_rh['rh.aparc.thickness'] = aparc_data_rh['rh.aparc.thickness'].str.replace(r'_*.T1', '')
@@ -46,7 +47,7 @@ print(' ')
 
 # Load the freesurfer aseg stats and do the same analysis done for the aparc file
 print('Analysing and cleaning the aseg file')
-aseg_data = pd.read_csv('data/freesurfer_BANC2016/aseg_stats.txt', sep='\t')
+aseg_data = pd.read_csv(os.path.join(freesurfer_path, 'aseg_stats.txt'), sep='\t')
 # Process it in the same way as the aparc dataset
 aseg_data['Measure:volume'] = aseg_data['Measure:volume'].str.replace(r'_*.nii', '')
 # get rid of the T1
@@ -62,7 +63,7 @@ print(list(set(aparc_data_lh['lh.aparc.thickness']) - set(aseg_data['Measure:vol
 print(' ')
 
 # get the list of subjects and demographics for the BANC dataset
-debug = True
+debug = False
 dataset = 'BANC'
 project_wd, project_data, project_sink = get_paths(debug, dataset)
 project_data_path = os.path.join(project_data, 'wm_data')
@@ -103,6 +104,7 @@ freesurfer_stats_num.max()
 print('Max values for each column of the z-scaled dataframe')
 scaled_features_df.max()
 
-# dump the results as csv
-scaled_features_df.to_csv('aparc_aseg_stats_BANC.csv')
+# dump the results as csv (first the raw analysis then the z-scored)
+freesurfer_stats_num.to_csv('/code/aparc_aseg_stats_BANC.csv')
+scaled_features_df.to_csv('/code/aparc_aseg_stats_BANC_z-scored.csv')
 print('Done')
