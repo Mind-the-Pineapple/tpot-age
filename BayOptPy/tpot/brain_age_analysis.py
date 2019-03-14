@@ -73,7 +73,8 @@ parser.add_argument('-config_dict',
                     dest='config_dict',
                     help='Specify which TPOT config dict to use',
                     choices=['None', 'light', 'custom',
-                             'gpr', 'gpr_full', 'brain'],
+                             'gpr', 'gpr_full', 'vanilla', 'feat_selec',
+                             'feat_combi', 'vanilla_combi'],
                     required=True
                     )
 parser.add_argument('-njobs',
@@ -89,7 +90,8 @@ parser.add_argument('-random_seed',
 parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
-                    choices=['vanilla', 'population', 'test'],
+                    choices=['vanilla', 'population', 'feat_selec',
+                             'feat_combi', 'vanilla_combi'],
                     required=True
                     )
 
@@ -114,8 +116,20 @@ if __name__ == '__main__':
     elif args.config_dict == 'gpr_full':
         from BayOptPy.tpot.gpr_tpot_config_dict_full import tpot_config_gpr
         tpot_config = tpot_config_gpr
-    elif args.config_dict == 'brain':
-        from BayOptPy.tpot.gpr_tpot_config_brain import tpot_config_gpr
+    elif args.config_dict == 'vanilla':
+        from BayOptPy.tpot.gpr_tpot_config_vanilla import tpot_config_gpr
+        tpot_config = tpot_config_gpr
+    elif args.config_dict == 'feat_selec':
+        #Load models for feature selection
+        from BayOptPy.tpot.gpr_tpot_config_feat_selec import tpot_config_gpr
+        tpot_config = tpot_config_gpr
+    elif args.config_dict == 'feat_combi':
+        # Load models for feature combination
+        from BayOptPy.tpot.gpr_tpot_config_feat_combi import tpot_config_gpr
+        tpot_config = tpot_config_gpr
+    elif args.config_dict == 'vanilla_combi':
+        # Load models for feature combination
+        from BayOptPy.tpot.gpr_tpot_config_feat_combi import tpot_config_gpr
         tpot_config = tpot_config_gpr
 
     # Get data paths, the actual data and check if the output paths exists

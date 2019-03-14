@@ -74,14 +74,15 @@ def get_output_path(analysis, ngen, random_seed, population_size, debug):
 def get_all_random_seed_paths(analysis, ngen, population_size, debug):
     # As they should have been created by the get_output_path, do not create
     # path but just find its location
-    if analysis == 'vanilla':
+    if analysis == 'vanilla' or analysis == 'feat_selec' or \
+        analysis == 'feat_combi' or analysis == 'vanilla_combi':
         if debug:
             output_path = os.path.join('BayOptPy', 'tpot', analysis,
                                        '%03d_generations' %ngen)
         else:
             output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
                                        '%03d_generations' %ngen)
-    if analysis == 'population':
+    elif analysis == 'population':
         if debug:
             output_path = os.path.join('BayOptPy', 'tpot', analysis,
                                        '%05d_population_size' %population_size,
@@ -90,6 +91,8 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug):
             output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
+    else:
+        raise IOError('Analysis path not defined')
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)

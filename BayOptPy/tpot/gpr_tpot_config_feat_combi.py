@@ -89,8 +89,8 @@ tpot_config_gpr = {
            'min_samples_leaf': range(1, 21)
     },
 ###############################################################################
-# Preprocessors
-###############################################################################
+## Preprocessors
+################################################################################
     'sklearn.kernel_approximation.Nystroem': {
             'kernel': ['rbf', 'cosine', 'chi2', 'laplacian', 'polynomial', 'poly',
                        'linear', 'additive_chi2', 'sigmoid'],
@@ -98,11 +98,26 @@ tpot_config_gpr = {
             'random_state': [42],
             'n_components': range(1, 11)
     },
+        'sklearn.preprocessing.RobustScaler': {
+                                              },
+         'sklearn.preprocessing.StandardScaler': {
+                                                 },
         'sklearn.kernel_approximation.RBFSampler': {
             'gamma': np.arange(0.0, 1.01, 0.05),
            'random_state': [42],
     },
+        'sklearn.preprocessing.MaxAbsScaler': {
+                                              },
+        'sklearn.preprocessing.MinMaxScaler': {
+                                              },
         'sklearn.preprocessing.Normalizer':{
             'norm':['l1', 'l2', 'max']
     },
+###############################################################################
+## Feature Combination
+################################################################################
+            'sklearn.cluster.FeatureAgglomeration': {
+                 'linkage': ['ward', 'complete', 'average'],
+                 'affinity': ['euclidean', 'l1', 'l2',
+                              'manhattan', 'cosine'] },
 }

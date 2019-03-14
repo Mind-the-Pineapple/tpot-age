@@ -84,7 +84,8 @@ parser.add_argument('-dataset',
 parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
-                    choices=['vanilla', 'population'],
+                    choices=['vanilla', 'population', 'feat_combi',
+                             'feat_selec', 'vanilla', 'vanilla_combi'],
                     required=True
                     )
 parser.add_argument('-generations',
@@ -111,7 +112,7 @@ parser.add_argument('-config_dict',
                     help='Specify the list of models to use',
                     required=True,
                     choices=['None', 'light', 'custom', 'gpr', 'gpr_full',
-                        'brain']
+                        'feat_combi', 'feat_selec', 'vanilla', 'vanilla_combi']
                    )
 args = parser.parse_args()
 
@@ -194,7 +195,7 @@ for random_seed in args.random_seeds:
 
     # Plot complexity as a bar plot for each generation
     plt.figure()
-    plt.bar(range(len(pipeline_complexity)), pipeline_complexity)
+    plt.plot(range(len(pipeline_complexity)), pipeline_complexity)
     plt.xlabel('Generation')
     plt.ylabel('Pipeline complexity')
     plt.savefig(os.path.join(generation_analysis_path, 'pipeline_complexity.png'))
