@@ -1,0 +1,18 @@
+# Analyse the different feature combination and selection separately
+./exec_BayOpt_BANC.sh /sing/neuroenvpy.sh /code/BayOptPy/tpot/plot_fitness.py
+-dataset BANC_freesurf -analysis feat_selec -generations 100 -population_size
+100 -random_seed 10 -config_dict feat_selec
+
+# Generate plot for complexity for all analysis
+./exec_BayOpt_BANC.sh /sing/neuroenvpy.sh /code/BayOptPy/tpot/plot_complexity.py
+-dataset BANC_freesurf -analysis vanilla_combi vanilla feat_combi feat_selec
+-generations 100 -population_size 100 -random_seed 10
+
+# Analyse the results for 500 and 1000 population
+./exec_BayOpt_BANC.sh /sing/neuroenvpy.sh /code/BayOptPy/tpot/plot_fitness.py
+-dataset BANC_freesurf -analysis population -generations 100 -population_size
+500 -random_seed 10 -config_dict vanilla_combi
+
+./exec_BayOpt_BANC.sh /sing/neuroenvpy.sh /code/BayOptPy/tpot/plot_fitness.py
+-dataset BANC_freesurf -analysis population -generations 100 -population_size
+1000 -random_seed 10 -config_dict vanilla_combi
