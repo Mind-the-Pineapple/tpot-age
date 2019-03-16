@@ -66,10 +66,11 @@ def get_paths(debug, dataset):
     print('Data Out: %s' %project_sink )
     return project_wd, project_data, project_sink
 
-def get_output_path(analysis, ngen, random_seed, population_size, debug):
+def get_output_path(analysis, ngen, random_seed, population_size, debug,
+                    mutation, crossover):
     # Check if output path exists, otherwise create it
     rnd_seed_path = get_all_random_seed_paths(analysis, ngen, population_size,
-                                              debug)
+                                              debug, mutation, crossover)
     output_path = os.path.join(rnd_seed_path, 'random_seed_%03d' %random_seed)
 
     if not os.path.exists(output_path):
@@ -77,7 +78,8 @@ def get_output_path(analysis, ngen, random_seed, population_size, debug):
 
     return output_path
 
-def get_all_random_seed_paths(analysis, ngen, population_size, debug):
+def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
+                             crossover):
     # As they should have been created by the get_output_path, do not create
     # path but just find its location
     if analysis == 'vanilla' or analysis == 'feat_selec' or \
@@ -97,6 +99,16 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug):
             output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
+    elif analysis == 'mutation':
+        if debug:
+            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+                                       '%03d_generations' %ngen,
+                                       '%.01f_mut_%.01f_cross' %(mutation, crossover))
+        else:
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+                                       '%03d_generations' %ngen,
+                                       '%.01f_mut_%.01f_cross' %(mutation, crossover))
+
     else:
         raise IOError('Analysis path not defined. Passed analysis was %s'
                       %analysis)
@@ -106,12 +118,12 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug):
 
     return output_path
 
-def get_best_pipeline_paths(analysis, ngen, random_seed, population_size, debug):
+def get_best_pipeline_paths(analysis, ngen, random_seed, population_size, debug,
+                           mutation, crossover):
     # check if folder exists and in case yes, remove it as new runs will save
     # new files without overwritting
-
     output_path = get_output_path(analysis, ngen, random_seed, population_size,
-                                  debug)
+                                  debug, mutation, crossover)
     checkpoint_path = os.path.join(output_path, 'checkpoint_folder')
 
     # Delete folder if it already exists and create a new one

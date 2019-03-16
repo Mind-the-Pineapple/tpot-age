@@ -234,6 +234,8 @@ class ExtendedTPOTBase(TPOTBase):
                     debug=self.debug,
                     random_seed=self.random_state,
                     analysis=self.analysis,
+                    mutation_rate=self.mutation_rate,
+                    crossover_rate=self.crossover_rate
                 )
 
             # store population for the next call
@@ -541,7 +543,8 @@ def _wrapped_cross_val_score(sklearn_pipeline, features, target,
 def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, pbar,
                            stats=None, halloffame=None, verbose=0,
                            per_generation_function=None, debug=False,
-                           random_seed=None, analysis=None):
+                           random_seed=None, analysis=None, mutation_rate=None,
+                           crossover_rate=None):
     """This is the :math:`(\mu + \lambda)` evolutionary algorithm.
     :param population: A list of individuals.
     :param toolbox: A :class:`~deap.base.Toolbox` that contains the evolution
@@ -699,7 +702,8 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     import pickle
     import pandas as pd
     deap_df = pd.DataFrame(logbook)
-    save_path = get_all_random_seed_paths(analysis, ngen, len(population), debug)
+    save_path = get_all_random_seed_paths(analysis, ngen, len(population),
+                                          debug, mutation_rate, crossover_rate)
     save_path_df = os.path.join(save_path, 'logbook_rnd_seed%03d.pkl'
                                 %random_seed)
     with open(save_path_df, 'wb') as handle:

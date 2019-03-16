@@ -52,13 +52,18 @@ parser.add_argument('-generations',
                     )
 parser.add_argument('-population_size',
                     dest='population_size',
-                    help='Specify population size to use',
+                    help="Specify population size to use. This value specifiy \
+                    the number of individuals to retain in the genetic         \
+                    programiming population at every generation.",
                     type=int,
                     default=100 # use the same default as TPOT default population value
                     )
 parser.add_argument('-offspring_size',
                     dest='offspring_size',
-                    help='Specify offspring size to use',
+                    help='Specify offspring size to use. This value corresponds\
+                    to the number of offsprings to produce in each genetic     \
+                    programming generation. By default, the number of          \
+                    offsprings is equal to the number of the population size.',
                     type=int,
                     default=None # When None is passed use the same as
                                  # population_size (TPOT default)
@@ -91,9 +96,22 @@ parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
                     choices=['vanilla', 'population', 'feat_selec',
-                             'feat_combi', 'vanilla_combi'],
+                             'feat_combi', 'vanilla_combi', 'mutation'],
                     required=True
                     )
+parser.add_argument('-mutation_rate',
+                   dest='mutation_rate',
+                   help='Must be on the range [0, 1.0]',
+                   type=float,
+                   default=.9
+                   )
+parser.add_argument('-crossover_rate',
+                    dest='crossover_rate',
+                    help='Cross over of the genetic algorithm. Must be on \
+                    the range [0, 1.0]',
+                    type=float,
+                    default=.1
+                   )
 
 args = parser.parse_args()
 
@@ -135,7 +153,8 @@ if __name__ == '__main__':
     # Get data paths, the actual data and check if the output paths exists
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
     output_path = get_output_path(args.analysis, args.generations, args.random_seed,
-                                  args.population_size, args.debug)
+                                  args.population_size, args.debug,
+                                  args.mutation_rate, args.crossover_rate)
     demographics, imgs, data, _ = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
 
     # Show mean std and F/M count for each dataset used
@@ -158,7 +177,9 @@ if __name__ == '__main__':
     best_pipe_paths = get_best_pipeline_paths(args.analysis, args.generations,
                                               args.random_seed,
                                               args.population_size,
-                                              args.debug)
+                                              args.debug,
+                                              args.mutation_rate,
+                                              args.crossover_rate)
     print('Checkpoint folder path')
     print(best_pipe_paths)
 
@@ -187,6 +208,8 @@ if __name__ == '__main__':
     tpot = ExtendedTPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
                          offspring_size=args.offspring_size,
+                         mutation_rate=args.mutation_rate,
+                         crossover_rate=args.crossover_rate,
                          n_jobs=args.njobs,
                          cv=args.cv,
                          verbosity=2,

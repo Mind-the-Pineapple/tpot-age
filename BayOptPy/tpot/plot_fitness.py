@@ -32,7 +32,7 @@ parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
                     choices=['vanilla', 'population', 'feat_combi',
-                             'feat_selec', 'vanilla', 'vanilla_combi'],
+                             'feat_selec', 'vanilla', 'vanilla_combi', 'mutation'],
                     required=True
                     )
 parser.add_argument('-generations',
@@ -61,6 +61,19 @@ parser.add_argument('-config_dict',
                     choices=['None', 'light', 'custom', 'gpr', 'gpr_full',
                         'feat_combi', 'feat_selec', 'vanilla', 'vanilla_combi']
                    )
+parser.add_argument('-mutation_rate',
+                   dest='mutation_rate',
+                   help='Must be on the range [0, 1.0]',
+                   type=float,
+                   default=.9
+                   )
+parser.add_argument('-crossover_rate',
+                    dest='crossover_rate',
+                    help='Cross over of the genetic algorithm. Must be on \
+                    the range [0, 1.0]',
+                    type=float,
+                    default=.1
+                   )
 args = parser.parse_args()
 
 # Set plot styles
@@ -73,7 +86,9 @@ set_publication_style()
 project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
 tpot_path = get_all_random_seed_paths(args.analysis, args.generations,
                                       args.population_size,
-                                      args.debug)
+                                      args.debug,
+                                      args.mutation_rate,
+                                      args.crossover_rate)
 
 colour_list = ['#588ef3']
 def plt_filled_std(ax, data, data_mean, data_std, color):
@@ -120,7 +135,7 @@ for random_seed in args.random_seeds:
     plt.legend()
     plt.xlabel('Generation')
     plt.ylabel('MAE')
-    plt.title('Random Seed %d' %random_seed)
+    plt.ylim(5,7)
     plt.savefig(os.path.join(generation_analysis_path, 'train_test_fitness.png'))
     # Save the current random_see max fitness for further analysis
     avg_max_fitness.append(fitness['max'])
@@ -150,7 +165,6 @@ for random_seed in args.random_seeds:
     plt.legend()
     plt.xlabel('Generation')
     plt.ylabel('MAE')
-    plt.title('Random Seed %d' %random_seed)
     plt.savefig(os.path.join(generation_analysis_path, 'max_fitness.png'))
     # Save the current random_see max fitness for further analysis
     avg_max_fitness.append(fitness['max'])
@@ -203,13 +217,11 @@ for random_seed in args.random_seeds:
     #Plot Boxplot
     plt.figure()
     data = [abs(fitness['raw'][generation]) for generation in range(len(fitness))]
-    plt.title('Basic Plot')
     fig, ax = plt.subplots(1,1)
     outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
     plt.boxplot(data, positions=range(0, len(fitness)), vert=False, showfliers=True, flierprops=outliers)
     plt.xlabel('MAE')
     plt.ylabel('Generations')
-    plt.title('Random Seed %d' %random_seed)
     # TODO: improve how you determine this threshold (there are models that are worse)
     ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
     ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
@@ -218,13 +230,11 @@ for random_seed in args.random_seeds:
 
     #Plot Boxplot
     plt.figure()
-    plt.title('Basic Plot')
     fig, ax = plt.subplots(1,1)
     outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
     plt.boxplot(data, positions=range(0, len(fitness)), vert=False, showfliers=True, flierprops=outliers)
     plt.xlabel('MAE')
     plt.ylabel('Generations')
-    plt.title('Random Seed %d' %random_seed)
     # TODO: improve how you determine this threshold (there are models that are worse)
     plt.xlim(4, 45)
     ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
@@ -238,7 +248,6 @@ for random_seed in args.random_seeds:
     plt.violinplot(data, positions=range(0, len(fitness)), vert=False, showmedians=True)
     plt.xlabel('MAE')
     plt.ylabel('Generations')
-    plt.title('Random Seed %d' % random_seed)
     plt.savefig(os.path.join(generation_analysis_path, 'violin.png'))
     plt.close()
 
@@ -248,7 +257,6 @@ for random_seed in args.random_seeds:
     plt.violinplot(data, positions=range(0, len(fitness)),vert=False, showmedians=True)
     plt.xlabel('MAE')
     plt.ylabel('Generations')
-    plt.title('Random Seed %d' % random_seed)
     plt.xlim(4, 45)
     plt.savefig(os.path.join(generation_analysis_path, 'violin2.png'))
     plt.close()
