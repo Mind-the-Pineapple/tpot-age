@@ -12,62 +12,9 @@ import argparse
 import numpy as np
 import joblib
 
-from BayOptPy.helperfunctions import get_paths, get_all_random_seed_paths
-
-def set_publication_style():
-    # Se font size to paper size
-    plt.style.use(['seaborn-white', 'seaborn-talk'])
-    matplotlib.rc("font", family="Times New Roman")
-    # Remove the spines
-    sns.set_style('white', {"axes.spines.top": False,
-                            "axes.spines.right": False,
-                            "axes.labelsize": 'large'})
-
-
-def get_mae_for_all_generations(dataset, random_seed, generations, config_dict):
-    '''
-    Get the MAE values for both the training and test dataset
-    :return:
-    '''
-    # Load the scores for the best models
-    saved_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed,
-                                   'tpot_%s_%s_%03dgen_pipelines.dump'
-                                    %(dataset, config_dict, generations))
-    # Note that if a value is not present for a generation, that means that the
-    # score did not change from the previous generation
-    # sort the array in ascending order
-    logbook = joblib.load(saved_path)
-    gen = list(logbook['log'].keys())
-
-    print('There are %d optminal pipelines' %len(gen))
-    print('These are the best pipelines')
-    for generation in gen:
-        print(logbook['log'][generation]['pipeline_name'])
-
-    # Iterate over the the list of saved MAEs and repeat the values where one
-    # generation is missed
-    all_mae_test = []
-    all_mae_train = []
-    pipeline_complexity = []
-    curr_gen_idx = 0
-    # all generations
-    for generation in range(generations):
-        if generation == gen[curr_gen_idx]:
-            all_mae_test.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_test_mae']))
-            all_mae_train.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_score']))
-            pipeline_complexity.append(len(logbook['log'][gen[curr_gen_idx]]['pipeline_tree']))
-            if len(gen) > 1 and (len(gen) > curr_gen_idx + 1):
-                curr_gen_idx += 1
-        else:
-            # repeat the same last value
-            all_mae_test.append(all_mae_test[-1])
-            all_mae_train.append(all_mae_train[-1])
-            pipeline_complexity.append(pipeline_complexity[-1])
-
-    # transform the pipeline_complexity into a numpy array, in order to perform
-    # fancy indexing
-    pipeline_complexity = np.array(pipeline_complexity)
-    return all_mae_test, all_mae_train, pipeline_complexity
+from BayOptPy.helperfunctions import (get_paths, get_all_random_seed_paths,
+                                      get_mae_for_all_generations,
+                                      set_publication_style)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-debug',
@@ -164,7 +111,7 @@ for random_seed in args.random_seeds:
             get_mae_for_all_generations(args.dataset,
                                         random_seed,
                                         args.generations,
-                                        args.config_dict)
+                                        args.config_dict, tpot_path)
     plt.figure()
     plt.plot(range(len(all_mae_train_set)), all_mae_train_set, marker='o', label='traning set')
     # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
@@ -193,12 +140,6 @@ for random_seed in args.random_seeds:
     # plt.legend()
     # plt.savefig(os.path.join(generation_analysis_path, 'pipeline_complexity.png'))
 
-    # Plot complexity as a bar plot for each generation
-    plt.figure()
-    plt.plot(range(len(pipeline_complexity)), pipeline_complexity)
-    plt.xlabel('Generation')
-    plt.ylabel('Pipeline complexity')
-    plt.savefig(os.path.join(generation_analysis_path, 'pipeline_complexity.png'))
 
 
     # plot the cross-validated MAE for the training and test dataset

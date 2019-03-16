@@ -1,3 +1,4 @@
+import joblib
 import os
 import shutil
 import re
@@ -8,6 +9,11 @@ from nilearn import masking, image
 import nibabel as nib
 import numpy as np
 from tqdm import tqdm
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
 
 def get_paths(debug, dataset):
 
@@ -92,7 +98,8 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug):
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
     else:
-        raise IOError('Analysis path not defined')
+        raise IOError('Analysis path not defined. Passed analysis was %s'
+                      %analysis)
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
@@ -323,4 +330,59 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
     maskedData = np.array(maskedData)
 
     return demographics, imgs, maskedData
+
+def get_mae_for_all_generations(dataset, random_seed, generations, config_dict,
+                               tpot_path):
+    '''
+    Get the MAE values for both the training and test dataset
+    :return:
+    '''
+    # Load the scores for the best models
+    saved_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed,
+                                   'tpot_%s_%s_%03dgen_pipelines.dump'
+                                    %(dataset, config_dict, generations))
+    # Note that if a value is not present for a generation, that means that the
+    # score did not change from the previous generation
+    # sort the array in ascending order
+    logbook = joblib.load(saved_path)
+    gen = list(logbook['log'].keys())
+
+    print('There are %d optminal pipelines' %len(gen))
+    print('These are the best pipelines')
+    for generation in gen:
+        print(logbook['log'][generation]['pipeline_name'])
+
+    # Iterate over the the list of saved MAEs and repeat the values where one
+    # generation is missed
+    all_mae_test = []
+    all_mae_train = []
+    pipeline_complexity = []
+    curr_gen_idx = 0
+    # all generations
+    for generation in range(generations):
+        if generation == gen[curr_gen_idx]:
+            all_mae_test.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_test_mae']))
+            all_mae_train.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_score']))
+            pipeline_complexity.append(len(logbook['log'][gen[curr_gen_idx]]['pipeline_sklearn_obj'].named_steps.keys()))
+            if len(gen) > 1 and (len(gen) > curr_gen_idx + 1):
+                curr_gen_idx += 1
+        else:
+            # repeat the same last value
+            all_mae_test.append(all_mae_test[-1])
+            all_mae_train.append(all_mae_train[-1])
+            pipeline_complexity.append(pipeline_complexity[-1])
+
+    # transform the pipeline_complexity into a numpy array, in order to perform
+    # fancy indexing
+    pipeline_complexity = np.array(pipeline_complexity)
+    return all_mae_test, all_mae_train, pipeline_complexity
+
+def set_publication_style():
+    # Se font size to paper size
+    plt.style.use(['seaborn-white', 'seaborn-talk'])
+    matplotlib.rc("font", family="Times New Roman")
+    # Remove the spines
+    sns.set_style('white', {"axes.spines.top": False,
+                            "axes.spines.right": False,
+                            "axes.labelsize": 'large'})
 
