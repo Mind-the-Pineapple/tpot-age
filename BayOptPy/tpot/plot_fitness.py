@@ -32,7 +32,8 @@ parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
                     choices=['vanilla', 'population', 'feat_combi',
-                             'feat_selec', 'vanilla', 'vanilla_combi', 'mutation'],
+                             'feat_selec', 'vanilla', 'vanilla_combi',
+                             'mutation', 'random_seed'],
                     required=True
                     )
 parser.add_argument('-generations',

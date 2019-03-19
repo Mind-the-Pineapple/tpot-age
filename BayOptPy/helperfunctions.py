@@ -83,7 +83,8 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
     # As they should have been created by the get_output_path, do not create
     # path but just find its location
     if analysis == 'vanilla' or analysis == 'feat_selec' or \
-        analysis == 'feat_combi' or analysis == 'vanilla_combi':
+        analysis == 'feat_combi' or analysis == 'vanilla_combi' or \
+        analysis == 'random_seed':
         if debug:
             output_path = os.path.join('BayOptPy', 'tpot', analysis,
                                        '%03d_generations' %ngen)

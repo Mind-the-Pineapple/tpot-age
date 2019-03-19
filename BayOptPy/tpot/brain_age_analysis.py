@@ -96,7 +96,8 @@ parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
                     choices=['vanilla', 'population', 'feat_selec',
-                             'feat_combi', 'vanilla_combi', 'mutation'],
+                             'feat_combi', 'vanilla_combi', 'mutation',
+                             'random_seed'],
                     required=True
                     )
 parser.add_argument('-mutation_rate',
