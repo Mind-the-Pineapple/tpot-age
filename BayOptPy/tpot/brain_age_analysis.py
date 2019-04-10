@@ -15,7 +15,8 @@ import joblib
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import (get_data, get_paths,
                                       get_config_dictionary, get_output_path,
-                                      get_best_pipeline_paths)
+                                      get_best_pipeline_paths,
+                                      drop_missing_features)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-gui',
@@ -156,7 +157,10 @@ if __name__ == '__main__':
     output_path = get_output_path(args.analysis, args.generations, args.random_seed,
                                   args.population_size, args.debug,
                                   args.mutation_rate, args.crossover_rate)
-    demographics, imgs, data, _ = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
+    demographics, imgs, dataframe  = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
+    # Drop missing features from the BIOBANK
+    dataframe = drop_missing_features(dataframe)
+    data = dataframe.values
 
     # Show mean std and F/M count for each dataset used
     aggregations = {

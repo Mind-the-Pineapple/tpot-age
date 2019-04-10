@@ -7,7 +7,7 @@ import seaborn as sns
 sns.set()
 import matplotlib.pyplot as plt
 
-from BayOptPy.helperfunctions import get_paths, get_data
+from BayOptPy.helperfunctions import get_paths, get_data, drop_missing_features
 
 
 # Load both free surfer files
@@ -15,9 +15,9 @@ debug = False
 resamplefactor = 1
 project_ukbio_wd, project_data_ukbio, _ = get_paths(debug, 'UKBIO_freesurf')
 project_banc_wd, project_data_banc, _  = get_paths(debug, 'BANC_freesurf')
-demographics_banc, imgs_banc, data_banc, freesurfer_df_banc = get_data(project_data_banc, 'BANC_freesurf', debug,
+_, _, freesurfer_df_banc = get_data(project_data_banc, 'BANC_freesurf', debug,
                                                                        project_banc_wd, resamplefactor)
-demographics_ukbio, imgs_ukbio, data_ukbio, freesurfer_df_ukbio = get_data(project_data_ukbio, 'UKBIO_freesurf', debug,
+_, _, freesurfer_df_ukbio = get_data(project_data_ukbio, 'UKBIO_freesurf', debug,
                                                                            project_ukbio_wd, resamplefactor)
 
 # check the columns between both datasets
@@ -56,13 +56,10 @@ if sum(freesurfer_df_banc['BrainSegVolNotVent']==freesurfer_df_banc['BrainSegVol
     print('BrainSegVolNotVent is identical to BrainSegVolNotVent.2')
 
 # remove the columns from the banc dataset that are not present in the BIOBANK
-missing_columns = ['lh_MeanThickness_thickness', 'BrainSegVolNotVent',
-                   'eTIV', 'rh_MeanThickness_thickness', 'BrainSegVolNotVent.1',
-                  'eTIV.1']
-freesurfer_df_banc = freesurfer_df_banc.drop(missing_columns, axis=1)
+freesurfer_df_banc_clean =  drop_missing_features(freesurfer_df_banc)
 
-# Save the colunns as varaible
-freesurfer_banc_columns = list(freesurfer_df_banc)
+# Save the colunns as variable
+freesurfer_banc_columns = list(freesurfer_df_banc_clean)
 freesurfer_ukbio_columns = list(freesurfer_df_ukbio)
 
 # Create a dictionary matching the columns from the ukbiobank to the BANC
@@ -161,8 +158,8 @@ variables_of_interest = ['lhCerebralWhiteMatterVol', 'rhCerebralWhiteMatterVol',
 # Generate a few plots to make sure you are comparing the same things among both
 # datasets
 df_ukbio['dataset'] = 'ukbio'
-freesurfer_df_banc['dataset'] = 'banc'
-df_combined = pd.concat((df_ukbio, freesurfer_df_banc))
+freesurfer_df_banc_clean['dataset'] = 'banc'
+df_combined = pd.concat((df_ukbio, freesurfer_df_banc_clean))
 
 for idx, variable in enumerate(variables_of_interest):
     fig = plt.figure()

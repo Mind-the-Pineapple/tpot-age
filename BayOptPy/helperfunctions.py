@@ -138,6 +138,17 @@ def get_best_pipeline_paths(analysis, ngen, random_seed, population_size, debug,
 
     return checkpoint_path
 
+def drop_missing_features(dataframe):
+    '''
+    This function takes a dataframe and removes the already defined missing
+    columns from the dataframe.
+    '''
+    missing_features = ['lh_MeanThickness_thickness', 'BrainSegVolNotVent',
+                        'eTIV', 'rh_MeanThickness_thickness',
+                        'BrainSegVolNotVent.1', 'eTIV.1']
+    cleaned_df = dataframe.drop(missing_features, axis=1)
+    return cleaned_df
+
 def get_data_covariates(dataPath, rawsubjectsId, dataset):
     if dataset == 'OASIS':
         # Load the demographic details from the dataset
@@ -159,7 +170,6 @@ def get_data_covariates(dataPath, rawsubjectsId, dataset):
         # Load the demographic details from the dataset
         column_names = ['ID', 'original_dataset', 'sex', 'Age']
         demographics = pd.read_csv(os.path.join(dataPath, 'BANC_2016.csv'), names=column_names)
-
         # Check if there is any subject for which we have the fmri data but no demographics
         missingsubjectsId = list(set(demographics['ID']) ^ set(rawsubjectsId))
         # remove the demographic data from the missing subjects
@@ -298,14 +308,15 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
     elif dataset == 'BANC_freesurf':
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'aparc_aseg_stats_BANC.csv'), delimiter=',', index_col=0)
         rawsubjectsId = freesurf_df.index
+
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
         # return numpy array of the dataframe
-        return demographics, None, freesurf_df.values,freesurf_df
+        return demographics, None, freesurf_df
 
     elif dataset == 'UKBIO_freesurf':
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'UKBIO', 'UKB_10k_FS_4844.csv'), delimiter=',')
-        return None, None, freesurf_df.values, freesurf_df
+        return None, None, freesurf_df
 
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
