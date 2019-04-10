@@ -20,14 +20,40 @@ demographics_banc, imgs_banc, data_banc, freesurfer_df_banc = get_data(project_d
 demographics_ukbio, imgs_ukbio, data_ukbio, freesurfer_df_ukbio = get_data(project_data_ukbio, 'UKBIO_freesurf', debug,
                                                                            project_ukbio_wd, resamplefactor)
 
-# check the columsn between both datasets
+# check the columns between both datasets
 # First print the size of dataset
+print('shape of the banc dataset; shape of the ukbio dataset')
 print(freesurfer_df_banc.shape, freesurfer_df_ukbio.shape)
 
 # Save the lh_MeanThickness and rh_MeanThickness to compare it to calculated
 # value afterwards
 lh_MeanThickness_banc = freesurfer_df_banc['lh_MeanThickness_thickness']
 rh_MeanThickness_banc = freesurfer_df_banc['rh_MeanThickness_thickness']
+# just as a proof of concept check that the mean thickness between rh and lh are
+# different
+if sum(freesurfer_df_banc['lh_MeanThickness_thickness'] ==
+       freesurfer_df_banc['rh_MeanThickness_thickness']) == len(freesurfer_df_banc):
+    print('LH and RH MeanThickness are identical')
+else:
+    print('LH and RH MeanThickness are NOT identical')
+
+# Plot the missing data eTIV1 and eTIV and BrainSegVolNoVent
+# Check if both columns are identical
+data = [freesurfer_df_banc['eTIV'], freesurfer_df_banc['eTIV.1']]
+# If this equality is true it means that all the data is equal
+if sum(freesurfer_df_banc['eTIV']==freesurfer_df_banc['eTIV.1']) == len(freesurfer_df_banc):
+    print('eTIV is identical to eTIV.1')
+# plt.figure()
+# plt.boxplot(data)
+# plt.title('eTIV')
+# plt.savefig('/code/UKBIO/boxplot_eTIV.png')
+# plt.close()
+
+# Check BrainSegVolNoVent is identical to BrainSegVolNoVent.1
+if sum(freesurfer_df_banc['BrainSegVolNotVent']==freesurfer_df_banc['BrainSegVolNotVent.1'])== len(freesurfer_df_banc):
+    print('BrainSegVolNotVent is identical to BrainSegVolNotVent.1')
+if sum(freesurfer_df_banc['BrainSegVolNotVent']==freesurfer_df_banc['BrainSegVolNotVent.2'])== len(freesurfer_df_banc):
+    print('BrainSegVolNotVent is identical to BrainSegVolNotVent.2')
 
 # remove the columns from the banc dataset that are not present in the BIOBANK
 missing_columns = ['lh_MeanThickness_thickness', 'BrainSegVolNotVent',
@@ -38,15 +64,6 @@ freesurfer_df_banc = freesurfer_df_banc.drop(missing_columns, axis=1)
 # Save the colunns as varaible
 freesurfer_banc_columns = list(freesurfer_df_banc)
 freesurfer_ukbio_columns = list(freesurfer_df_ukbio)
-
-# Check the banc dataset consist of a reduced set from the biobanc dataset
-print('Columns that are missing in the ukbiobanc but are on the banc dataset')
-print(set(freesurfer_banc_columns).difference(freesurfer_ukbio_columns))
-print('Columns that are missing in the bancdataset but are on the ukbiobanc')
-print(set(freesurfer_ukbio_columns).difference(freesurfer_banc_columns))
-
-df_ukbio_thickness = freesurfer_df_ukbio.loc[:,
-                            freesurfer_df_ukbio.columns.str.contains('thk')]
 
 # Create a dictionary matching the columns from the ukbiobank to the BANC
 # dataset and rename ukbiobank columns.
@@ -138,6 +155,7 @@ freesurfer_df_ukbio.rename(columns=renameCols, inplace=True)
 
 # Keep only the columns that both datasets have in common
 df_ukbio = freesurfer_df_ukbio[freesurfer_banc_columns]
+df_ukbio.index.name = 'ID'
 variables_of_interest = ['lhCerebralWhiteMatterVol', 'rhCerebralWhiteMatterVol',
                          'CerebralWhiteMatterVol']
 # Generate a few plots to make sure you are comparing the same things among both
@@ -185,7 +203,6 @@ plt.tight_layout() # correct for overlaying layout
 plt.savefig('/code/UKBIO/MeanThickness.png')
 plt.close()
 
-pdb.set_trace()
 fig = plt.figure()
 ax1 = fig.add_subplot(211)
 ax2 = fig.add_subplot(212)
@@ -196,5 +213,10 @@ sns.boxplot(x='dataset', y='rh_MeanThickness_thickness',
 fig.savefig('/code/UKBIO/boxplot_MeanThickness.png')
 plt.close()
 
+# Dump the pre-processed biobank dataset that now over laps with the features
+# from the BANC dataset
+save_path = '/code/UKBIO/UKB_10k_FS_4844_adapted.csv'
+df_ukbio.to_csv(save_path)
+print('Saved modifed Biobank dataset: %s' %save_path)
 print('I am done!')
 # Compare the columns entry
