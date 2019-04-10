@@ -13,6 +13,7 @@ from sklearn.gaussian_process.kernels import (RBF, Matern,
                                              ExpSineSquared, DotProduct,
                                              ConstantKernel)
 from sklearn.metrics import mean_absolute_error
+import skrvm
 
 from functools import partial
 from multiprocessing import cpu_count
@@ -21,7 +22,8 @@ from sklearn.model_selection import train_test_split
 from datetime import datetime
 import random
 from tqdm import tqdm
-from deap import tools
+import deap
+from deap import tools, creator, gp
 from tpot.gp_deap import initialize_stats_dict, varOr
 import os
 import errno
@@ -57,7 +59,27 @@ class ExtendedTPOTBase(TPOTBase):
         # Set random seed
         if random_state is not None:
             print('Setting random seed')
+            random.seed(random_state)
             np.random.seed(random_state)
+
+        def _setup_toolbox(self):
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                creator.create('FitnessMulti', base.Fitness, weights=(-1.0, 1.0))
+                creator.create('Individual',
+                               gp.PrimitiveTree,
+                               fitness=creator.FitnessMulti,
+                               statistics=dict)
+
+            self._toolbox = base.Toolbox()
+            self._toolbox.register('expr', self._gen_grow_safe, pset=self._pset, min_=1, max_=3)
+            self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
+            self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
+            self._toolbox.register('compile', self._compile_to_sklearn)
+            self._toolbox.register('select', tools.selNSGA2)
+            self._toolbox.register('mate', self._mate_operator)
+            self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
+            self._toolbox.register('mutate', self._random_mutation_operator)
 
     def _fit_init(self):
         super()._fit_init()
@@ -212,6 +234,8 @@ class ExtendedTPOTBase(TPOTBase):
                     debug=self.debug,
                     random_seed=self.random_state,
                     analysis=self.analysis,
+                    mutation_rate=self.mutation_rate,
+                    crossover_rate=self.crossover_rate
                 )
 
             # store population for the next call
@@ -248,6 +272,11 @@ class ExtendedTPOTBase(TPOTBase):
 
 
     def _evaluate_individuals(self, individuals, features, target, sample_weight=None, groups=None):
+        if self.random_state is not None:
+            print('Setting random seed')
+            random.seed(self.random_state)
+            np.random.seed(self.random_state)
+
         operator_counts, eval_individuals_str, sklearn_pipeline_list, stats_dicts = self._preprocess_individuals(individuals)
 
         # Make the partial function that will be called below
@@ -301,7 +330,6 @@ class ExtendedTPOTBase(TPOTBase):
 
                     parallel = Parallel(n_jobs=self._n_jobs,
                                         backend='loky',
-                                        prefer='processes',
                                         verbose=0, pre_dispatch='2*n_jobs')
                     tmp_result_scores = parallel(
                         delayed(partial_wrapped_cross_val_score)(sklearn_pipeline=sklearn_pipeline)
@@ -334,7 +362,12 @@ class ExtendedTPOTBase(TPOTBase):
         -------
         None
         """
-        self._update_top_pipeline()
+
+        if self.random_state is not None:
+            random.seed(self.random_state) # deap uses random
+            np.random.seed(self.random_state)
+            self._update_top_pipeline()
+
         if self.periodic_checkpoint_folder is not None:
             total_since_last_pipeline_save =(datetime.now() - self._last_pipeline_write).total_seconds()
             if total_since_last_pipeline_save > self._output_best_pipeline_period_seconds:
@@ -383,6 +416,9 @@ class ExtendedTPOTBase(TPOTBase):
                     self.log[gen]['pipeline_score'] = pipeline_scores.wvalues[1]
                     self.log[gen]['pipeline_test_mae'] = mae
                     self.log[gen]['pipeline_sklearn_obj'] = self._compile_to_sklearn(pipeline)
+                    # This can ge used to the pipeline complexity
+                    self.log[gen]['pipeline_tree'] = expr_to_tree(pipeline,
+                            self._pset)
 
         except Exception as e:
             self._update_pbar(pbar_num=0, pbar_msg='Failed saving periodic pipeline,   exception:\n{}'.format(str(e)[:250]))
@@ -433,6 +469,7 @@ def _wrapped_cross_val_score(sklearn_pipeline, features, target,
     """
     # Re-set random seeds inside the threads
     if random_state is not None:
+        random.seed(random_state) # deap uses random
         np.random.seed(random_state)
 
     sample_weight_dict = set_sample_weight(sklearn_pipeline.steps, sample_weight)
@@ -506,7 +543,8 @@ def _wrapped_cross_val_score(sklearn_pipeline, features, target,
 def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, pbar,
                            stats=None, halloffame=None, verbose=0,
                            per_generation_function=None, debug=False,
-                           random_seed=None, analysis=None):
+                           random_seed=None, analysis=None, mutation_rate=None,
+                           crossover_rate=None):
     """This is the :math:`(\mu + \lambda)` evolutionary algorithm.
     :param population: A list of individuals.
     :param toolbox: A :class:`~deap.base.Toolbox` that contains the evolution
@@ -554,6 +592,10 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
 
     if random_seed == None:
         raise ValueError("No fixed random seed was used!")
+
+    if random_seed is not None:
+        random.seed(random_seed)
+        np.random.seed(random_seed)
 
     logbook = tools.Logbook()
     logbook.header = ['gen', 'nevals', 'avg', 'std', 'min', 'max', 'raw'] + (stats.fields if stats else [])
@@ -660,7 +702,8 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     import pickle
     import pandas as pd
     deap_df = pd.DataFrame(logbook)
-    save_path = get_all_random_seed_paths(analysis, ngen, len(population), debug)
+    save_path = get_all_random_seed_paths(analysis, ngen, len(population),
+                                          debug, mutation_rate, crossover_rate)
     save_path_df = os.path.join(save_path, 'logbook_rnd_seed%03d.pkl'
                                 %random_seed)
     with open(save_path_df, 'wb') as handle:

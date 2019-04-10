@@ -1,0 +1,111 @@
+# Vanilla analysis. There are no feature selection, featuer combination
+# job: 4437077
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 100 -offspring_size 100 -config_dict vanilla \
+-njobs 20 -random_seed 10 -analysis vanilla
+
+# job: 4437082
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 100 -offspring_size 100 -config_dict feat_selec \
+-njobs 20 -random_seed 10 -analysis feat_selec
+
+# job: 4437084
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 100 -offspring_size 100 -config_dict feat_combi \
+-njobs 20 -random_seed 10 -analysis feat_combi
+
+# job: 4437888
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 100 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 10 -analysis vanilla_combi
+
+###############################################################################
+# Population analysis
+###############################################################################
+# job: 4437953
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 500 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 10 -analysis population
+
+# job: 4437954
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 10 -analysis population
+
+###############################################################################
+# Mutation and Cross-over analysis
+###############################################################################
+# job: 4445350
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 10 -analysis mutation -mutation_rate 0.1 -crossover_rate 0.1
+
+# job: 4445351, 4445611
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 10 -analysis mutation -mutation_rate 0.1 -crossover_rate 0.9
+
+# job: 4445351, 4445612
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 10 -analysis mutation -mutation_rate 0.5 -crossover_rate 0.5
+
+###############################################################################
+# Random Seed
+###############################################################################
+# job: 4445669
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 20 -analysis random_seed -mutation_rate 0.9 -crossover_rate 0.1
+
+# job: 4445671
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 30 -analysis random_seed -mutation_rate 0.9 -crossover_rate 0.1
+
+# job: 4445672
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 40 -analysis random_seed -mutation_rate 0.9 -crossover_rate 0.1
+
+# job: 4446020
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 50 -analysis random_seed -mutation_rate 0.9 -crossover_rate 0.1
+
+# job: 4446326
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 60 -analysis random_seed -mutation_rate 0.9 -crossover_rate 0.1
+
+# job: 4446998
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 70 -analysis random_seed -mutation_rate 0.9 -crossover_rate 0.1
+
+# job: 4446999
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 80 -analysis random_seed -mutation_rate 0.9 -crossover_rate 0.1
+
+# job: 4447027
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed 90 -analysis random_seed -mutation_rate 0.9 -crossover_rate 0.1

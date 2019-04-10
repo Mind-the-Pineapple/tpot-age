@@ -52,13 +52,18 @@ parser.add_argument('-generations',
                     )
 parser.add_argument('-population_size',
                     dest='population_size',
-                    help='Specify population size to use',
+                    help="Specify population size to use. This value specifiy \
+                    the number of individuals to retain in the genetic         \
+                    programiming population at every generation.",
                     type=int,
                     default=100 # use the same default as TPOT default population value
                     )
 parser.add_argument('-offspring_size',
                     dest='offspring_size',
-                    help='Specify offspring size to use',
+                    help='Specify offspring size to use. This value corresponds\
+                    to the number of offsprings to produce in each genetic     \
+                    programming generation. By default, the number of          \
+                    offsprings is equal to the number of the population size.',
                     type=int,
                     default=None # When None is passed use the same as
                                  # population_size (TPOT default)
@@ -72,7 +77,9 @@ parser.add_argument('-resamplefactor',
 parser.add_argument('-config_dict',
                     dest='config_dict',
                     help='Specify which TPOT config dict to use',
-                    choices=['None', 'light', 'custom', 'ligth_no_preproc', 'gpr', 'gpr_full'],
+                    choices=['None', 'light', 'custom',
+                             'gpr', 'gpr_full', 'vanilla', 'feat_selec',
+                             'feat_combi', 'vanilla_combi'],
                     required=True
                     )
 parser.add_argument('-njobs',
@@ -88,9 +95,24 @@ parser.add_argument('-random_seed',
 parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
-                    choices=['vanilla', 'population', 'test'],
+                    choices=['vanilla', 'population', 'feat_selec',
+                             'feat_combi', 'vanilla_combi', 'mutation',
+                             'random_seed'],
                     required=True
                     )
+parser.add_argument('-mutation_rate',
+                   dest='mutation_rate',
+                   help='Must be on the range [0, 1.0]',
+                   type=float,
+                   default=.9
+                   )
+parser.add_argument('-crossover_rate',
+                    dest='crossover_rate',
+                    help='Cross over of the genetic algorithm. Must be on \
+                    the range [0, 1.0]',
+                    type=float,
+                    default=.1
+                   )
 
 args = parser.parse_args()
 
@@ -107,28 +129,58 @@ if __name__ == '__main__':
     elif args.config_dict == 'custom':
         from BayOptPy.tpot.custom_tpot_config_dict import tpot_config_custom
         tpot_config = tpot_config_custom
-    elif args.config_dict == 'light_no_preproc':
-        # this option uses the TPOT light definition without the preprocessing
-        tpot_config = get_config_dictionary()
     elif args.config_dict == 'gpr':
         from BayOptPy.tpot.gpr_tpot_config_dict import tpot_config_gpr
         tpot_config = tpot_config_gpr
     elif args.config_dict == 'gpr_full':
         from BayOptPy.tpot.gpr_tpot_config_dict_full import tpot_config_gpr
         tpot_config = tpot_config_gpr
+    elif args.config_dict == 'vanilla':
+        from BayOptPy.tpot.gpr_tpot_config_vanilla import tpot_config_gpr
+        tpot_config = tpot_config_gpr
+    elif args.config_dict == 'feat_selec':
+        #Load models for feature selection
+        from BayOptPy.tpot.gpr_tpot_config_feat_selec import tpot_config_gpr
+        tpot_config = tpot_config_gpr
+    elif args.config_dict == 'feat_combi':
+        # Load models for feature combination
+        from BayOptPy.tpot.gpr_tpot_config_feat_combi import tpot_config_gpr
+        tpot_config = tpot_config_gpr
+    elif args.config_dict == 'vanilla_combi':
+        # Load models for feature combination
+        from BayOptPy.tpot.gpr_tpot_config_feat_combi import tpot_config_gpr
+        tpot_config = tpot_config_gpr
 
     # Get data paths, the actual data and check if the output paths exists
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
     output_path = get_output_path(args.analysis, args.generations, args.random_seed,
-                                  args.population_size, args.debug)
+                                  args.population_size, args.debug,
+                                  args.mutation_rate, args.crossover_rate)
     demographics, imgs, data, _ = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
+
+    # Show mean std and F/M count for each dataset used
+    aggregations = {
+        'Age': ['mean', 'std', 'min', 'max'],
+        'sex': 'size'
+    }
+    demographics.groupby(['original_dataset', 'sex']).aggregate(aggregations)
+
+    # Print total N per dataset
+    for dataset in np.unique(demographics['original_dataset']):
+        print('%s: %d' % (dataset, sum(demographics['original_dataset'] == dataset)))
+
+    # Print demographics for the final dataset
+    demographics.groupby(['sex']).aggregate(aggregations)
+
     # Path to the folder where to save the best pipeline will be saved
     # Note: The pipeline will only be saved if it is different from the one in
     # the previous generation
     best_pipe_paths = get_best_pipeline_paths(args.analysis, args.generations,
                                               args.random_seed,
                                               args.population_size,
-                                              args.debug)
+                                              args.debug,
+                                              args.mutation_rate,
+                                              args.crossover_rate)
     print('Checkpoint folder path')
     print(best_pipe_paths)
 
@@ -157,6 +209,8 @@ if __name__ == '__main__':
     tpot = ExtendedTPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
                          offspring_size=args.offspring_size,
+                         mutation_rate=args.mutation_rate,
+                         crossover_rate=args.crossover_rate,
                          n_jobs=args.njobs,
                          cv=args.cv,
                          verbosity=2,

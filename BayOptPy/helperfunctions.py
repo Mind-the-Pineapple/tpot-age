@@ -1,3 +1,4 @@
+import joblib
 import os
 import shutil
 import re
@@ -8,6 +9,11 @@ from nilearn import masking, image
 import nibabel as nib
 import numpy as np
 from tqdm import tqdm
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
 
 def get_paths(debug, dataset):
 
@@ -60,10 +66,11 @@ def get_paths(debug, dataset):
     print('Data Out: %s' %project_sink )
     return project_wd, project_data, project_sink
 
-def get_output_path(analysis, ngen, random_seed, population_size, debug):
+def get_output_path(analysis, ngen, random_seed, population_size, debug,
+                    mutation, crossover):
     # Check if output path exists, otherwise create it
     rnd_seed_path = get_all_random_seed_paths(analysis, ngen, population_size,
-                                              debug)
+                                              debug, mutation, crossover)
     output_path = os.path.join(rnd_seed_path, 'random_seed_%03d' %random_seed)
 
     if not os.path.exists(output_path):
@@ -71,17 +78,20 @@ def get_output_path(analysis, ngen, random_seed, population_size, debug):
 
     return output_path
 
-def get_all_random_seed_paths(analysis, ngen, population_size, debug):
+def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
+                             crossover):
     # As they should have been created by the get_output_path, do not create
     # path but just find its location
-    if analysis == 'vanilla':
+    if analysis == 'vanilla' or analysis == 'feat_selec' or \
+        analysis == 'feat_combi' or analysis == 'vanilla_combi' or \
+        analysis == 'random_seed':
         if debug:
             output_path = os.path.join('BayOptPy', 'tpot', analysis,
                                        '%03d_generations' %ngen)
         else:
             output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
                                        '%03d_generations' %ngen)
-    if analysis == 'population':
+    elif analysis == 'population':
         if debug:
             output_path = os.path.join('BayOptPy', 'tpot', analysis,
                                        '%05d_population_size' %population_size,
@@ -90,18 +100,31 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug):
             output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
+    elif analysis == 'mutation':
+        if debug:
+            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+                                       '%03d_generations' %ngen,
+                                       '%.01f_mut_%.01f_cross' %(mutation, crossover))
+        else:
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+                                       '%03d_generations' %ngen,
+                                       '%.01f_mut_%.01f_cross' %(mutation, crossover))
+
+    else:
+        raise IOError('Analysis path not defined. Passed analysis was %s'
+                      %analysis)
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
     return output_path
 
-def get_best_pipeline_paths(analysis, ngen, random_seed, population_size, debug):
+def get_best_pipeline_paths(analysis, ngen, random_seed, population_size, debug,
+                           mutation, crossover):
     # check if folder exists and in case yes, remove it as new runs will save
     # new files without overwritting
-
     output_path = get_output_path(analysis, ngen, random_seed, population_size,
-                                  debug)
+                                  debug, mutation, crossover)
     checkpoint_path = os.path.join(output_path, 'checkpoint_folder')
 
     # Delete folder if it already exists and create a new one
@@ -320,4 +343,59 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
     maskedData = np.array(maskedData)
 
     return demographics, imgs, maskedData
+
+def get_mae_for_all_generations(dataset, random_seed, generations, config_dict,
+                               tpot_path):
+    '''
+    Get the MAE values for both the training and test dataset
+    :return:
+    '''
+    # Load the scores for the best models
+    saved_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed,
+                                   'tpot_%s_%s_%03dgen_pipelines.dump'
+                                    %(dataset, config_dict, generations))
+    # Note that if a value is not present for a generation, that means that the
+    # score did not change from the previous generation
+    # sort the array in ascending order
+    logbook = joblib.load(saved_path)
+    gen = list(logbook['log'].keys())
+
+    print('There are %d optminal pipelines' %len(gen))
+    print('These are the best pipelines')
+    for generation in gen:
+        print(logbook['log'][generation]['pipeline_name'])
+
+    # Iterate over the the list of saved MAEs and repeat the values where one
+    # generation is missed
+    all_mae_test = []
+    all_mae_train = []
+    pipeline_complexity = []
+    curr_gen_idx = 0
+    # all generations
+    for generation in range(generations):
+        if generation == gen[curr_gen_idx]:
+            all_mae_test.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_test_mae']))
+            all_mae_train.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_score']))
+            pipeline_complexity.append(len(logbook['log'][gen[curr_gen_idx]]['pipeline_sklearn_obj'].named_steps.keys()))
+            if len(gen) > 1 and (len(gen) > curr_gen_idx + 1):
+                curr_gen_idx += 1
+        else:
+            # repeat the same last value
+            all_mae_test.append(all_mae_test[-1])
+            all_mae_train.append(all_mae_train[-1])
+            pipeline_complexity.append(pipeline_complexity[-1])
+
+    # transform the pipeline_complexity into a numpy array, in order to perform
+    # fancy indexing
+    pipeline_complexity = np.array(pipeline_complexity)
+    return all_mae_test, all_mae_train, pipeline_complexity
+
+def set_publication_style():
+    # Se font size to paper size
+    plt.style.use(['seaborn-white', 'seaborn-talk'])
+    matplotlib.rc("font", family="Times New Roman")
+    # Remove the spines
+    sns.set_style('white', {"axes.spines.top": False,
+                            "axes.spines.right": False,
+                            "axes.labelsize": 'large'})
 

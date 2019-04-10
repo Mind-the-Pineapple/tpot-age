@@ -12,55 +12,9 @@ import argparse
 import numpy as np
 import joblib
 
-from BayOptPy.helperfunctions import get_paths, get_all_random_seed_paths
-
-def set_publication_style():
-    # Se font size to paper size
-    plt.style.use(['seaborn-white', 'seaborn-talk'])
-    matplotlib.rc("font", family="Times New Roman")
-    # Remove the spines
-    sns.set_style('white', {"axes.spines.top": False,
-                            "axes.spines.right": False,
-                            "axes.labelsize": 'large'})
-
-
-def get_mae_for_all_generations(dataset, random_seed, generations):
-    '''
-    Get the MAE values for both the training and test dataset
-    :return:
-    '''
-    # Load the scores for the best models
-    saved_path = os.path.join(tpot_path, 'random_seed_%03d' %random_seed,
-                                   'tpot_%s_gpr_full_%03dgen_pipelines.dump'
-                                    %(dataset, generations))
-    # Note that if a value is not present for a generation, that means that the
-    # score did not change from the previous generation
-    # sort the array in ascending order
-    logbook = joblib.load(saved_path)
-    gen = list(logbook['log'].keys())
-
-    print('There are %d optminal pipelines' %len(gen))
-    print('These are the best pipelines')
-    for generation in gen:
-        print(logbook['log'][generation]['pipeline_name'])
-
-    # Iterate over the the list of saved MAEs and repeat the values where one
-    # generation is missed
-    all_mae_test = []
-    all_mae_train = []
-    curr_gen_idx = 0
-    # all generations
-    for generation in range(generations):
-        if generation == gen[curr_gen_idx]:
-            all_mae_test.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_test_mae']))
-            all_mae_train.append(abs(logbook['log'][gen[curr_gen_idx]]['pipeline_score']))
-            if len(gen) > 1 and (len(gen) > curr_gen_idx + 1):
-                curr_gen_idx += 1
-        else:
-            # repeat the same last value
-            all_mae_test.append(abs(all_mae_test[-1]))
-            all_mae_train.append(abs(all_mae_train[-1]))
-    return all_mae_test, all_mae_train
+from BayOptPy.helperfunctions import (get_paths, get_all_random_seed_paths,
+                                      get_mae_for_all_generations,
+                                      set_publication_style)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-debug',
@@ -77,7 +31,9 @@ parser.add_argument('-dataset',
 parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
-                    choices=['vanilla', 'population'],
+                    choices=['vanilla', 'population', 'feat_combi',
+                             'feat_selec', 'vanilla', 'vanilla_combi',
+                             'mutation', 'random_seed'],
                     required=True
                     )
 parser.add_argument('-generations',
@@ -98,6 +54,26 @@ parser.add_argument('-random_seeds',
                     nargs='+',
                     required=True,
                     type=int
+                   ),
+parser.add_argument('-config_dict',
+                    dest='config_dict',
+                    help='Specify the list of models to use',
+                    required=True,
+                    choices=['None', 'light', 'custom', 'gpr', 'gpr_full',
+                        'feat_combi', 'feat_selec', 'vanilla', 'vanilla_combi']
+                   )
+parser.add_argument('-mutation_rate',
+                   dest='mutation_rate',
+                   help='Must be on the range [0, 1.0]',
+                   type=float,
+                   default=.9
+                   )
+parser.add_argument('-crossover_rate',
+                    dest='crossover_rate',
+                    help='Cross over of the genetic algorithm. Must be on \
+                    the range [0, 1.0]',
+                    type=float,
+                    default=.1
                    )
 args = parser.parse_args()
 
@@ -111,7 +87,9 @@ set_publication_style()
 project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
 tpot_path = get_all_random_seed_paths(args.analysis, args.generations,
                                       args.population_size,
-                                      args.debug)
+                                      args.debug,
+                                      args.mutation_rate,
+                                      args.crossover_rate)
 
 colour_list = ['#588ef3']
 def plt_filled_std(ax, data, data_mean, data_std, color):
@@ -143,10 +121,13 @@ for random_seed in args.random_seeds:
     plt.savefig(os.path.join(generation_analysis_path, 'mean_std.png'))
     plt.close()
 
+
     # plot the max fitness over different generations for the training and test dataset
-    all_mae_test_set, all_mae_train_set = get_mae_for_all_generations(args.dataset,
-                                                                random_seed,
-                                                                args.generations)
+    all_mae_test_set, all_mae_train_set, pipeline_complexity = \
+            get_mae_for_all_generations(args.dataset,
+                                        random_seed,
+                                        args.generations,
+                                        args.config_dict, tpot_path)
     plt.figure()
     plt.plot(range(len(all_mae_train_set)), all_mae_train_set, marker='o', label='traning set')
     # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
@@ -155,10 +136,27 @@ for random_seed in args.random_seeds:
     plt.legend()
     plt.xlabel('Generation')
     plt.ylabel('MAE')
-    plt.title('Random Seed %d' %random_seed)
+    plt.ylim(5,7)
     plt.savefig(os.path.join(generation_analysis_path, 'train_test_fitness.png'))
     # Save the current random_see max fitness for further analysis
     avg_max_fitness.append(fitness['max'])
+
+    # Plot the different MAE for each generation and use the complexity of the
+    # model as hue
+    # plt.figure()
+    # import pdb
+    # pdb.set_trace()
+    # n_complexities = np.unique(pipeline_complexity)
+    # for complexity in n_complexities:
+    #     plt.scatter(range(len(pipeline_complexity)),
+    #             all_mae_train_set[n_complexities==complexity], marker='o',
+    #             c=complexity, label=complexity)
+    # plt.xlabel('Generation')
+    # plt.ylabel('MAE')
+    # plt.legend()
+    # plt.savefig(os.path.join(generation_analysis_path, 'pipeline_complexity.png'))
+
+
 
     # plot the cross-validated MAE for the training and test dataset
     plt.figure()
@@ -168,7 +166,6 @@ for random_seed in args.random_seeds:
     plt.legend()
     plt.xlabel('Generation')
     plt.ylabel('MAE')
-    plt.title('Random Seed %d' %random_seed)
     plt.savefig(os.path.join(generation_analysis_path, 'max_fitness.png'))
     # Save the current random_see max fitness for further analysis
     avg_max_fitness.append(fitness['max'])
@@ -221,13 +218,11 @@ for random_seed in args.random_seeds:
     #Plot Boxplot
     plt.figure()
     data = [abs(fitness['raw'][generation]) for generation in range(len(fitness))]
-    plt.title('Basic Plot')
     fig, ax = plt.subplots(1,1)
     outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
     plt.boxplot(data, positions=range(0, len(fitness)), vert=False, showfliers=True, flierprops=outliers)
     plt.xlabel('MAE')
     plt.ylabel('Generations')
-    plt.title('Random Seed %d' %random_seed)
     # TODO: improve how you determine this threshold (there are models that are worse)
     ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
     ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
@@ -236,13 +231,11 @@ for random_seed in args.random_seeds:
 
     #Plot Boxplot
     plt.figure()
-    plt.title('Basic Plot')
     fig, ax = plt.subplots(1,1)
     outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
     plt.boxplot(data, positions=range(0, len(fitness)), vert=False, showfliers=True, flierprops=outliers)
     plt.xlabel('MAE')
     plt.ylabel('Generations')
-    plt.title('Random Seed %d' %random_seed)
     # TODO: improve how you determine this threshold (there are models that are worse)
     plt.xlim(4, 45)
     ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
@@ -256,7 +249,6 @@ for random_seed in args.random_seeds:
     plt.violinplot(data, positions=range(0, len(fitness)), vert=False, showmedians=True)
     plt.xlabel('MAE')
     plt.ylabel('Generations')
-    plt.title('Random Seed %d' % random_seed)
     plt.savefig(os.path.join(generation_analysis_path, 'violin.png'))
     plt.close()
 
@@ -266,67 +258,70 @@ for random_seed in args.random_seeds:
     plt.violinplot(data, positions=range(0, len(fitness)),vert=False, showmedians=True)
     plt.xlabel('MAE')
     plt.ylabel('Generations')
-    plt.title('Random Seed %d' % random_seed)
     plt.xlim(4, 45)
     plt.savefig(os.path.join(generation_analysis_path, 'violin2.png'))
     plt.close()
 
-    # plot the MAE for the first generation
+    # plot the MAE for a selected number of generations
+    selected_gens = np.arange(0,args.generations+1,5)
     tpot_obj_path = os.path.join(tpot_path, 'random_seed_%03d',
-                                  'tpot_BANC_freesurf_gpr_full_%03dgen.dump'
-                                 ) %(random_seed, args.generations)
+                                  'tpot_BANC_freesurf_%s_%03dgen.dump'
+                                 ) %(random_seed, args.config_dict, args.generations)
     tpot_obj = joblib.load(tpot_obj_path)
-    first_gen_mae = [tpot_obj['evaluated_individuals'][0][model]['internal_cv_score'] for model in
-                     tpot_obj['evaluated_individuals'][0].keys()]
-    # Devide mae into 3 groups according to their values
-    group_first_gen_mae = [0 if x>-9 else 1 if x<-19 else 2 for x in
-                           first_gen_mae]
-    print('Show group belongings')
-    print(group_first_gen_mae)
+    for selected_gen in selected_gens:
+        curr_gen_mae = \
+        [tpot_obj['evaluated_individuals'][selected_gen][model]['internal_cv_score']
+                for model in
+                         tpot_obj['evaluated_individuals'][selected_gen].keys()]
+        # Devide mae into 3 groups according to their values
+        group_selected_gen_mae = [0 if x>-9 else 1 if x<-19 else 2 for x in
+                               curr_gen_mae]
+        print('Show group belongings')
+        print(group_selected_gen_mae)
 
 
-    # Print the models in the first groups
-    cluster_mae_name = {k:[] for k in range(3)}
-    cluster_mae = {k:[] for k in range(3)}
-    cluster_idx = {k:[] for k in range(3)}
-    # Note: From Python 3.6 forwards dictionary are ordered
-    for idx, key in enumerate(tpot_obj['evaluated_individuals'][0]):
-        if group_first_gen_mae[idx] == 0:
-            cluster_idx[0].append(idx)
-            cluster_mae_name[0].append(key)
-            cluster_mae[0].append(abs(first_gen_mae[idx]))
+        # Print the models in the first groups
+        cluster_mae_name = {k:[] for k in range(3)}
+        cluster_mae = {k:[] for k in range(3)}
+        cluster_idx = {k:[] for k in range(3)}
+        # Note: From Python 3.6 forwards dictionary are ordered
+        for idx, key in enumerate(tpot_obj['evaluated_individuals'][selected_gen]):
+            if group_selected_gen_mae[idx] == 0:
+                cluster_idx[0].append(idx)
+                cluster_mae_name[0].append(key)
+                cluster_mae[0].append(abs(curr_gen_mae[idx]))
 
-        if group_first_gen_mae[idx] == 1:
-            cluster_idx[1].append(idx)
-            cluster_mae_name[1].append(key)
-            cluster_mae[1].append(abs(first_gen_mae[idx]))
+            if group_selected_gen_mae[idx] == 1:
+                cluster_idx[1].append(idx)
+                cluster_mae_name[1].append(key)
+                cluster_mae[1].append(abs(curr_gen_mae[idx]))
 
-        if group_first_gen_mae[idx] == 2:
-            cluster_idx[2].append(idx)
-            cluster_mae_name[2].append(key)
-            cluster_mae[2].append(abs(first_gen_mae[idx]))
+            if group_selected_gen_mae[idx] == 2:
+                cluster_idx[2].append(idx)
+                cluster_mae_name[2].append(key)
+                cluster_mae[2].append(abs(curr_gen_mae[idx]))
 
-    print('First MAE Group:')
-    print('Number of models: %d' %len(cluster_mae_name[0]))
-    print(cluster_mae_name[0])
-    print('Second MAE Group')
-    print('Number of models: %d' %len(cluster_mae_name[1]))
-    print(cluster_mae_name[1])
-    print('Third MAE Group')
-    print('Number of models: %d' %len(cluster_mae_name[2]))
-    print(cluster_mae_name[2])
+        print('First MAE Group:')
+        print('Number of models: %d' %len(cluster_mae_name[0]))
+        print(cluster_mae_name[0])
+        print('Second MAE Group')
+        print('Number of models: %d' %len(cluster_mae_name[1]))
+        print(cluster_mae_name[1])
+        print('Third MAE Group')
+        print('Number of models: %d' %len(cluster_mae_name[2]))
+        print(cluster_mae_name[2])
 
-    plt.figure()
-    # plt.scatter(range(len(first_gen_mae)), first_gen_mae, c=group_first_gen_mae)
-    markers = 'o'
-    hatchs = [None, '|', '|||']
-    sns.set_palette('OrRd')
-    for group in np.unique(group_first_gen_mae):
-        plt.scatter(cluster_idx[group], cluster_mae[group], marker=markers, hatch=hatchs[group])
-    plt.ylabel('MAE')
-    plt.xlabel('Models')
-    plt.savefig(os.path.join(generation_analysis_path, 'first_gen_mae.png'))
-    plt.close()
+        plt.figure()
+        markers = 'o'
+        hatchs = [None, '|', '|||']
+        sns.set_palette('OrRd')
+        for group in np.unique(group_selected_gen_mae):
+            plt.scatter(cluster_idx[group], cluster_mae[group], marker=markers, hatch=hatchs[group])
+        plt.ylabel('MAE')
+        plt.xlabel('Models')
+        plt.savefig(os.path.join(generation_analysis_path, '%d_gen_mae.png'
+            %selected_gen))
+        plt.close()
 
 # Plot max statiscal max fitness for the different random seeds
 # plot the mean and std of the fitness over different generations
