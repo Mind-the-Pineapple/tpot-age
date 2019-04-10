@@ -1,8 +1,6 @@
 #!/bin/bash --login
-# Defines if the job can be re-run, in case the host crashes
-#$ -r n
 # How much memory needed *per core*
-#$ -l h_vmem=10G
+#$ -l h_vmem=2G
 
 # Which operating system to use
 #$ -l cns_os=el7
@@ -13,16 +11,18 @@
 #$ -pe smp 20
 
 # Where to save the STDOUT and STDERR
-#$ -o ~/BayOpt/singularity/logs/vanilla
-#$ -e ~/BayOpt/singularity/logs/vanilla
+#$ -o ~/BayOpt/singularity/logs/mutation
+#$ -e ~/BayOpt/singularity/logs/mutation
 
 # Create 2 job submissions
-#-t 200-445:5
+#$ -t 2-102:10
 # lower bound 200, upper bound 445, step of 5
 ####$ -t 1-21:10
 
 /home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
 /code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
--generations 100 -population_size 100 -offspring_size 100 -config_dict gpr_full \
--njobs 20 -random_seed 42 -analysis vanilla
+-generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
+-njobs 20 -random_seed $SGE_TASK_ID -analysis random_seed -mutation_rate 0.9 -crossover_rate 0.1
+
+echo ${SGE_JOB_ID}:${SGE_TASK_ID}
 
