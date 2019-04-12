@@ -80,8 +80,7 @@ args = parser.parse_args()
 # Set plot styles
 set_publication_style()
 
-#random_seeds = [0, 5, 10, 20, 30, 42, 60, 80]
-#random_seeds = [30]
+random_seeds = [20, 30, 40, 50, 60]
 
 # get corerct path
 project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
@@ -91,17 +90,18 @@ tpot_path = get_all_random_seed_paths(args.analysis, args.generations,
                                       args.mutation_rate,
                                       args.crossover_rate)
 
-colour_list = ['#588ef3']
-def plt_filled_std(ax, data, data_mean, data_std, color):
+colour_list = ['#5dade2', '#e67e22']
+def plt_filled_std(ax, data, data_mean, data_std, color, label=None):
     cis = (data_mean - data_std, data_mean + data_std)
     # plot filled area
     ax.fill_between(data, cis[0], cis[1], alpha=.2, color=color)
     # plot mean
-    ax.plot(data, data_mean, linewidth=2)
+    ax.plot(data, data_mean, linewidth=2, label=label)
     ax.margins(x=0)
 
 # load file
-avg_max_fitness = []
+mae_train_all = []
+mae_test_all = []
 for random_seed in args.random_seeds:
     generation_analysis_path = os.path.join(tpot_path, 'random_seed_%03d', 'generation_analysis') %random_seed
 
@@ -115,7 +115,8 @@ for random_seed in args.random_seeds:
 
     # plot the mean and std of the fitness over different generations
     fig, ax = plt.subplots(1)
-    plt_filled_std(ax, range(len(fitness)), fitness['avg'], fitness['std'], colour_list[0])
+    plt_filled_std(ax, range(len(fitness)), fitness['avg'], fitness['std'],
+                   colour_list[0], None)
     plt.xlabel('Generation')
     plt.ylabel('Fitness')
     plt.savefig(os.path.join(generation_analysis_path, 'mean_std.png'))
@@ -128,18 +129,20 @@ for random_seed in args.random_seeds:
                                         random_seed,
                                         args.generations,
                                         args.config_dict, tpot_path)
+    mae_train_all.append(all_mae_train_set)
+    mae_test_all.append(all_mae_test_set)
     plt.figure()
-    plt.plot(range(len(all_mae_train_set)), all_mae_train_set, marker='o', label='traning set')
+    plt.plot(range(len(all_mae_train_set)), all_mae_train_set, marker='o',
+             color=colour_list[0], label='traning set')
     # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
     #          label='avg_training')
-    plt.plot(range(len(all_mae_test_set)), all_mae_test_set, marker='o', label='test set')
+    plt.plot(range(len(all_mae_test_set)), all_mae_test_set, marker='o',
+             color=colour_list[1], label='test set')
     plt.legend()
     plt.xlabel('Generation')
     plt.ylabel('MAE')
-    plt.ylim(5,7)
+    plt.ylim(5,8)
     plt.savefig(os.path.join(generation_analysis_path, 'train_test_fitness.png'))
-    # Save the current random_see max fitness for further analysis
-    avg_max_fitness.append(fitness['max'])
 
     # Plot the different MAE for each generation and use the complexity of the
     # model as hue
@@ -168,7 +171,6 @@ for random_seed in args.random_seeds:
     plt.ylabel('MAE')
     plt.savefig(os.path.join(generation_analysis_path, 'max_fitness.png'))
     # Save the current random_see max fitness for further analysis
-    avg_max_fitness.append(fitness['max'])
 
     # # find the maximum and minimum histogram count
     # max_n = 0
@@ -325,12 +327,29 @@ for random_seed in args.random_seeds:
 
 # Plot max statiscal max fitness for the different random seeds
 # plot the mean and std of the fitness over different generations
+mae_test_all_np = np.array(mae_test_all)
+mae_train_all_np = np.array(mae_train_all)
 fig, ax = plt.subplots(1)
-plt_filled_std(ax, range(len(fitness)), np.mean(avg_max_fitness, axis=0), np.std(avg_max_fitness, axis=0), colour_list[0])
+plt_filled_std(ax, range(mae_test_all_np.shape[1]), np.mean(mae_test_all_np, axis=0),
+               np.std(mae_test_all_np, axis=0), colour_list[1], 'Test')
+# plt_filled_std(ax, range(mae_train_all_np.shape[1]), np.mean(mae_train_all_np, axis=0),
+#                np.std(mae_train_all_np, axis=0), colour_list[0], 'Train')
 plt.xlabel('Generation')
 plt.ylabel('MAE')
+plt.legend()
 plt.savefig(os.path.join(tpot_path, 'all_seeds_mean_std.png'))
 plt.close()
 
+#Plot Boxplot
+plt.figure()
+fig, ax = plt.subplots(1,1)
+outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
+plt.boxplot(mae_train_all, positions=range(0, len(mae_train_all)), vert=False,
+            showfliers=True, flierprops=outliers)
+plt.xlabel('MAE')
+plt.ylabel('Random Seeds')
+# ax.set_yticks(args.random_seeds)
+plt.savefig(os.path.join(tpot_path, 'boxplot_all_random_train.png'))
+plt.close()
 
 
