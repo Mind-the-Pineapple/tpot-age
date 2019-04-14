@@ -219,48 +219,64 @@ for random_seed in args.random_seeds:
 
     #Plot Boxplot
     plt.figure()
-    data = [abs(fitness['raw'][generation]) for generation in range(len(fitness))]
+    data = [abs(fitness['raw'][generation]) for generation in
+                         range(len(fitness))]
     fig, ax = plt.subplots(1,1)
-    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
-    plt.boxplot(data, positions=range(0, len(fitness)), vert=False, showfliers=True, flierprops=outliers)
-    plt.xlabel('MAE')
-    plt.ylabel('Generations')
+    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.1)
+    plt.boxplot(data, positions=range(0, len(fitness)), showfliers=True, flierprops=outliers)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
     # TODO: improve how you determine this threshold (there are models that are worse)
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
-    ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
     plt.savefig(os.path.join(generation_analysis_path, 'boxplot.png'))
     plt.close()
 
     #Plot Boxplot
     plt.figure()
     fig, ax = plt.subplots(1,1)
-    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
-    plt.boxplot(data, positions=range(0, len(fitness)), vert=False, showfliers=True, flierprops=outliers)
-    plt.xlabel('MAE')
-    plt.ylabel('Generations')
+    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.1)
+    plt.boxplot(data, positions=range(0, len(fitness)), showfliers=True, flierprops=outliers)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
     # TODO: improve how you determine this threshold (there are models that are worse)
-    plt.xlim(4, 45)
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
-    ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+    plt.ylim(0, 45)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
     plt.savefig(os.path.join(generation_analysis_path, 'boxplot2.png'))
+    plt.close()
+
+    #Plot Boxplot at every 10-th generation
+    plt.figure()
+    fig, ax = plt.subplots(1,1)
+    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.1)
+
+    plt.boxplot(data[0:101:10], positions=range(0, len(fitness),10), showfliers=True, flierprops=outliers)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
+    # TODO: improve how you determine this threshold (there are models that are worse)
+    plt.ylim(0, 45)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    plt.savefig(os.path.join(generation_analysis_path, 'boxplot3.png'))
     plt.close()
 
     # Plot violin plot
     plt.figure()
     fig, ax = plt.subplots(1, 1)
-    plt.violinplot(data, positions=range(0, len(fitness)), vert=False, showmedians=True)
-    plt.xlabel('MAE')
-    plt.ylabel('Generations')
+    plt.violinplot(data, positions=range(0, len(fitness)), showmedians=True)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
     plt.savefig(os.path.join(generation_analysis_path, 'violin.png'))
     plt.close()
 
     # Plot violin plot2
     plt.figure()
     fig, ax = plt.subplots(1, 1)
-    plt.violinplot(data, positions=range(0, len(fitness)),vert=False, showmedians=True)
-    plt.xlabel('MAE')
-    plt.ylabel('Generations')
-    plt.xlim(4, 45)
+    plt.violinplot(data, positions=range(0, len(fitness)), showmedians=True)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
+    plt.ylim(4, 45)
     plt.savefig(os.path.join(generation_analysis_path, 'violin2.png'))
     plt.close()
 
@@ -271,6 +287,7 @@ for random_seed in args.random_seeds:
                                  ) %(random_seed, args.config_dict, args.generations)
     tpot_obj = joblib.load(tpot_obj_path)
     for selected_gen in selected_gens:
+        print(selected_gen)
         curr_gen_mae = \
         [tpot_obj['evaluated_individuals'][selected_gen][model]['internal_cv_score']
                 for model in
@@ -303,15 +320,16 @@ for random_seed in args.random_seeds:
                 cluster_mae_name[2].append(key)
                 cluster_mae[2].append(abs(curr_gen_mae[idx]))
 
-        print('First MAE Group:')
+        print('First MAE Group: samller -9')
         print('Number of models: %d' %len(cluster_mae_name[0]))
         print(cluster_mae_name[0])
-        print('Second MAE Group')
+        print('Second MAE Group: x > 19')
         print('Number of models: %d' %len(cluster_mae_name[1]))
         print(cluster_mae_name[1])
-        print('Third MAE Group')
+        print('Third MAE Group: between 9 and 19')
         print('Number of models: %d' %len(cluster_mae_name[2]))
         print(cluster_mae_name[2])
+        print('------------------------------------------------------------------')
 
         plt.figure()
         markers = 'o'
@@ -334,8 +352,8 @@ plt_filled_std(ax, range(mae_test_all_np.shape[1]), np.mean(mae_test_all_np, axi
                np.std(mae_test_all_np, axis=0), colour_list[1], 'Test')
 # plt_filled_std(ax, range(mae_train_all_np.shape[1]), np.mean(mae_train_all_np, axis=0),
 #                np.std(mae_train_all_np, axis=0), colour_list[0], 'Train')
-plt.xlabel('Generation')
-plt.ylabel('MAE')
+plt.ylabel('Generation')
+plt.xlabel('MAE')
 plt.legend()
 plt.savefig(os.path.join(tpot_path, 'all_seeds_mean_std.png'))
 plt.close()
@@ -343,11 +361,11 @@ plt.close()
 #Plot Boxplot
 plt.figure()
 fig, ax = plt.subplots(1,1)
-outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
-plt.boxplot(mae_train_all, positions=range(0, len(mae_train_all)), vert=False,
+outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.1)
+plt.boxplot(mae_train_all, positions=range(0, len(mae_train_all)),
             showfliers=True, flierprops=outliers)
-plt.xlabel('MAE')
-plt.ylabel('Random Seeds')
+plt.ylabel('MAE')
+plt.xlabel('Random Seeds')
 # ax.set_yticks(args.random_seeds)
 plt.savefig(os.path.join(tpot_path, 'boxplot_all_random_train.png'))
 plt.close()
