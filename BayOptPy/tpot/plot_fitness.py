@@ -1,7 +1,6 @@
 import os
 import pickle
 import joblib
-import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -10,6 +9,7 @@ import seaborn as sns
 sns.set()
 import argparse
 import numpy as np
+import pandas as pd
 import joblib
 
 from BayOptPy.helperfunctions import (get_paths, get_all_random_seed_paths,
@@ -82,7 +82,7 @@ set_publication_style()
 
 random_seeds = [20, 30, 40, 50, 60]
 
-# get corerct path
+# get correct path
 project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
 tpot_path = get_all_random_seed_paths(args.analysis, args.generations,
                                       args.population_size,
@@ -342,6 +342,50 @@ for random_seed in args.random_seeds:
         plt.savefig(os.path.join(generation_analysis_path, '%d_gen_mae.png'
             %selected_gen))
         plt.close()
+    print('')
+    print('------------------------------------------------------------------')
+    print('Plot Heatmap with algorithm counts')
+    print('------------------------------------------------------------------')
+    print('')
+    # Define the list of possible models
+    algorithms_list = ['GaussianProcessRegressor', 'RVR', 'LinearSVR',
+                                'RandomForestRegressor',
+                                'KNeighborsRegressor',
+                                'LinearRegression', 'Ridge','ElasticNetCV',
+                                'ExtraTreesRegressor', 'LassoLarsCV',
+                                'DecisionTreeRegressor']
+
+    df = pd.DataFrame(columns=algorithms_list,
+                     index=tpot_obj['evaluated_individuals'].keys())
+
+    # Iterate over all the dictionary keys from the dictionary with the TPOT
+    # analysed model and count the ocurrence of each one of the algorithms of
+    # interest
+    for generation in tpot_obj['evaluated_individuals']:
+        algorithms_dic = dict.fromkeys(algorithms_list, 0)
+        for algorithm in algorithms_list:
+            for tpot_pipeline in tpot_obj['evaluated_individuals'][generation]:
+                 # By using '( we count the  algorithm only once and do not# care about its
+                 # hyperparameters definitions'
+                 algorithms_dic[algorithm] += tpot_pipeline.count(algorithm + '(')
+                 # Append the count of algorithms to the dataframe
+                 df.loc[generation] = pd.Series(algorithms_dic)
+
+     # Create heatmap
+    df2 = df.transpose()
+    plt.figure(figsize=(8,8))
+    sns.heatmap(df2,
+             cmap='YlGnBu')
+    plt.xlabel('Generations')
+    plt.tight_layout()
+    plt.savefig(os.path.join(generation_analysis_path, 'heatmap.png'))
+    plt.close()
+
+    print('Maximum Count for each algorithm')
+    print(df2.max())
+    print('Minimum Count for each algorithm')
+    print(df2.min())
+
 
 # Plot max statiscal max fitness for the different random seeds
 # plot the mean and std of the fitness over different generations
