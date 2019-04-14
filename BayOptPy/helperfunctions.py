@@ -410,3 +410,25 @@ def set_publication_style():
                             "axes.spines.right": False,
                             "axes.labelsize": 'large'})
 
+def create_age_histogram(training_age, test_age, dataset):
+    '''
+    Get an age array and plot and save the age histogram for the analysed sample
+    '''
+    # Define plot styple
+    set_publication_style()
+    if dataset == 'BANC':
+        path_to_save = '/code/BayOptPy/tpot/age_histogram_BANC.png'
+        # Define plot range
+        # 17 and 89 are the min and max age on the dataset respectively
+        min_age = 17
+        max_age = 89
+        plt.hist(training_age, bins=65, range=(min_age,max_age), label='training')
+        plt.hist(test_age, bins=65, range=(min_age,max_age), label='test')
+        plt.xlabel('Age')
+        plt.ylabel('# of Subjects')
+        plt.legend()
+        plt.savefig(path_to_save)
+        plt.close()
+    elif dataset == 'UBKBIO':
+        pass
+

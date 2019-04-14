@@ -16,7 +16,8 @@ from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import (get_data, get_paths,
                                       get_config_dictionary, get_output_path,
                                       get_best_pipeline_paths,
-                                      drop_missing_features)
+                                      drop_missing_features,
+                                      create_age_histogram)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-gui',
@@ -98,7 +99,7 @@ parser.add_argument('-analysis',
                     help='Specify which type of analysis to use',
                     choices=['vanilla', 'population', 'feat_selec',
                              'feat_combi', 'vanilla_combi', 'mutation',
-                             'random_seed'],
+                             'random_seed', 'ukbio'],
                     required=True
                     )
 parser.add_argument('-mutation_rate',
@@ -210,6 +211,10 @@ if __name__ == '__main__':
     print('Y_train: ' + str(Ytrain.shape))
     print('Y_test: '  + str(Ytest.shape))
 
+    # Plot age distribu?!?jedi=0, tion for the training and test dataset?!? (training_age, test_age, *_*path_to_save*_*) ?!?jedi?!?
+    create_age_histogram(Ytrain, Ytest, 'BANC')
+    import pdb
+    pdb.set_trace()
     tpot = ExtendedTPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
                          offspring_size=args.offspring_size,
