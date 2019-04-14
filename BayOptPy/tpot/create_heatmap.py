@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
@@ -15,20 +16,26 @@ algorithms_list = ['GaussianProcessRegressor', 'RVR', 'LinerSVR',
           'LinearRegression', 'Ridge','ElasticNetCV',
           'ExtraTreesRegressor', 'LassoLarsCV',
           'DecisionTreeRegressor']
-algorithms_dic = dict.fromkeys(results['evaluated_individuals'].keys(), {})
-# Append empty dictionary with the list of models to each generation
-for generation in results['evaluated_individuals']:
-    algorithms_dic[generation] = dict.fromkeys(algorithms_list, 0)
+
+df = pd.DataFrame(columns=algorithms_list, index=results['evaluated_individuals'].keys())
 
 # Iterate over all the dictionary keys from the dictionary with the TPOT
 # analysed model and count the ocurrence of each one of the algorithms of
 # interest
 for generation in results['evaluated_individuals']:
-    for algorithm in algorithms_dic[generation]:
+    algorithms_dic = dict.fromkeys(algorithms_list, 0)
+    for algorithm in algorithms_list:
         for tpot_pipeline in results['evaluated_individuals'][generation]:
             # By using '( we cound the algorithm only once and do not
             # care about its hyperparameters definitions'
-            algorithms_dic[generation][algorithm] += tpot_pipeline.count(algorithm + '(')
+            algorithms_dic[algorithm] += tpot_pipeline.count(algorithm + '(')
+    # Append the count of algorithms to the dataframe
+    df.loc[generation] = pd.Series(algorithms_dic)
 
-import pdb
-pdb.set_trace()
+# Create heatmap
+df2 = df.transpose()
+plt.figure(figsize=(8,8))
+sns.heatmap(df2, cmap='YlGnBu')
+plt.xlabel('Generations')
+plt.tight_layout()
+plt.savefig('/code/BayOptPy/tpot/heatmap.png')
