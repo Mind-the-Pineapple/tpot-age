@@ -6,13 +6,16 @@ sns.set()
 import os
 import joblib
 
+# This script creates the heatplot for one single type of analysis that is
+# specified on the path
+
 # Load the analysis results
 path = '/code/BayOptPy/tpot/vanilla_combi/100_generations/random_seed_010/tpot_BANC_freesurf_vanilla_combi_100gen.dump'
 results = joblib.load(path)
 
 # Define the list of possible models
-algorithms_list = ['GaussianProcessRegressor', 'RVR', 'LinerSVR',
-          'RandomForestRegressor', 'KNeighborsRegressors',
+algorithms_list = ['GaussianProcessRegressor', 'RVR', 'LinearSVR',
+          'RandomForestRegressor', 'KNeighborsRegressor',
           'LinearRegression', 'Ridge','ElasticNetCV',
           'ExtraTreesRegressor', 'LassoLarsCV',
           'DecisionTreeRegressor']
