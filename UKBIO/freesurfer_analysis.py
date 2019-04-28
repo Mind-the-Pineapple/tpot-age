@@ -155,6 +155,7 @@ df_ukbio = freesurfer_df_ukbio[freesurfer_banc_columns]
 df_ukbio.index.name = 'ID'
 variables_of_interest = ['lhCerebralWhiteMatterVol', 'rhCerebralWhiteMatterVol',
                          'CerebralWhiteMatterVol']
+
 # Generate a few plots to make sure you are comparing the same things among both
 # datasets
 df_ukbio['dataset'] = 'ukbio'
@@ -178,6 +179,14 @@ banc_rh_thickness = [renameCols[x] for x in rh_thickness]
 
 df_combined['lh_MeanThickness_thickness'] = df_combined[banc_lh_thickness].mean(axis=1)
 df_combined['rh_MeanThickness_thickness'] = df_combined[banc_rh_thickness].mean(axis=1)
+
+# Create the missing value mean_thickness rh and lh for the UKBIO dataset
+idx_lh_mean_thickness = freesurfer_df_banc.columns.get_loc('lh_MeanThickness_thickness')
+idx_rh_mean_thickness = freesurfer_df_banc.columns.get_loc('rh_MeanThickness_thickness')
+df_ukbio.insert(loc=idx_lh_mean_thickness, column='lh_MeanThickness_thickness',
+               value=df_ukbio[banc_lh_thickness].mean(axis=1))
+df_ukbio.insert(loc=idx_rh_mean_thickness, column='rh_MeanThickness_thickness',
+               value=df_ukbio[banc_rh_thickness].mean(axis=1))
 
 # Check if the calculated mean value is the same as the given mean value for the
 # banc dataset
