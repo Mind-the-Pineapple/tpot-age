@@ -211,10 +211,9 @@ if __name__ == '__main__':
     print('Y_train: ' + str(Ytrain.shape))
     print('Y_test: '  + str(Ytest.shape))
 
-    # Plot age distribu?!?jedi=0, tion for the training and test dataset?!? (training_age, test_age, *_*path_to_save*_*) ?!?jedi?!?
+    # Plot age distribution for the training and test dataset
     create_age_histogram(Ytrain, Ytest, 'BANC')
-    import pdb
-    pdb.set_trace()
+
     tpot = ExtendedTPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
                          offspring_size=args.offspring_size,
