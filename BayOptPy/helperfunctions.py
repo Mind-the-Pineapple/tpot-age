@@ -84,7 +84,7 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
     # path but just find its location
     if analysis == 'vanilla' or analysis == 'feat_selec' or \
         analysis == 'feat_combi' or analysis == 'vanilla_combi' or \
-        analysis == 'random_seed':
+        analysis == 'random_seed' or analysis == 'ukbio':
         if debug:
             output_path = os.path.join('BayOptPy', 'tpot', analysis,
                                        '%03d_generations' %ngen)
@@ -424,11 +424,13 @@ def create_age_histogram(training_age, test_age, dataset):
         max_age = 89
         plt.hist(training_age, bins=65, range=(min_age,max_age), label='training')
         plt.hist(test_age, bins=65, range=(min_age,max_age), label='test')
-        plt.xlabel('Age')
-        plt.ylabel('# of Subjects')
-        plt.legend()
-        plt.savefig(path_to_save)
-        plt.close()
-    elif dataset == 'UBKBIO':
-        pass
-
+    elif dataset == 'UKBIO':
+        path_to_save = '/code/UKBIO/age_histogram_UKBIO.png'
+        min_age = training_age.min()
+        max_age = training_age.max()
+        plt.hist(training_age, bins=int(max_age-min_age), range=(min_age,max_age))
+    plt.xlabel('Age')
+    plt.ylabel('# of Subjects')
+    plt.legend()
+    plt.savefig(path_to_save)
+    plt.close()

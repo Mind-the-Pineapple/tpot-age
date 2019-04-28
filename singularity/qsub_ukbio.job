@@ -1,0 +1,14 @@
+#!/bin/bash --login
+# How much memory needed *per core*
+#$ -l h_vmem=5G
+
+# Which operating system to use
+#$ -l cns_os=el7
+
+# Where to save the STDOUT and STDERR
+#$ -o ~/BayOpt/singularity/logs/ukbio
+#$ -e ~/BayOpt/singularity/logs/ukbio
+
+
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/UKBIO/tpot_model_analysis.py
