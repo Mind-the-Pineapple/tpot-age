@@ -1,6 +1,7 @@
 # This script analysis some diagnostics from tpot
-
+import os
 import joblib
+import matplotlib.pyplot as plt
 
 def print_predecessor_per_generation(results, start_gen, stop_gen):
     '''
@@ -39,15 +40,19 @@ def print_number_of_sucessful_models_per_generation(results, start_gen, stop_gen
 
 def print_predecessor_generation(results, curr_generation):
     '''
-    Print the predecessor's genration for all the models in a specific generation
+    Print the predecessor's generation for all the models in a specific generation
     '''
     list_predecessors = []
+    list_generations = []
+    list_mae = []
     for key in results['evaluated_individuals'][curr_generation].keys():
         predecessor = ''.join(results['evaluated_individuals'][curr_generation][key]['predecessor'])
         print(predecessor)
         list_predecessors.append(predecessor)
         for generation in range(curr_generation-1, -1, -1):
             if predecessor in results['evaluated_individuals'][generation].keys():
+                list_generations.append(generation)
+                list_mae.append(abs(results['evaluated_individuals'][generation][predecessor]['internal_cv_score']))
                 print('Found predecessor in %d generation' %generation)
                 print('')
 
@@ -56,11 +61,21 @@ def print_predecessor_generation(results, curr_generation):
     repeated_predecessors = set([x for x in list_predecessors if list_predecessors.count(x)>1])
     print(repeated_predecessors)
     print('There are %d repeated predecessors' %len(repeated_predecessors))
+    return list_predecessors, list_generations, list_mae
+
+def plot_predecessor_generation(curr_gen, list_predecessors, list_generation,
+                                list_mae, root_path):
+    '''
+    '''
+    plt.figure()
+    plt.scatter(range(len(list_mae)), list_mae, c=list_generation)
+    plt.savefig(os.path.join(root_path, 'generation_%d.png' %curr_gen))
 
 
 # Load sample tpot analysis
-results_path = '/code/BayOptPy/tpot/Output/random_seed/100_generations/random_seed_020/tpot_BANC_freesurf_vanilla_combi_100gen.dump'
-results = joblib.load(results_path)
+root_path = '/code/BayOptPy/tpot/Output/random_seed/100_generations/random_seed_020'
+results_path = 'tpot_BANC_freesurf_vanilla_combi_100gen.dump'
+results = joblib.load(os.path.join(root_path, results_path))
 
 # Plot list of predecessor for all generations.
 # Note: This is a bit hard to interprete
@@ -81,4 +96,6 @@ print_number_of_sucessful_models_per_generation(results,0, 100)
 # Take one generation into the analysis and look what are the predecessor's from
 # all the models in the current passed generation
 curr_gen = 50
-print_predecessor_generation(results, curr_gen)
+list_predecessors, list_generations, list_mae = print_predecessor_generation(results, curr_gen)
+plot_predecessor_generation(curr_gen, list_predecessors, list_generations,
+                            list_mae, root_path)
