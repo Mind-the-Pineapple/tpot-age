@@ -373,7 +373,7 @@ for random_seed in args.random_seeds:
 
      # Create heatmap
     df2 = df.transpose()
-    plt.figure(figsize=(8,8))
+    plt.figure(figsize=(28,8))
     sns.heatmap(df2,
              cmap='YlGnBu')
     plt.xlabel('Generations')

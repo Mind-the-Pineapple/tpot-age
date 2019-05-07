@@ -428,7 +428,8 @@ def create_age_histogram(training_age, test_age, dataset):
         path_to_save = '/code/UKBIO/age_histogram_UKBIO.png'
         min_age = training_age.min()
         max_age = training_age.max()
-        plt.hist(training_age, bins=int(max_age-min_age), range=(min_age,max_age))
+        plt.hist(training_age, bins=int(max_age-min_age),
+                 range=(min_age,max_age), color='#82E0AA')
     plt.xlabel('Age')
     plt.ylabel('# of Subjects')
     plt.legend()
