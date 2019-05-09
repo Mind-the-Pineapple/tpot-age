@@ -105,6 +105,6 @@ print('Max values for each column of the z-scaled dataframe')
 scaled_features_df.max()
 
 # dump the results as csv (first the raw analysis then the z-scored)
-freesurfer_stats_num.to_csv('/code/aparc_aseg_stats_BANC.csv')
-scaled_features_df.to_csv('/code/aparc_aseg_stats_BANC_z-scored.csv')
+freesurfer_stats_num.to_csv('/code/BayOptPy/freesurfer_preprocess/original_dataset/BANC/aparc_aseg_stats_BANC.csv')
+scaled_features_df.to_csv('/code/BayOptPy/freesurfer_preprocess/original_dataset/BANC/aparc_aseg_stats_BANC_z-scored.csv')
 print('Done')

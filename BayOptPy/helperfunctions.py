@@ -143,8 +143,8 @@ def drop_missing_features(dataframe):
     This function takes a dataframe and removes the already defined missing
     columns from the dataframe.
     '''
-    missing_features = ['lh_MeanThickness_thickness', 'BrainSegVolNotVent',
-                        'eTIV', 'rh_MeanThickness_thickness',
+    missing_features = ['BrainSegVolNotVent',
+                        'eTIV',
                         'BrainSegVolNotVent.1', 'eTIV.1']
     cleaned_df = dataframe.drop(missing_features, axis=1)
     return cleaned_df
@@ -306,7 +306,11 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
             imgs = list(tqdm(p.imap(_load_nibabel, subjectsFile), total=len(selectedSubId)))
 
     elif dataset == 'BANC_freesurf':
-        freesurf_df = pd.read_csv(os.path.join(project_wd, 'aparc_aseg_stats_BANC.csv'), delimiter=',', index_col=0)
+        freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'original_dataset',
+                                               'BANC',
+                                               'aparc_aseg_stats_BANC.csv'), delimiter=',', index_col=0)
         rawsubjectsId = freesurf_df.index
 
         # Load the demographics for each subject
@@ -315,7 +319,10 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
         return demographics, None, freesurf_df
 
     elif dataset == 'UKBIO_freesurf':
-        freesurf_df = pd.read_csv(os.path.join(project_wd, 'UKBIO', 'UKB_10k_FS_4844.csv'), delimiter=',')
+        freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'original_dataset',
+                                               'UKBIO', 'UKB_10k_FS_4844.csv'), delimiter=',')
         return None, None, freesurf_df
 
     else:

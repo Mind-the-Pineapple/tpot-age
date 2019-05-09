@@ -19,6 +19,7 @@ singularity/examples/
 
 # mac specific files
 .DS_Store
+._.DS_Store
 
 # python specific files
 .idea
