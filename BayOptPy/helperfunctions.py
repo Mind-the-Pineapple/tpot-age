@@ -31,11 +31,13 @@ def get_paths(debug, dataset):
         project_sink = None
     elif debug and dataset == 'BANC_freesurf':
         project_wd = os.getcwd()
-        project_data = os.path.join(os.getenv('HOME'), 'NaN', 'BANC_2016')
+        project_data = os.path.join(os.getenv('HOME'), 'BayOptPy',
+                                    'freesurfer_preprocess')
         project_sink = None
     elif debug and dataset == 'UKBIO_freesurf':
         project_wd = os.getcwd()
-        project_data = os.path.join('UKBIO')
+        project_data = os.path.join(os.getenv('HOME'), 'BayOptPy',
+                                    'freesurfer_preprocess')
         project_sink = None
     elif not debug and dataset == 'OASIS':
         project_wd = '/code'
@@ -51,11 +53,13 @@ def get_paths(debug, dataset):
         project_sink = None
     elif not debug and dataset == 'BANC_freesurf':
         project_wd = '/code'
-        project_data = os.path.join(os.sep, 'data', 'NaN', 'BANC_2016')
+        project_data = os.path.join(os.sep, 'code', 'BayOptPy',
+                                    'freesurfer_preprocess')
         project_sink = None
     elif not debug and dataset == 'UKBIO_freesurf':
         project_wd = '/code'
-        project_data = os.path.join(os.sep, 'code', 'UKBIO')
+        project_data = os.path.join(os.sep, 'code', 'BayOptPy',
+                                    'freesurfer_preprocess')
         project_sink = None
 
     else:
@@ -86,10 +90,11 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
         analysis == 'feat_combi' or analysis == 'vanilla_combi' or \
         analysis == 'random_seed' or analysis == 'ukbio':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+            output_path = os.path.join('BayOptPy', 'tpot', 'Output', analysis,
                                        '%03d_generations' %ngen)
         else:
-            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot',
+                                       'Output', analysis,
                                        '%03d_generations' %ngen)
     elif analysis == 'population':
         if debug:
@@ -169,7 +174,9 @@ def get_data_covariates(dataPath, rawsubjectsId, dataset):
     elif dataset == 'BANC':
         # Load the demographic details from the dataset
         column_names = ['ID', 'original_dataset', 'sex', 'Age']
-        demographics = pd.read_csv(os.path.join(dataPath, 'BANC_2016.csv'), names=column_names)
+        demographics = pd.read_csv(os.path.join(dataPath,'original_dataset',
+                                                'BANC',
+                                                'BANC_2016.csv'), names=column_names)
         # Check if there is any subject for which we have the fmri data but no demographics
         missingsubjectsId = list(set(demographics['ID']) ^ set(rawsubjectsId))
         # remove the demographic data from the missing subjects
@@ -258,13 +265,16 @@ def get_mean_age(df):
     std_age = df['Age'].std()
     print('Mean Age %.2f +- %.2f' %(mean_age, std_age))
 
-def get_data(project_data, dataset, debug, project_wd, resamplefactor):
+def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw):
     ''' Load the csv files and return
     :param project_data:
     :param dataset:
     :param debug:
     :param project_wd:
     :param resamplefactor:
+    :raw: Which type of fressesfurfer should we analyse (the raw, where both
+    datasets have not been matched or the not raw where the number of columns
+    between dataset is the same)
     :return: demographics:
     :return: demographics:
     :return: dataframe.values: Just the numeric values of the dataframe
@@ -281,7 +291,6 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, dataset)
         # print subjects mean age
         get_mean_age(demographics)
-
         # Load image proxies
         imgs = [nib.load(os.path.join(project_data, 'smwc1%s_mpr-1_anon.nii' %subject)) for subject in tqdm(selectedSubId)]
 
@@ -305,7 +314,7 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
         with Pool() as p:
             imgs = list(tqdm(p.imap(_load_nibabel, subjectsFile), total=len(selectedSubId)))
 
-    elif dataset == 'BANC_freesurf':
+    elif (dataset == 'BANC_freesurf' and raw==True):
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'original_dataset',
@@ -318,7 +327,25 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor):
         # return numpy array of the dataframe
         return demographics, None, freesurf_df
 
-    elif dataset == 'UKBIO_freesurf':
+    elif (dataset == 'UKBIO_freesurf' and raw==False):
+        freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'matched_dataset',
+                                               'aparc_aseg_UKB.csv'), delimiter=',')
+        return None, None, freesurf_df
+    elif (dataset == 'BANC_freesurf' and raw==False):
+        freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'matched_dataset',
+                                               'aparc_aseg_BANC.csv'), delimiter=',', index_col=0)
+        rawsubjectsId = freesurf_df.index
+
+        # Load the demographics for each subject
+        demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
+        # return numpy array of the dataframe
+        return demographics, None, freesurf_df
+
+    elif (dataset == 'UKBIO_freesurf' and raw==True):
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'original_dataset',

@@ -1,6 +1,11 @@
 import numpy as np
 import pandas as pd
 import os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set()
 from sklearn.ensemble import ExtraTreesRegressor
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import train_test_split
@@ -8,7 +13,9 @@ from sklearn.pipeline import make_pipeline, make_union
 from sklearn.metrics import mean_absolute_error
 from tpot.builtins import StackingEstimator
 
-from BayOptPy.helperfunctions import get_paths, get_data, drop_missing_features
+from BayOptPy.helperfunctions import (get_paths, get_data,
+                                      drop_missing_features,
+                                      set_publication_style)
 
 """
 This script tests the best model recommened by TPOT for 100 generations, random
@@ -20,21 +27,35 @@ seed 20, initial population 1000, mutation rate and cross-validation ratexxx
 debug = False
 resamplefactor = 1
 random_seed = 20
+save_path = '/code/BayOptPy/'
+# Load the clean data for both the UKBIO and the BANC analysis
+# This version of the UKBIOBANK dataset contains the same columns as the BANC
+# dataset
 project_ukbio_wd, project_data_ukbio, _ = get_paths(debug, 'UKBIO_freesurf')
-# demographics_ukbio, imgs_ukbio, data_ukbio, freesurfer_df_ukbio =  \
-#             get_data(project_data_ukbio, 'UKBIO_freesurf', debug, project_ukbio_wd, resamplefactor)
+_, _, df_ukbio =  \
+             get_data(project_data_ukbio, 'UKBIO_freesurf', debug,
+                      project_ukbio_wd, resamplefactor, raw=False)
+df_ukbio = df_ukbio.set_index('ID')
+# Drop the last column that corresponds the name of the dataset
+df_ukbio = df_ukbio.drop('dataset', axis=1)
 
-# Retrain the model using the BANC dataset
-#-------------------------------------------------------------------------------
 project_banc_wd, project_banc_data, _ = get_paths(debug,'BANC_freesurf')
 demographics_banc,__, df_banc = get_data(project_banc_data,
                                                 'BANC_freesurf',
                                                 debug, project_banc_wd,
-                                                resamplefactor)
-# Drop missing features from BIOBANK. So that BIOBANK and BANC have the same
-# number of features
-df_banc = drop_missing_features(df_banc)
-data_banc =  df_banc.values
+                                                resamplefactor, raw=False)
+# Drop the last column that corresponds the name of the dataset
+df_banc = df_banc.drop('dataset', axis=1)
+
+# Get age for the BIOBANK dataset
+age_UKBIO = pd.read_csv(os.path.join(project_data_ukbio, 'original_dataset',
+'UKBIO','UKB_FS_age_sex.csv'))
+targetAttribute_ukbio = np.array(age_UKBIO['age'])
+
+#-------------------------------------------------------------------------------
+# Train the model with BANC
+#-------------------------------------------------------------------------------
+data_banc = df_banc.values
 # Find age for the BANC dataset
 targetAttribute_banc = np.array(demographics_banc['Age'])
 Xtrain, Xtest, Ytrain, Ytest = train_test_split(data_banc, targetAttribute_banc,
@@ -57,21 +78,31 @@ exported_pipeline = make_pipeline(
 exported_pipeline.fit(Xtrain, Ytrain)
 y_predicted_banc = exported_pipeline.predict(Xtest)
 mae_banc = mean_absolute_error(Ytest, y_predicted_banc)
+print('Print BANC MAE')
+print(mae_banc)
 
-# Get the same features for the BIOBANK dataset
+# plot predicted vs true for the BIOBANK
+fig = plt.figure()
+plt.scatter(Ytest, y_predicted_banc)
+plt.ylabel('Predicted Age')
+plt.xlabel('True Age')
+plt.savefig(os.path.join(save_path, 'banc_predicted_true_age.png'))
+plt.close()
+
 #-------------------------------------------------------------------------------
-df_UKBIO = pd.read_csv(os.path.join(project_data_ukbio, 'UKB_FS_age_sex.csv'))
-features = np.array(df_UKBIO['age'])
-
-# This version of the UKBIOBANK dataset contains the same columns as the BANC
-# dataset
-df_UKBIO = pd.read_csv(os.path.join(project_data_ukbio, 'UKB_10k_FS_4844_adapted.csv'))
-df_UKBIO = df_UKBIO.set_index('ID')
-# Drop the last column that corresponds the name of the dataset
-df_UKBIO = df_UKBIO.drop('dataset', axis=1)
-import pdb
-pdb.set_trace()
-# get numerica values
-data_ukbio = df_UKBIO.values
+# Test the trained model on the BIOBANK
+#-------------------------------------------------------------------------------
+data_ukbio = df_ukbio.values
 # Get the predictions on the BIOBANK dataset
-results_biobank = exported_pipeline.predict(testing_features)
+y_predicted_biobank = exported_pipeline.predict(data_ukbio)
+mae_biobank = mean_absolute_error(targetAttribute_ukbio, y_predicted_biobank)
+print('Print UKBIO MAE')
+print(mae_biobank)
+
+# plot predicted vs true for the BIOBANK
+fig = plt.figure()
+plt.scatter(targetAttribute_ukbio, y_predicted_biobank)
+plt.ylabel('Predicted Age')
+plt.xlabel('True Age')
+plt.savefig(os.path.join(save_path, 'biobank_predicted_true_age.png'))
+plt.close()

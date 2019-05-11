@@ -137,9 +137,11 @@ save_path = os.path.join('/code/BayOptPy', 'freesurfer_preprocess')
 project_ukbio_wd, project_data_ukbio, _ = get_paths(debug, 'UKBIO_freesurf')
 project_banc_wd, project_data_banc, _  = get_paths(debug, 'BANC_freesurf')
 _, _, freesurfer_df_banc = get_data(project_data_banc, 'BANC_freesurf', debug,
-                                              project_banc_wd, resamplefactor)
+                                              project_banc_wd, resamplefactor,
+                                              raw=True)
 _, _, freesurfer_df_ukbio = get_data(project_data_ukbio, 'UKBIO_freesurf', debug,
-                                               project_ukbio_wd, resamplefactor)
+                                               project_ukbio_wd, resamplefactor,
+                                               raw=True)
 
 # checM`k the columns between both datasets
 # First Maprint the size of dataset
@@ -147,7 +149,7 @@ print('shape of the banc dataset; shape of the ukbio dataset')
 print(freesurfer_df_banc.shape, freesurfer_df_ukbio.shape)
 #-----------------------------------------------------------------------------
 # BANC
-#-M`----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 # Check and visualise features that are only present in the BANC dataset
 visualise_missing_features_banc(freesurfer_df_banc, save_path)
 
@@ -249,8 +251,23 @@ plt.close()
 
 # Dump the pre-processed biobank dataset that now over laps with the features
 # from the BANC dataset
-save_path = os.path.join(save_path, 'matched_dataset', 'aparc_aseg_UKB.csv')
-df_ukbio.to_csv(save_path)
+save_path_ukbio = os.path.join(save_path, 'matched_dataset', 'aparc_aseg_UKB.csv')
+df_ukbio.to_csv(save_path_ukbio, columns=df_ukbio.columns, index_label='ID')
 print('Saved modifed Biobank dataset: %s' %save_path)
+
+# As we deleted the orignal lh_MeanThickness recaculate those values
+print('Save modifed verion of BANC freesurfer where the MeanThickness was \
+      calculated')
+freesurfer_df_banc_clean.insert(loc=idx_lh_mean_thickness, column='lh_MeanThickness_thickness',
+               value=freesurfer_df_banc_clean[banc_lh_thickness].mean(axis=1))
+freesurfer_df_banc_clean.insert(loc=idx_rh_mean_thickness, column='rh_MeanThickness_thickness',
+               value=freesurfer_df_banc_clean[banc_rh_thickness].mean(axis=1))
+save_path_banc = os.path.join(save_path, 'matched_dataset', 'aparc_aseg_BANC.csv')
+freesurfer_df_banc_clean.to_csv(save_path_banc,
+                                columns=freesurfer_df_banc_clean.columns)
+
+# Check that both save dataset have the same number of columns
+assert(len(df_ukbio.columns) == len(freesurfer_df_banc_clean.columns))
+
 print('I am done!')
 # Compare the columns entry
