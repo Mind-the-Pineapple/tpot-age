@@ -148,9 +148,37 @@ def drop_missing_features(dataframe):
     This function takes a dataframe and removes the already defined missing
     columns from the dataframe.
     '''
-    missing_features = ['BrainSegVolNotVent',
+    missing_features = [# This features are repeated or missing on the BIOBANK
+                        # dataset
+                        'BrainSegVolNotVent',
+                        'BrainSegVolNotVent.1',
+                        'BrainSegVolNotVent.2',
                         'eTIV',
-                        'BrainSegVolNotVent.1', 'eTIV.1']
+                        'eTIV.1',
+                        # Drop additional features that are 0 or have no
+                        # biological meaning
+                        'SurfaceHoles',
+                        'rhSurfaceHoles',
+                        'lhSurfaceHoles',
+                        'BrainSegVolNotVentSurf',
+                        'BrainSegVol',
+                        'Optic-Chiasm',
+                        'Right-non-WM-hypointensities',
+                        'Left-non-WM-hypointensities',
+                        'non-WM-hypointensities',
+                        'Right-WM-hypointensities',
+                        'Left-WM-hypointensities',
+                        'WM-hypointensities',
+                        '5th-Ventricle',
+                        'Right-choroid-plexus',
+                        'Left-choroid-plexus',
+                        'Left-Lateral-Ventricle',
+                        'Right-Lateral-Ventricle',
+                        'Left-Inf-Lat-Vent',
+                        'Right-Inf-Lat-Vent',
+                       ]
+
+
     cleaned_df = dataframe.drop(missing_features, axis=1)
     return cleaned_df
 

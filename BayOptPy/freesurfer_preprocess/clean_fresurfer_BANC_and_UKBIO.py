@@ -89,30 +89,23 @@ def dict_rename_columns(freesurfer_banc_columns):
 
     biobank_columns =  lh_thickness + rh_thickness +  [
                       # MaAdditional fM`eatures
-                       'Left.Lateral.Ventricle', 'Left.Inf.Lat.Vent',
                       'Left.Cerebellum.White.Matter', 'Left.Cerebellum.Cortex',
                       'Left.Thalamus.Proper', 'Left.Caudate', 'Left.Putamen',
                       'Left.Pallidum', 'X3rd.Ventricle', 'X4th.Ventricle',
                       'Brain.Stem', 'Left.Hippocampus', 'Left.Amygdala', 'CSF',
                       'Left.Accumbens.area', 'Left.VentralDC', 'Left.vessel',
-                      'Left.choroid.plexus',
-                      'Right.Lateral.Ventricle',
-                      'Right.Inf.Lat.Vent', 'Right.Cerebellum.White.Matter',
+                      'Right.Cerebellum.White.Matter',
                       'Right.Cerebellum.Cortex', 'Right.Thalamus.Proper',
                       'Right.Caudate', 'Right.Putamen', 'Right.Pallidum',
                       'Right.Hippocampus', 'Right.Amygdala', 'Right.Accumbens.area',
-                      'Right.VentralDC', 'Right.vessel', 'Right.choroid.plexus',
-                      'X5th.Ventricle', 'WM.hypointensities',
-                      'Left.WM.hypointensities', 'Right.WM.hypointensities',
-                      'non.WM.hypointensities', 'Left.non.WM.hypointensities',
-                      'Right.non.WM.hypointensities', 'Optic.Chiasm',
-                      # the sameMa
+                      'Right.VentralDC', 'Right.vessel',
+                      # the same
                       'CC_Posterior',
                       'CC_Mid.Posterior', 'CC_Central', 'CC_Mid_Anterior',
-                      'CC_AnteriorMa', 'BrainSegVol', 'BrainSegVolNotVent',
-                      'BrainSegVolNotVentSurf', 'lhCortexVol', 'rhCortexVol',
+                      'CC_Anterior',
+                      'lhCortexVol', 'rhCortexVol',
                       'CortexVol',
-                      # Missing in tMahe bionk we have
+                      # Missing in the bionk we have
                       'lhCorticalWhiteMatterVol', 'rhCorticalWhiteMatterVol',
                       'CorticalWhiteMatterVol',
                       # 'lhCerebralWhiMateMatterVol',
@@ -120,7 +113,6 @@ def dict_rename_columns(freesurfer_banc_columns):
                       'SubCortGrayVol', 'TotalGrayVol', 'SupraTentorialVol',
                       'SupraTentorialVolMaNotVent', 'SupraTentorialVolNotVentVox',
                       'MaskVol', 'BrainSegVol.to.eTIV', 'MaskVol.to.eTIV',
-                      'lhSurfaceHoles', 'rhSurfaceHoles', 'SurfaceHoles',
                       'EstimatedTotalIntraMaCranialVol'
                      ]
     # Check if you have all the features form the banc dataset
@@ -141,7 +133,7 @@ _, _, freesurfer_df_banc = get_data(project_data_banc, 'BANC_freesurf', debug,
                                               raw=True)
 _, _, freesurfer_df_ukbio = get_data(project_data_ukbio, 'UKBIO_freesurf', debug,
                                                project_ukbio_wd, resamplefactor,
-                                               raw=True)
+                                              raw=True)
 
 # checM`k the columns between both datasets
 # First Maprint the size of dataset
