@@ -109,3 +109,6 @@
 /code/BayOptPy/tpot/brain_age_analysis.py -dataset BANC_freesurf -cv 5 \
 -generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
 -njobs 20 -random_seed 90 -analysis random_seed -mutation_rate 0.9 -crossover_rate 0.1
+
+# job: 4447722
+# is an array for random seed 5-25:10
