@@ -60,17 +60,37 @@ targetAttribute_ukbio = np.array(age_UKBIO['age'])
 # Train the model with BANC
 #-------------------------------------------------------------------------------
 data_banc = df_banc.values
+data_ukbio = df_ukbio.values
 # Find age for the BANC dataset
 targetAttribute_banc = np.array(demographics_banc['Age'])
+
+# Add a few of the BIOBANK Dataset into the training set
+Xtrain_ukbio, Xtest_ukbio, Ytrain_ukbio, Ytest_ukbio = train_test_split(data_ukbio, targetAttribute_ukbio,
+                                                test_size=.25,
+                                                random_state=random_seed)
+
 Xtrain_banc, Xtest_banc, Ytrain_banc, Ytest_banc = train_test_split(data_banc, targetAttribute_banc,
                                                 test_size=.25,
                                                 random_state=random_seed)
+
+# Keep part of the BIOBANK outsite for validaion purposes
+# Select every second subject to be part of the validation set
+Yvalidation_ukbio = Ytest_ukbio[0:-1:2]
+Xvalidation_ukbio = Xtest_ukbio[0:-1:2]
+# Concatenate both datasets
+Xtrain = np.concatenate((Xtrain_banc, Xtrain_ukbio[1:-1:2]), axis=0)
+Xtest = np.concatenate((Xtest_banc, Xtest_ukbio[1:-1:2]), axis=0)
+Ytrain = np.concatenate((Ytrain_banc, Ytrain_ukbio[1:-1:2]), axis=0)
+Ytest = np.concatenate((Ytest_banc, Ytest_ukbio[1:-1:2]), axis=0)
+
 print('Divided BANC dataset into test and training')
 print('Check train test split sizes')
-print('X_train: ' + str(Xtrain_banc.shape))
-print('X_test: '  + str(Xtest_banc.shape))
-print('Y_train: ' + str(Ytrain_banc.shape))
-print('Y_test: '  + str(Ytest_banc.shape))
+print('X_train: ' + str(Xtrain.shape))
+print('X_test: '  + str(Xtest.shape))
+print('Y_train: ' + str(Ytrain.shape))
+print('Y_test: '  + str(Ytest.shape))
+print('X_valitation ' + str(Xvalidation_ukbio.shape))
+print('Y_test: ' + str(Yvalidation_ukbio.shape))
 
 # Best pipeline recommended by TPOT
 exported_pipeline = make_pipeline(
@@ -94,38 +114,32 @@ exported_pipeline = make_pipeline(
                                                  random_state=42)
                                  )
 
-exported_pipeline.fit(Xtrain_banc, Ytrain_banc)
-print('Print BANC MAE - test')
-y_predicted_banc = exported_pipeline.predict(Xtest_banc)
-mae_banc = mean_absolute_error(Ytest_banc, y_predicted_banc)
-print(mae_banc)
-print('Print BANC MAE - training')
-y_predicted_banc_train = exported_pipeline.predict(Xtrain_banc)
-mae_banc_train = mean_absolute_error(Ytrain_banc, y_predicted_banc_train)
-print(mae_banc_train)
+exported_pipeline.fit(Xtrain, Ytrain)
+print('Print MAE - test')
+y_predicted = exported_pipeline.predict(Xtest)
+mae = mean_absolute_error(Ytest, y_predicted)
+print(mae)
+print('Print MAE - training')
+y_predicted_train = exported_pipeline.predict(Xtrain)
+mae_train = mean_absolute_error(Ytrain, y_predicted_train)
+print(mae_train)
+print('Print MAE - validation')
+y_predicted_validation = exported_pipeline.predict(Xvalidation_ukbio)
+mae_validation = mean_absolute_error(Yvalidation_ukbio, y_predicted_validation)
+print(mae_validation)
 
-# plot predicted vs true for the BIOBANK
+# plot predicted vs true for the test
 fig = plt.figure()
-plt.scatter(Ytest_banc, y_predicted_banc)
+plt.scatter(Ytest, y_predicted)
 plt.ylabel('Predicted Age')
 plt.xlabel('True Age')
-plt.savefig(os.path.join(save_path, 'banc_predicted_true_age.png'))
+plt.savefig(os.path.join(save_path, 'test_predicted_true_age.png'))
 plt.close()
 
-#-------------------------------------------------------------------------------
-# Test the trained model on the BIOBANK
-#-------------------------------------------------------------------------------
-data_ukbio = df_ukbio.values
-# Get the predictions on the BIOBANK dataset
-y_predicted_biobank = exported_pipeline.predict(data_ukbio)
-mae_biobank = mean_absolute_error(targetAttribute_ukbio, y_predicted_biobank)
-print('Print UKBIO MAE')
-print(mae_biobank)
-
-# plot predicted vs true for the BIOBANK
+# plot predicted vs true for the validation
 fig = plt.figure()
-plt.scatter(targetAttribute_ukbio, y_predicted_biobank)
+plt.scatter(Yvalidation_ukbio, y_predicted_validation)
 plt.ylabel('Predicted Age')
 plt.xlabel('True Age')
-plt.savefig(os.path.join(save_path, 'biobank_predicted_true_age.png'))
+plt.savefig(os.path.join(save_path, 'validation_predicted_true_age.png'))
 plt.close()
