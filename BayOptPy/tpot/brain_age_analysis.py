@@ -16,7 +16,6 @@ from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
 from BayOptPy.helperfunctions import (get_data, get_paths,
                                       get_config_dictionary, get_output_path,
                                       get_best_pipeline_paths,
-                                      drop_missing_features,
                                       create_age_histogram)
 
 parser = argparse.ArgumentParser()
@@ -99,7 +98,7 @@ parser.add_argument('-analysis',
                     help='Specify which type of analysis to use',
                     choices=['vanilla', 'population', 'feat_selec',
                              'feat_combi', 'vanilla_combi', 'mutation',
-                             'random_seed', 'ukbio'],
+                             'random_seed', 'ukbio', 'summary_data'],
                     required=True
                     )
 parser.add_argument('-mutation_rate',
@@ -158,9 +157,15 @@ if __name__ == '__main__':
     output_path = get_output_path(args.analysis, args.generations, args.random_seed,
                                   args.population_size, args.debug,
                                   args.mutation_rate, args.crossover_rate)
-    demographics, imgs, dataframe  = get_data(project_data, args.dataset, args.debug, project_wd, args.resamplefactor)
-    # Drop missing features from the BIOBANK
-    dataframe = drop_missing_features(dataframe)
+    # Load the already cleaned dataset
+    demographics, imgs, dataframe  = get_data(project_data, args.dataset,
+                                              args.debug, project_wd,
+                                              args.resamplefactor,
+                                              raw=False,
+                                              analysis=args.analysis)
+    print('Using %d features' %len(dataframe.columns))
+    # Drop the last coumn which correspond to the dataset name
+    dataframe = dataframe.drop(['dataset'], axis=1)
     data = dataframe.values
 
     # Show mean std and F/M count for each dataset used
@@ -221,7 +226,7 @@ if __name__ == '__main__':
                          crossover_rate=args.crossover_rate,
                          n_jobs=args.njobs,
                          cv=args.cv,
-                         verbosity=2,
+                         verbosity=3,
                          random_state=args.random_seed,
                          config_dict=tpot_config,
                          scoring='neg_mean_absolute_error',
@@ -260,6 +265,8 @@ if __name__ == '__main__':
     tpot_save['fitted_pipeline'] = tpot.fitted_pipeline_
     # List of evaluated invidivuals per generation
     tpot_save['evaluated_individuals'] = tpot.evaluated_individuals
+    # Dictionary containing all pipelines in the TPOT Pareto Front
+    tpot_save['pareto_pipelines'] = tpot.pareto_front_fitted_pipelines_
     # List of best model per generation
     tpot_pipelines['log'] = tpot.log
 

@@ -130,10 +130,10 @@ project_ukbio_wd, project_data_ukbio, _ = get_paths(debug, 'UKBIO_freesurf')
 project_banc_wd, project_data_banc, _  = get_paths(debug, 'BANC_freesurf')
 _, _, freesurfer_df_banc = get_data(project_data_banc, 'BANC_freesurf', debug,
                                               project_banc_wd, resamplefactor,
-                                              raw=True)
+                                              raw=True, analysis=None)
 _, _, freesurfer_df_ukbio = get_data(project_data_ukbio, 'UKBIO_freesurf', debug,
                                                project_ukbio_wd, resamplefactor,
-                                              raw=True)
+                                              raw=True, analysis=None)
 
 # checM`k the columns between both datasets
 # First Maprint the size of dataset
@@ -241,10 +241,10 @@ sns.boxplot(x='dataset', y='rh_MeanThickness_thickness',
 fig.savefig(os.path.join(save_path, 'diagnostics', 'boxplot_MeanThickness.png'))
 plt.close()
 
-# Dump the pre-processed biobank dataset that now over laps with the features
+# Dump the pre-processed biobank dataset that now overlaps with the features
 # from the BANC dataset
-save_path_ukbio = os.path.join(save_path, 'matched_dataset', 'aparc_aseg_UKB.csv')
-df_ukbio.to_csv(save_path_ukbio, columns=df_ukbio.columns, index_label='ID')
+save_path_ukbio = os.path.join(save_path, 'matched_dataset')
+df_ukbio.to_csv(os.path.join(save_path_ukbio, 'aparc_aseg_UKB.csv'), columns=df_ukbio.columns, index_label='ID')
 print('Saved modifed Biobank dataset: %s' %save_path)
 
 # As we deleted the orignal lh_MeanThickness recaculate those values
@@ -254,12 +254,55 @@ freesurfer_df_banc_clean.insert(loc=idx_lh_mean_thickness, column='lh_MeanThickn
                value=freesurfer_df_banc_clean[banc_lh_thickness].mean(axis=1))
 freesurfer_df_banc_clean.insert(loc=idx_rh_mean_thickness, column='rh_MeanThickness_thickness',
                value=freesurfer_df_banc_clean[banc_rh_thickness].mean(axis=1))
-save_path_banc = os.path.join(save_path, 'matched_dataset', 'aparc_aseg_BANC.csv')
-freesurfer_df_banc_clean.to_csv(save_path_banc,
+save_path_banc = os.path.join(save_path, 'matched_dataset')
+freesurfer_df_banc_clean.to_csv(os.path.join(save_path_banc, 'aparc_aseg_BANC.csv'),
                                 columns=freesurfer_df_banc_clean.columns)
 
 # Check that both save dataset have the same number of columns
 assert(len(df_ukbio.columns) == len(freesurfer_df_banc_clean.columns))
 
+#-----------------------------------------------------------------------------
+# Select only summary features from  UKBIO and BANC
+#-----------------------------------------------------------------------------
+# Create another dataframe where you only have summary features from both
+# datasets
+summary_columns =  ['Left-Cerebellum-White-Matter',
+                   'Left-Cerebellum-Cortex',
+                   'CSF',
+                   'Left-VentralDC',
+                   'Right-Cerebellum-White-Matter',
+                   'Right-Cerebellum-Cortex',
+                   'Right-VentralDC',
+                   'lhCortexVol',
+                   'rhCortexVol',
+                   'CortexVol',
+                   'lhCerebralWhiteMatterVol',
+                   'rhCerebralWhiteMatterVol',
+                   'CerebralWhiteMatterVol',
+                   'SubCortGrayVol',
+                   'TotalGrayVol',
+                   'SupraTentorialVol',
+                   'SupraTentorialVolNotVent',
+                   'MaskVol',
+                   'BrainSegVol-to-eTIV',
+                   'MaskVol-to-eTIV',
+                   'EstimatedTotalIntraCranialVol',
+                   'dataset']
+
+summary_df_banc = freesurfer_df_banc_clean[summary_columns]
+summary_df_banc.to_csv(os.path.join(save_path_banc,
+                        'aparc_aseg_BANC_summary.csv'),
+                        index_label='BANC_ID')
+print('Saved summary banc dataset: %s' %save_path_banc)
+pairplot = sns.pairplot(summary_df_banc)
+pairplot.savefig(os.path.join(save_path_banc, 'pairplot_banc.png'), format='png')
+
+summary_df_ukbio = df_ukbio[summary_columns]
+summary_df_ukbio.to_csv(os.path.join(save_path_ukbio,
+                       'aparc_aseg_UKBIO_summary.csv'),
+                       index_label='ID')
+print('Saved summary ukbio dataset: %s' %save_path_banc)
+pairplot = sns.pairplot(summary_df_ukbio)
+pairplot.savefig(os.path.join(save_path_banc, 'pairplot_ukbio.png'), format='png')
 print('I am done!')
 # Compare the columns entry

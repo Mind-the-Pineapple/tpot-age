@@ -88,7 +88,8 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
     # path but just find its location
     if analysis == 'vanilla' or analysis == 'feat_selec' or \
         analysis == 'feat_combi' or analysis == 'vanilla_combi' or \
-        analysis == 'random_seed' or analysis == 'ukbio':
+        analysis == 'random_seed' or analysis == 'ukbio' or \
+        analysis == 'summary_data':
         if debug:
             output_path = os.path.join('BayOptPy', 'tpot', 'Output', analysis,
                                        '%03d_generations' %ngen)
@@ -293,7 +294,8 @@ def get_mean_age(df):
     std_age = df['Age'].std()
     print('Mean Age %.2f +- %.2f' %(mean_age, std_age))
 
-def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw):
+def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
+             analysis):
     ''' Load the csv files and return
     :param project_data:
     :param dataset:
@@ -355,13 +357,15 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw):
         # return numpy array of the dataframe
         return demographics, None, freesurf_df
 
-    elif (dataset == 'UKBIO_freesurf' and raw==False):
+    elif (dataset == 'UKBIO_freesurf' and raw==False and not
+          analysis=='summary_data'):
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'matched_dataset',
                                                'aparc_aseg_UKB.csv'), delimiter=',')
         return None, None, freesurf_df
-    elif (dataset == 'BANC_freesurf' and raw==False):
+    elif (dataset == 'BANC_freesurf' and raw==False and not
+          analysis=='summary_data'):
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'matched_dataset',
@@ -373,12 +377,34 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw):
         # return numpy array of the dataframe
         return demographics, None, freesurf_df
 
-    elif (dataset == 'UKBIO_freesurf' and raw==True):
+    elif (dataset == 'UKBIO_freesurf' and raw==True and not
+          analysis=='summary_data'):
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'original_dataset',
                                                'UKBIO', 'UKB_10k_FS_4844.csv'), delimiter=',')
         return None, None, freesurf_df
+    elif (dataset == 'UKBIO_freesurf' and raw==False and
+          analysis=='summary_data'):
+        # This dataset contains only 21 feature that represent summary metrics
+        freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'matched_dataset',
+                                               'aparc_aseg_UKB_summary.csv'), delimiter=',')
+        return None, None, freesurf_df
+    elif (dataset == 'BANC_freesurf' and raw==False and
+          analysis=='summary_data'):
+        # This dataset contains only 21 feature that represent summary metrics
+        freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'matched_dataset',
+                                               'aparc_aseg_BANC_summary.csv'),
+                                  delimiter=',', index_col=0)
+        rawsubjectsId = freesurf_df.index
+
+        # Load the demographics for each subject
+        demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
+        return demographics, None, freesurf_df
 
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')

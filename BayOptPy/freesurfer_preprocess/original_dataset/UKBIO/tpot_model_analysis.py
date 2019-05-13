@@ -42,8 +42,8 @@ df_ukbio = df_ukbio.drop('dataset', axis=1)
 project_banc_wd, project_banc_data, _ = get_paths(debug,'BANC_freesurf')
 demographics_banc,__, df_banc = get_data(project_banc_data,
                                                 'BANC_freesurf',
-                                                debug, project_banc_wd,
-                                                resamplefactor, raw=False)
+                                         debug, project_banc_wd,
+                                         resamplefactor, raw=False)
 # Drop the last column that corresponds the name of the dataset
 df_banc = df_banc.drop('dataset', axis=1)
 
