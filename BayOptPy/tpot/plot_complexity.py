@@ -45,13 +45,17 @@ parser.add_argument('-random_seed',
 args = parser.parse_args()
 
 debug=False
+# Define mutation and cross over (The values below are the default TPOT)
+mutation = .9
+crossover = .1
+
 set_publication_style()
 plt.figure()
 for analysis in args.analysis_list:
     print('Analysis Type: %s' %analysis)
     tpot_path = get_all_random_seed_paths(analysis, args.generations,
                                           args.population_size,
-                                          debug)
+                                          debug, mutation, crossover)
 
     all_mae_test_set, all_mae_train_set, pipeline_complexity = \
             get_mae_for_all_generations(args.dataset,

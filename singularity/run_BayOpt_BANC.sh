@@ -11,8 +11,8 @@ fi
 echo "Data path is:"
 
 echo $datapath
-/opt/singularity/bin/singularity run -c \
-            -B ~/BayOpt/:\code \
-            -B ~/BayOpt/singularity:\sing \
+singularity run -c \
+            -B ~/BayOpt/:/code \
+            -B ~/BayOpt/singularity:/sing \
             -B $datapath:/data/NaN \
             $(dirname $0)/BayOpt.img

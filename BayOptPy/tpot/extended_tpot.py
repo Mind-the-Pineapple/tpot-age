@@ -1,39 +1,49 @@
 import numpy as np
-from tpot.base import TPOTBase
+import sys
 from stopit import threading_timeoutable, TimeoutException
+import warnings
+import skrvm
+
+from tpot.base import TPOTBase
+from tpot.operator_utils import TPOTOperatorClassFactory, Operator, ARGType
+from tpot._version import __version__
 from tpot.operator_utils import set_sample_weight
+from tpot.gp_deap import initialize_stats_dict, varOr
+from tpot.gp_types import Output_Array
+from tpot.config.regressor import regressor_config_dict
+from tpot.export_utils import generate_pipeline_code, export_pipeline, expr_to_tree
+from tpot.builtins import CombineDFs, StackingEstimator
+
 from sklearn.utils import indexable
 from sklearn.base import clone, is_classifier
 from sklearn.model_selection._split import check_cv
 from sklearn.metrics.scorer import check_scoring
-import warnings
 from sklearn.model_selection._validation import _fit_and_score
 from sklearn.gaussian_process.kernels import (RBF, Matern,
                                              RationalQuadratic,
                                              ExpSineSquared, DotProduct,
                                              ConstantKernel)
 from sklearn.metrics import mean_absolute_error
-import skrvm
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline, make_union
+from sklearn.preprocessing import FunctionTransformer
 
+from copy import copy
+from update_checker import update_check
 from functools import partial
 from multiprocessing import cpu_count
 from joblib import Parallel, delayed
-from sklearn.model_selection import train_test_split
 from datetime import datetime
 import random
 from tqdm import tqdm
 import deap
-from deap import tools, creator, gp
-from tpot.gp_deap import initialize_stats_dict, varOr
+from deap import tools, creator, gp, base
 import os
 import errno
 import joblib
 
 
 from BayOptPy.helperfunctions import get_all_random_seed_paths
-from tpot.config.regressor import regressor_config_dict
-from tpot.export_utils import generate_pipeline_code, export_pipeline, expr_to_tree
-
 
 
 class ExtendedTPOTBase(TPOTBase):
@@ -62,27 +72,127 @@ class ExtendedTPOTBase(TPOTBase):
             random.seed(random_state)
             np.random.seed(random_state)
 
-        def _setup_toolbox(self):
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore')
-                creator.create('FitnessMulti', base.Fitness, weights=(-1.0, 1.0))
-                creator.create('Individual',
-                               gp.PrimitiveTree,
-                               fitness=creator.FitnessMulti,
-                               statistics=dict)
+    def _setup_toolbox(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            weight_complexity = -.5
+            weight_fitness = 1.0
+            creator.create('FitnessMulti', base.Fitness,
+                           weights=(weight_complexity, weight_fitness))
+            creator.create('Individual',
+                           gp.PrimitiveTree,
+                           fitness=creator.FitnessMulti,
+                           statistics=dict)
 
-            self._toolbox = base.Toolbox()
-            self._toolbox.register('expr', self._gen_grow_safe, pset=self._pset, min_=1, max_=3)
-            self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
-            self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
-            self._toolbox.register('compile', self._compile_to_sklearn)
-            self._toolbox.register('select', tools.selNSGA2)
-            self._toolbox.register('mate', self._mate_operator)
-            self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
-            self._toolbox.register('mutate', self._random_mutation_operator)
+        self._toolbox = base.Toolbox()
+        self._toolbox.register('expr', self._gen_grow_safe, pset=self._pset, min_=1, max_=3)
+        self._toolbox.register('individual', tools.initIterate, creator.Individual, self._toolbox.expr)
+        self._toolbox.register('population', tools.initRepeat, list, self._toolbox.individual)
+        self._toolbox.register('compile', self._compile_to_sklearn)
+        self._toolbox.register('select', tools.selNSGA2)
+        self._toolbox.register('mate', self._mate_operator)
+        self._toolbox.register('expr_mut', self._gen_grow_safe, min_=1, max_=4)
+        self._toolbox.register('mutate', self._random_mutation_operator)
+
+    def _setup_pset(self):
+        if self.random_state is not None:
+            random.seed(self.random_state)
+            np.random.seed(self.random_state)
+
+        self._pset = gp.PrimitiveSetTyped('MAIN', [np.ndarray], Output_Array)
+        self._pset.renameArguments(ARG0='input_matrix')
+        self._add_operators()
+        self._add_terminals()
+
+        if self.verbosity > 2:
+            print('{} operators have been imported by TPOT.'.format(len(self.operators)))
 
     def _fit_init(self):
-        super()._fit_init()
+        # initialization for fit function
+        if not self.warm_start or not hasattr(self, '_pareto_front'):
+            self._pop = []
+            self._pareto_front = None
+            self._last_optimized_pareto_front = None
+            self._last_optimized_pareto_front_n_gens = 0
+
+        self._optimized_pipeline = None
+        self._optimized_pipeline_score = None
+        self._exported_pipeline_text = ""
+        self.fitted_pipeline_ = None
+        self._fitted_imputer = None
+        self._imputed = False
+        self._memory = None # initial Memory setting for sklearn pipeline
+
+        # dont save periodic pipelines more often than this
+        self._output_best_pipeline_period_seconds = 30
+
+        # Try crossover and mutation at most this many times for
+        # any one given individual (or pair of individuals)
+        self._max_mut_loops = 50
+
+        self._setup_config(self.config_dict)
+
+        self.operators = []
+        self.arguments = []
+        for key in sorted(self._config_dict.keys()):
+            op_class, arg_types = TPOTOperatorClassFactory(
+                key,
+                self._config_dict[key],
+                BaseClass=Operator,
+                ArgBaseClass=ARGType
+            )
+            if op_class:
+                self.operators.append(op_class)
+                self.arguments += arg_types
+
+        # Schedule TPOT to run for many generations if the user specifies a
+        # run-time limit TPOT will automatically interrupt itself when the timer
+        # runs out
+        if self.max_time_mins is not None:
+            self.generations = 1000000
+
+        # Prompt the user if their version is out of date
+        if not self.disable_update_check:
+            update_check('tpot', __version__)
+
+        if self.mutation_rate + self.crossover_rate > 1:
+            raise ValueError(
+                'The sum of the crossover and mutation probabilities must be <= 1.0.'
+            )
+
+        self.operators_context = {
+            'make_pipeline': make_pipeline,
+            'make_union': make_union,
+            'StackingEstimator': StackingEstimator,
+            'FunctionTransformer': FunctionTransformer,
+            'copy': copy
+        }
+
+        self._pbar = None
+        # Specifies where to output the progress messages (default: sys.stdout).
+        # Maybe open this API in future version of TPOT.(io.TextIOWrapper or io.StringIO)
+        self._file = sys.stdout
+
+        # Dictionary of individuals that have already been evaluated in previous
+        # generations
+        self.evaluated_individuals_ = {}
+
+        self._setup_scoring_function(self.scoring)
+
+        if self.subsample <= 0.0 or self.subsample > 1.0:
+            raise ValueError(
+                'The subsample ratio of the training instance must be in the range (0.0, 1.0].'
+            )
+
+        if self.n_jobs == -1:
+            self._n_jobs = cpu_count()
+        else:
+            self._n_jobs = self.n_jobs
+
+        self._setup_pset()
+        self._setup_toolbox()
+
+        ## Additions to _fit_init
         # Initialise list to save the predictions and pipelines analysed by TPOT
         self.predictions = []
         self.pipelines = []

@@ -16,3 +16,21 @@
 ./exec_BayOpt_BANC.sh /sing/neuroenvpy.sh /code/BayOptPy/tpot/plot_fitness.py
 -dataset BANC_freesurf -analysis population -generations 100 -population_size
 1000 -random_seed 10 -config_dict vanilla_combi
+
+###############################################################################
+# Mutation Analysis
+###############################################################################
+./exec_BayOpt_BANC.sh /sing/neuroenvpy.sh /code/BayOptPy/tpot/plot_fitness.py
+-dataset BANC_freesurf -analysis mutation -generations 100 -population_size 1000
+-random_seed 10 -config_dict vanilla_combi -mutation_rate 0.5 -crossover_rate 0.5
+
+###############################################################################
+# Random Seed Analysis
+###############################################################################
+./exec_BayOpt_BANC.sh /sing/neuroenvpy.sh /code/BayOptPy/tpot/plot_fitness.py
+-dataset BANC_freesurf -analysis mutation -generations 100 -population_size 1000
+-random_seed 20 -config_dict vanilla_combi -mutation_rate 0.9 -crossover_rate 0.1
+
+./exec_BayOpt_BANC.sh /sing/neuroenvpy.sh /code/BayOptPy/tpot/plot_fitness.py
+-dataset BANC_freesurf -analysis mutation -generations 100 -population_size 1000
+-random_seed 30 -config_dict vanilla_combi -mutation_rate 0.9 -crossover_rate 0.1

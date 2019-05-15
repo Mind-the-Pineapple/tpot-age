@@ -1,7 +1,6 @@
 import os
 import pickle
 import joblib
-import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -10,6 +9,7 @@ import seaborn as sns
 sns.set()
 import argparse
 import numpy as np
+import pandas as pd
 import joblib
 
 from BayOptPy.helperfunctions import (get_paths, get_all_random_seed_paths,
@@ -80,10 +80,9 @@ args = parser.parse_args()
 # Set plot styles
 set_publication_style()
 
-#random_seeds = [0, 5, 10, 20, 30, 42, 60, 80]
-#random_seeds = [30]
+random_seeds = [20, 30, 40, 50, 60]
 
-# get corerct path
+# get correct path
 project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
 tpot_path = get_all_random_seed_paths(args.analysis, args.generations,
                                       args.population_size,
@@ -91,17 +90,18 @@ tpot_path = get_all_random_seed_paths(args.analysis, args.generations,
                                       args.mutation_rate,
                                       args.crossover_rate)
 
-colour_list = ['#588ef3']
-def plt_filled_std(ax, data, data_mean, data_std, color):
+colour_list = ['#5dade2', '#e67e22']
+def plt_filled_std(ax, data, data_mean, data_std, color, label=None):
     cis = (data_mean - data_std, data_mean + data_std)
     # plot filled area
     ax.fill_between(data, cis[0], cis[1], alpha=.2, color=color)
     # plot mean
-    ax.plot(data, data_mean, linewidth=2)
+    ax.plot(data, data_mean, linewidth=2, label=label)
     ax.margins(x=0)
 
 # load file
-avg_max_fitness = []
+mae_train_all = []
+mae_test_all = []
 for random_seed in args.random_seeds:
     generation_analysis_path = os.path.join(tpot_path, 'random_seed_%03d', 'generation_analysis') %random_seed
 
@@ -115,7 +115,8 @@ for random_seed in args.random_seeds:
 
     # plot the mean and std of the fitness over different generations
     fig, ax = plt.subplots(1)
-    plt_filled_std(ax, range(len(fitness)), fitness['avg'], fitness['std'], colour_list[0])
+    plt_filled_std(ax, range(len(fitness)), fitness['avg'], fitness['std'],
+                   colour_list[0], None)
     plt.xlabel('Generation')
     plt.ylabel('Fitness')
     plt.savefig(os.path.join(generation_analysis_path, 'mean_std.png'))
@@ -128,18 +129,20 @@ for random_seed in args.random_seeds:
                                         random_seed,
                                         args.generations,
                                         args.config_dict, tpot_path)
+    mae_train_all.append(all_mae_train_set)
+    mae_test_all.append(all_mae_test_set)
     plt.figure()
-    plt.plot(range(len(all_mae_train_set)), all_mae_train_set, marker='o', label='traning set')
+    plt.plot(range(len(all_mae_train_set)), all_mae_train_set, marker='o',
+             color=colour_list[0], label='traning set')
     # plt.plot(range(len(fitness)), fitness['avg'], marker='o',
     #          label='avg_training')
-    plt.plot(range(len(all_mae_test_set)), all_mae_test_set, marker='o', label='test set')
+    plt.plot(range(len(all_mae_test_set)), all_mae_test_set, marker='o',
+             color=colour_list[1], label='test set')
     plt.legend()
     plt.xlabel('Generation')
     plt.ylabel('MAE')
-    plt.ylim(5,7)
+    plt.ylim(5,8)
     plt.savefig(os.path.join(generation_analysis_path, 'train_test_fitness.png'))
-    # Save the current random_see max fitness for further analysis
-    avg_max_fitness.append(fitness['max'])
 
     # Plot the different MAE for each generation and use the complexity of the
     # model as hue
@@ -168,7 +171,6 @@ for random_seed in args.random_seeds:
     plt.ylabel('MAE')
     plt.savefig(os.path.join(generation_analysis_path, 'max_fitness.png'))
     # Save the current random_see max fitness for further analysis
-    avg_max_fitness.append(fitness['max'])
 
     # # find the maximum and minimum histogram count
     # max_n = 0
@@ -217,48 +219,64 @@ for random_seed in args.random_seeds:
 
     #Plot Boxplot
     plt.figure()
-    data = [abs(fitness['raw'][generation]) for generation in range(len(fitness))]
+    data = [abs(fitness['raw'][generation]) for generation in
+                         range(len(fitness))]
     fig, ax = plt.subplots(1,1)
-    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
-    plt.boxplot(data, positions=range(0, len(fitness)), vert=False, showfliers=True, flierprops=outliers)
-    plt.xlabel('MAE')
-    plt.ylabel('Generations')
+    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.1)
+    plt.boxplot(data, positions=range(0, len(fitness)), showfliers=True, flierprops=outliers)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
     # TODO: improve how you determine this threshold (there are models that are worse)
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
-    ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
     plt.savefig(os.path.join(generation_analysis_path, 'boxplot.png'))
     plt.close()
 
     #Plot Boxplot
     plt.figure()
     fig, ax = plt.subplots(1,1)
-    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.5)
-    plt.boxplot(data, positions=range(0, len(fitness)), vert=False, showfliers=True, flierprops=outliers)
-    plt.xlabel('MAE')
-    plt.ylabel('Generations')
+    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.1)
+    plt.boxplot(data, positions=range(0, len(fitness)), showfliers=True, flierprops=outliers)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
     # TODO: improve how you determine this threshold (there are models that are worse)
-    plt.xlim(4, 45)
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(10))
-    ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+    plt.ylim(0, 45)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
     plt.savefig(os.path.join(generation_analysis_path, 'boxplot2.png'))
+    plt.close()
+
+    #Plot Boxplot at every 10-th generation
+    plt.figure()
+    fig, ax = plt.subplots(1,1)
+    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.1)
+
+    plt.boxplot(data[0:101:10], positions=range(0, len(fitness),10), showfliers=True, flierprops=outliers)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
+    # TODO: improve how you determine this threshold (there are models that are worse)
+    plt.ylim(0, 45)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    plt.savefig(os.path.join(generation_analysis_path, 'boxplot3.png'))
     plt.close()
 
     # Plot violin plot
     plt.figure()
     fig, ax = plt.subplots(1, 1)
-    plt.violinplot(data, positions=range(0, len(fitness)), vert=False, showmedians=True)
-    plt.xlabel('MAE')
-    plt.ylabel('Generations')
+    plt.violinplot(data, positions=range(0, len(fitness)), showmedians=True)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
     plt.savefig(os.path.join(generation_analysis_path, 'violin.png'))
     plt.close()
 
     # Plot violin plot2
     plt.figure()
     fig, ax = plt.subplots(1, 1)
-    plt.violinplot(data, positions=range(0, len(fitness)),vert=False, showmedians=True)
-    plt.xlabel('MAE')
-    plt.ylabel('Generations')
-    plt.xlim(4, 45)
+    plt.violinplot(data, positions=range(0, len(fitness)), showmedians=True)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
+    plt.ylim(4, 45)
     plt.savefig(os.path.join(generation_analysis_path, 'violin2.png'))
     plt.close()
 
@@ -269,6 +287,7 @@ for random_seed in args.random_seeds:
                                  ) %(random_seed, args.config_dict, args.generations)
     tpot_obj = joblib.load(tpot_obj_path)
     for selected_gen in selected_gens:
+        print(selected_gen)
         curr_gen_mae = \
         [tpot_obj['evaluated_individuals'][selected_gen][model]['internal_cv_score']
                 for model in
@@ -301,15 +320,16 @@ for random_seed in args.random_seeds:
                 cluster_mae_name[2].append(key)
                 cluster_mae[2].append(abs(curr_gen_mae[idx]))
 
-        print('First MAE Group:')
+        print('First MAE Group: samller -9')
         print('Number of models: %d' %len(cluster_mae_name[0]))
         print(cluster_mae_name[0])
-        print('Second MAE Group')
+        print('Second MAE Group: x > 19')
         print('Number of models: %d' %len(cluster_mae_name[1]))
         print(cluster_mae_name[1])
-        print('Third MAE Group')
+        print('Third MAE Group: between 9 and 19')
         print('Number of models: %d' %len(cluster_mae_name[2]))
         print(cluster_mae_name[2])
+        print('------------------------------------------------------------------')
 
         plt.figure()
         markers = 'o'
@@ -322,15 +342,76 @@ for random_seed in args.random_seeds:
         plt.savefig(os.path.join(generation_analysis_path, '%d_gen_mae.png'
             %selected_gen))
         plt.close()
+    print('')
+    print('------------------------------------------------------------------')
+    print('Plot Heatmap with algorithm counts')
+    print('------------------------------------------------------------------')
+    print('')
+    # Define the list of possible models
+    algorithms_list = ['GaussianProcessRegressor', 'RVR', 'LinearSVR',
+                                'RandomForestRegressor',
+                                'KNeighborsRegressor',
+                                'LinearRegression', 'Ridge','ElasticNetCV',
+                                'ExtraTreesRegressor', 'LassoLarsCV',
+                                'DecisionTreeRegressor']
+
+    df = pd.DataFrame(columns=algorithms_list,
+                     index=tpot_obj['evaluated_individuals'].keys())
+
+    # Iterate over all the dictionary keys from the dictionary with the TPOT
+    # analysed model and count the ocurrence of each one of the algorithms of
+    # interest
+    for generation in tpot_obj['evaluated_individuals']:
+        algorithms_dic = dict.fromkeys(algorithms_list, 0)
+        for algorithm in algorithms_list:
+            for tpot_pipeline in tpot_obj['evaluated_individuals'][generation]:
+                 # By using '( we count the  algorithm only once and do not# care about its
+                 # hyperparameters definitions'
+                 algorithms_dic[algorithm] += tpot_pipeline.count(algorithm + '(')
+                 # Append the count of algorithms to the dataframe
+                 df.loc[generation] = pd.Series(algorithms_dic)
+
+     # Create heatmap
+    df2 = df.transpose()
+    plt.figure(figsize=(28,8))
+    sns.heatmap(df2,
+             cmap='YlGnBu')
+    plt.xlabel('Generations')
+    plt.tight_layout()
+    plt.savefig(os.path.join(generation_analysis_path, 'heatmap.png'))
+    plt.close()
+
+    print('Maximum Count for each algorithm')
+    print(df2.max())
+    print('Minimum Count for each algorithm')
+    print(df2.min())
+
 
 # Plot max statiscal max fitness for the different random seeds
 # plot the mean and std of the fitness over different generations
+mae_test_all_np = np.array(mae_test_all)
+mae_train_all_np = np.array(mae_train_all)
 fig, ax = plt.subplots(1)
-plt_filled_std(ax, range(len(fitness)), np.mean(avg_max_fitness, axis=0), np.std(avg_max_fitness, axis=0), colour_list[0])
-plt.xlabel('Generation')
-plt.ylabel('MAE')
+plt_filled_std(ax, range(mae_test_all_np.shape[1]), np.mean(mae_test_all_np, axis=0),
+               np.std(mae_test_all_np, axis=0), colour_list[1], 'Test')
+# plt_filled_std(ax, range(mae_train_all_np.shape[1]), np.mean(mae_train_all_np, axis=0),
+#                np.std(mae_train_all_np, axis=0), colour_list[0], 'Train')
+plt.ylabel('Generation')
+plt.xlabel('MAE')
+plt.legend()
 plt.savefig(os.path.join(tpot_path, 'all_seeds_mean_std.png'))
 plt.close()
 
+#Plot Boxplot
+plt.figure()
+fig, ax = plt.subplots(1,1)
+outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.1)
+plt.boxplot(mae_train_all, positions=range(0, len(mae_train_all)),
+            showfliers=True, flierprops=outliers)
+plt.ylabel('MAE')
+plt.xlabel('Random Seeds')
+# ax.set_yticks(args.random_seeds)
+plt.savefig(os.path.join(tpot_path, 'boxplot_all_random_train.png'))
+plt.close()
 
 

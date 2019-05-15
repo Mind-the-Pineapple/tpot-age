@@ -1,19 +1,55 @@
 #  data folder
 data
+
 # editor files
 *.sw[o,n,p]
+
+# Ignore dataset
 *.csv
+*.csv.gz
+
+# Ignore created images
+*.png
+
 # singularity examples
 singularity/examples/
+
 # singularity images
 *.img
+
 # mac specific files
 .DS_Store
+._.DS_Store
+
 # python specific files
 .idea
 __pycache__/
+BayOptPy/tpot/notebooks/.ipynb_checkpoints
 # dask related folder
 dask-worker-space/
+
 # ignore tpotcreated pipelines
 BayOptPy/tpot/debug/tpot_boston_pipeline_super.py
 BayOptPy/tpot/debug/tpot_boston_pipeline.py'
+
+# Ignore updaets on examples
+singularity/digits/
+
+# Ignore logs
+singularity/logs/*
+
+# Ignore outputs
+BayOptPy/tpot/feat_combi/*
+BayOptPy/tpot/feat_selec/*
+BayOptPy/tpot/ukbio/*
+BayOptPy/tpot/vanilla/*
+BayOptPy/tpot/vanilla_combi/*
+BayOptPy/tpot/random_seed/*
+BayOptPy/tpot/mutation/*
+BayOptPy/tpot/population/
+
+BayOptPy/tpot/figs/*
+BayOptPy/tpot/old_figs/*
+
+
+
