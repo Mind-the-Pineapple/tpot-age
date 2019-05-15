@@ -24,7 +24,7 @@ singularity/examples/
 # python specific files
 .idea
 __pycache__/
-
+BayOptPy/tpot/notebooks/.ipynb_checkpoints
 # dask related folder
 dask-worker-space/
 
