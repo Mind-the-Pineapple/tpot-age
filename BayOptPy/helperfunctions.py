@@ -364,8 +364,18 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'matched_dataset',
-                                               'aparc_aseg_UKB.csv'), delimiter=',')
-        return None, None, freesurf_df
+                                               'aparc_aseg_UKBIO.csv'), delimiter=',')
+        # Read the full matrix to get the demographics information
+        ukbio_full_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'original_dataset',
+                                               'UKBIO',
+                                               'UKB_10k_FS_4844_combined.csv'),
+                                    delimiter=',',
+                                   index_col=False)
+        demographics = ukbio_full_df[['age', 'sex', 'id']].copy()
+        demographics = demographics.set_index('id')
+        return demographics, None, freesurf_df
     elif (dataset == 'BANC_freesurf' and raw==False and not
           analysis=='summary_data'):
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
@@ -386,16 +396,28 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'original_dataset',
-                                               'UKBIO', 'UKB_10k_FS_4844.csv'), delimiter=',')
-        return None, None, freesurf_df
+                                               'UKBIO',
+                                               'UKB_10k_FS_4844_combined.csv'), delimiter=',')
+        freesurf_df.drop(columns='id.4844')
+        freesurf_df = freesurf_df.set_index('id')
+        demographics = freesurf_df[['age', 'sex']].copy()
+        return demographics, None, freesurf_df
     elif (dataset == 'UKBIO_freesurf' and raw==False and
           analysis=='summary_data'):
         # This dataset contains only 21 feature that represent summary metrics
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'matched_dataset',
-                                               'aparc_aseg_UKB_summary.csv'), delimiter=',')
-        return None, None, freesurf_df
+                                               'aparc_aseg_UKBIO_summary.csv'), delimiter=',')
+        # Read the full matrix to get the demographics information
+        ukbio_full_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'original_dataset',
+                                               'UKBIO',
+                                               'UKB_10k_FS_4844_combined.csv'), delimiter=',')
+        demographics = ukbio_full_df[['age', 'sex', 'id']].copy()
+        demographics = demographics.set_index('id')
+        return demographics, None, freesurf_df
     elif (dataset == 'BANC_freesurf' and raw==False and
           analysis=='summary_data'):
         # This dataset contains only 21 feature that represent summary metrics
@@ -418,23 +440,23 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
                                                'matched_dataset',
                                                'aparc_aseg_UKB.csv'),
                                delimiter=',', index_col=0)
-        ukbio_demographics = pd.read_csv(os.path.join(project_wd,
-                                             'BayOptPy', 'freesurfer_preprocess',
-                                             'original_dataset',
-                                             'UKBIO','UKB_FS_age_sex.csv'))
 
         banc_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'matched_dataset',
                                                'aparc_aseg_BANC.csv'),
                                   delimiter=',', index_col=0)
-        # Drop the last column that corresponds the name of the dataset
+        ukbio_full_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'original_dataset',
+                                               'UKBIO',
+                                               'UKB_10k_FS_4844_combined.csv'), delimiter=',')
         rawsubjectsId = banc_df.index
         # Load the demographics for each subject
         banc_demographics, selectedSubId = get_data_covariates(project_data,
                                                           rawsubjectsId,
                                                           'BANC')
-
+        ukbio_demographics = ukbio_full_df[['age', 'sex', 'id']].copy()
         # Concatenate both freesurfeer datasets
         freesurfer_df = pd.concat([ukbio_df, banc_df])
 
@@ -446,9 +468,8 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         # Add column to specify dataset
         tmp['dataset'] = 'banc'
         ukbio_demographics['dataset'] = 'ukbio'
-        ukbio_demographics['id'] = ukbio_df.index
         demographics = pd.concat([ukbio_demographics, tmp], sort=False)
-        demographics.set_index('id')
+        demographics = demographics.set_index('id')
         # TODO: For now assume that the index in the BIOBANK correspond to th
         # Stratify subjects. Divide them into classes <30, 30<40, 40<50, 50<60,
         # 60<70, 70<80, 80<90, 90<100. Each age will be then further stratified

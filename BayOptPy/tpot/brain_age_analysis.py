@@ -40,8 +40,9 @@ parser.add_argument('-dataset',
                     choices=['OASIS',            # Images from OASIS
                              'BANC',             # Images from BANC
                              'BANC_freesurf',    # Freesurfer info from BANC
-                             'freesurf_combined' # Use Freesurfer from BANC and
+                             'freesurf_combined', # Use Freesurfer from BANC and
                                                  # UKBIO
+                             'UKBIO_freesurf'
                             ]
                     )
 parser.add_argument('-cv',
