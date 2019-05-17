@@ -51,17 +51,14 @@ def get_paths(debug, dataset):
         project_wd = '/code'
         project_data = None
         project_sink = None
-    elif not debug and dataset == 'BANC_freesurf':
+    elif not debug and (dataset == 'BANC_freesurf' or
+                        dataset == 'UKBIO_freesurf' or
+                        dataset == 'freesurf_combined'
+                       ):
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'code', 'BayOptPy',
                                     'freesurfer_preprocess')
         project_sink = None
-    elif not debug and dataset == 'UKBIO_freesurf':
-        project_wd = '/code'
-        project_data = os.path.join(os.sep, 'code', 'BayOptPy',
-                                    'freesurfer_preprocess')
-        project_sink = None
-
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
 
@@ -309,8 +306,11 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
     :return: demographics:
     :return: dataframe.values: Just the numeric values of the dataframe
     '''
-    print('Loading Brain image data')
-    if dataset == 'OASIS':
+
+    if dataset == 'freesurf_combined' and raw == True:
+        raise ValueError('The combined analysis cannot use the raw dataset')
+        print('Loading Brain image data')
+    elif dataset == 'OASIS':
         # remove the file end and get list of all used subjects
         fileList = os.listdir(project_data)
         rawsubjectsId = [re.sub(r'^smwc1(.*?)\_mpr-1_anon.nii$', '\\1', file) for file in fileList if file.endswith('.nii')]
@@ -355,6 +355,8 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
         # return numpy array of the dataframe
+        # Rename columns to maintain consistency withe ukbio
+        demographics.rename(index=str, columns={'ID':'id', 'Age': 'age'}, inplace=True)
         return demographics, None, freesurf_df
 
     elif (dataset == 'UKBIO_freesurf' and raw==False and not
@@ -375,6 +377,8 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
         # return numpy array of the dataframe
+        # Rename columns to maintain consistency withe ukbio
+        demographics.rename(index=str, columns={'ID':'id', 'Age': 'age'}, inplace=True)
         return demographics, None, freesurf_df
 
     elif (dataset == 'UKBIO_freesurf' and raw==True and not
@@ -404,7 +408,65 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
 
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
+        # Rename columns to maintain consistency withe ukbio
+        demographics.rename(index=str, columns={'ID':'id', 'Age': 'age'}, inplace=True)
         return demographics, None, freesurf_df
+
+    elif (dataset == 'freesurf_combined'):
+        ukbio_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'matched_dataset',
+                                               'aparc_aseg_UKB.csv'),
+                               delimiter=',', index_col=0)
+        ukbio_demographics = pd.read_csv(os.path.join(project_wd,
+                                             'BayOptPy', 'freesurfer_preprocess',
+                                             'original_dataset',
+                                             'UKBIO','UKB_FS_age_sex.csv'))
+
+        banc_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'matched_dataset',
+                                               'aparc_aseg_BANC.csv'),
+                                  delimiter=',', index_col=0)
+        # Drop the last column that corresponds the name of the dataset
+        rawsubjectsId = banc_df.index
+        # Load the demographics for each subject
+        banc_demographics, selectedSubId = get_data_covariates(project_data,
+                                                          rawsubjectsId,
+                                                          'BANC')
+
+        # Concatenate both freesurfeer datasets
+        freesurfer_df = pd.concat([ukbio_df, banc_df])
+
+        # Concatenate demographics information (Age and Sex)
+        tmp = banc_demographics.drop('original_dataset', axis=1)
+        tmp.rename(index=str, columns={'ID':'id', 'Age': 'age'}, inplace=True)
+        # transform M/F into male/female
+        tmp['sex'] = tmp['sex'].map({'F': 'female', 'M': 'male'})
+        # Add column to specify dataset
+        tmp['dataset'] = 'banc'
+        ukbio_demographics['dataset'] = 'ukbio'
+        ukbio_demographics['id'] = ukbio_df.index
+        demographics = pd.concat([ukbio_demographics, tmp], sort=False)
+        demographics.set_index('id')
+        # TODO: For now assume that the index in the BIOBANK correspond to th
+        # Stratify subjects. Divide them into classes <30, 30<40, 40<50, 50<60,
+        # 60<70, 70<80, 80<90, 90<100. Each age will be then further stratified
+        # into F/M.
+        bins = (17, 30, 40, 50, 60, 70, 80, 90)
+        group_labels = range(1,len(bins))
+        demographics['age_band'] = pd.cut(demographics['age'], bins,
+                                          labels=group_labels)
+        sex_age_group = demographics.groupby(['sex', 'age_band'])
+        # Note that the following groups are created:
+        # ('female', 1), ('female', 2), ('female', 3), ('female', 4), ('female',  5),
+        # ('female', 6), ('female', 7), ('male', 1), ('male', 2), ('male', 3),
+        # ('male', 4), ('male', 5), ('male', 6), ('male', 7)]
+        # This will label the groups cited above in a crescent order. In total
+        # you will have 1-14 groups, grouped according to their age and sex
+        demographics['stratify'] = sex_age_group.grouper.group_info[0] + 1
+        #same order between both fines
+        return demographics, None, freesurfer_df
 
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
@@ -504,6 +566,7 @@ def create_age_histogram(training_age, test_age, dataset):
     '''
     # Define plot styple
     set_publication_style()
+    plt.figure()
     if dataset == 'BANC':
         path_to_save = '/code/BayOptPy/tpot/age_histogram_BANC.png'
         # Define plot range

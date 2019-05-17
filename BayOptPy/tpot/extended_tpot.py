@@ -75,7 +75,7 @@ class ExtendedTPOTBase(TPOTBase):
     def _setup_toolbox(self):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            weight_complexity = -.1
+            weight_complexity = -.5
             weight_fitness = 1.0
             creator.create('FitnessMulti', base.Fitness,
                            weights=(weight_complexity, weight_fitness))

@@ -37,7 +37,12 @@ parser.add_argument('-dask',
 parser.add_argument('-dataset',
                     dest='dataset',
                     help='Specify which dataset to use',
-                    choices=['OASIS', 'BANC', 'BANC_freesurf']
+                    choices=['OASIS',            # Images from OASIS
+                             'BANC',             # Images from BANC
+                             'BANC_freesurf',    # Freesurfer info from BANC
+                             'freesurf_combined' # Use Freesurfer from BANC and
+                                                 # UKBIO
+                            ]
                     )
 parser.add_argument('-cv',
                     dest='cv',
@@ -166,22 +171,22 @@ if __name__ == '__main__':
     print('Using %d features' %len(dataframe.columns))
     # Drop the last coumn which correspond to the dataset name
     dataframe = dataframe.drop(['dataset'], axis=1)
-    data = dataframe.values
 
     # Show mean std and F/M count for each dataset used
     aggregations = {
-        'Age': ['mean', 'std', 'min', 'max'],
+        'age': ['mean', 'std', 'min', 'max'],
         'sex': 'size'
     }
-    demographics.groupby(['original_dataset', 'sex']).aggregate(aggregations)
+    if not args.dataset == 'freesurf_combined':
+        demographics.groupby(['original_dataset', 'sex']).aggregate(aggregations)
 
-    # Print total N per dataset
-    for dataset in np.unique(demographics['original_dataset']):
-        print('%s: %d' % (dataset, sum(demographics['original_dataset'] == dataset)))
+        # Print total N per dataset
+        for dataset in np.unique(demographics['original_dataset']):
+            print('%s: %d' % (dataset, sum(demographics['original_dataset'] == dataset)))
 
     # Print demographics for the final dataset
     demographics.groupby(['sex']).aggregate(aggregations)
-
+    demographics = demographics.set_index('id')
     # Path to the folder where to save the best pipeline will be saved
     # Note: The pipeline will only be saved if it is different from the one in
     # the previous generation
@@ -196,7 +201,7 @@ if __name__ == '__main__':
 
     print('Running regression analyis with TPOT')
     # split train-test dataset
-    targetAttribute = np.array(demographics['Age'])
+    targetAttribute = demographics['age']
     if args.debug and args.dask:
         print('Start DASK client')
         port = 8889
@@ -206,18 +211,78 @@ if __name__ == '__main__':
         # TODO: These two ifs are not tested
         client = Client(threads_per_worker=1, diagnostics_port=port)
         client
+    if args.dataset == 'freesurf_combined':
+    # This assumes that your dataframe already has a column that defines the
+    # popularity of every group M/F and age in the dataset
+        Xtrain, Xtemp, Ytrain, Ytemp = \
+                model_selection.train_test_split(dataframe, targetAttribute,
+                                                 test_size=.90,
+                                                 stratify=demographics['stratify'],
+                                                 random_state=args.random_seed)
+        # Get the stratified list for the training dataset
+        train_demographics = demographics.loc[Xtemp.index]
+        Xvalidate, Xtest, Yvalidate, Ytest = \
+                model_selection.train_test_split(Xtemp, Ytemp,
+                                                 test_size=.05,
+                                                 stratify=train_demographics['stratify'],
+                                                 random_state=args.random_seed)
 
-    Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(data, targetAttribute, test_size=.25,
-                                                                    random_state=args.random_seed)
+
+        ax = sns.violinplot(x='stratify', y='age', hue='sex',
+                        data=demographics.loc[Xtrain.index],palette="muted")
+        fig = ax.get_figure()
+        fig.savefig(os.path.join(project_wd, 'train_distribution.png'))
+        plt.close()
+        plt.figure()
+        ax = sns.violinplot(x='stratify', y='age', hue='sex',
+                        data=demographics.loc[Xtest.index],palette="muted")
+        fig = ax.get_figure()
+        fig.savefig(os.path.join(project_wd, 'test_distribution.png'))
+        plt.close()
+        plt.figure()
+        ax = sns.violinplot(x='stratify', y='age', hue='sex',
+                        data=demographics.loc[Xvalidate.index],palette="muted")
+        fig = ax.get_figure()
+        fig.savefig(os.path.join(project_wd, 'validation_distribution.png'))
+        plt.close()
+        plt.figure()
+        ax = sns.violinplot(x='stratify', y='age', hue='sex',
+                        data=demographics,palette="muted")
+        fig = ax.get_figure()
+        fig.savefig(os.path.join(project_wd, 'beforesplit_distribution.png'))
+        plt.close()
+    else:
+        Xtrain, Xtest, Ytrain, Ytest = \
+                model_selection.train_test_split(dataframe, targetAttribute,
+                                                 test_size=.25,
+                                                 random_state=args.random_seed)
+
+    # Check the group distribution
+    # It is not that easy because your labels are not thesabe as Y. But the mean
+    # age of the Ytrain and Ytest is vvery similar!
+    # print(np.unique(Ytrain, return_counts=True))
+    # print(np.unique(Ytest, return_counts=True))
     print('Divided dataset into test and training')
     print('Check train test split sizes')
     print('X_train: ' + str(Xtrain.shape))
     print('X_test: '  + str(Xtest.shape))
     print('Y_train: ' + str(Ytrain.shape))
     print('Y_test: '  + str(Ytest.shape))
+    if args.dataset == 'freesurf_combined':
+        print('Y_validate: ' + str(Yvalidate.shape))
+        print('X_validate: '  + str(Xvalidate.shape))
+
+        # Dump the validation set and delete the loaded subjects
+        import pickle
+        validation = {'Xvalidate': Xvalidate,
+                      'Yvalidate': Yvalidate}
+        with open(os.path.join(project_wd, 'validation_dataset.pickle'), 'wb') as handle:
+            pickle.dump(validation, handle)
+        del Xvalidate, Yvalidate
 
     # Plot age distribution for the training and test dataset
     create_age_histogram(Ytrain, Ytest, 'BANC')
+
 
     tpot = ExtendedTPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
@@ -240,6 +305,11 @@ if __name__ == '__main__':
     print('Population Size: %d' %args.population_size)
     print('Offspring Size: %d' %args.offspring_size)
     # njobs=-1 uses all cores present in the machine
+    # Transform pandas into numpy arrays
+    Xtrain = Xtrain.values
+    Ytrain = Ytrain.values
+    Xtest = Xtest.values
+    Ytest = Ytest.values
     tpot.fit(Xtrain, Ytrain, Xtest, Ytest)
     print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
