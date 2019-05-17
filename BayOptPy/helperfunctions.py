@@ -374,7 +374,6 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
                                     delimiter=',',
                                    index_col=False)
         demographics = ukbio_full_df[['age', 'sex', 'id']].copy()
-        demographics = demographics.set_index('id')
         return demographics, None, freesurf_df
     elif (dataset == 'BANC_freesurf' and raw==False and not
           analysis=='summary_data'):
@@ -399,8 +398,8 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
                                                'UKBIO',
                                                'UKB_10k_FS_4844_combined.csv'), delimiter=',')
         freesurf_df.drop(columns='id.4844')
+        demographics = freesurf_df[['age', 'sex', 'id']].copy()
         freesurf_df = freesurf_df.set_index('id')
-        demographics = freesurf_df[['age', 'sex']].copy()
         return demographics, None, freesurf_df
     elif (dataset == 'UKBIO_freesurf' and raw==False and
           analysis=='summary_data'):
@@ -416,7 +415,6 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
                                                'UKBIO',
                                                'UKB_10k_FS_4844_combined.csv'), delimiter=',')
         demographics = ukbio_full_df[['age', 'sex', 'id']].copy()
-        demographics = demographics.set_index('id')
         return demographics, None, freesurf_df
     elif (dataset == 'BANC_freesurf' and raw==False and
           analysis=='summary_data'):
@@ -469,7 +467,6 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         tmp['dataset'] = 'banc'
         ukbio_demographics['dataset'] = 'ukbio'
         demographics = pd.concat([ukbio_demographics, tmp], sort=False)
-        demographics = demographics.set_index('id')
         # TODO: For now assume that the index in the BIOBANK correspond to th
         # Stratify subjects. Divide them into classes <30, 30<40, 40<50, 50<60,
         # 60<70, 70<80, 80<90, 90<100. Each age will be then further stratified

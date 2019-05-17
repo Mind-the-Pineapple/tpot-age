@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import argparse
 from sklearn import model_selection
+from sklearn.preprocessing import RobustScaler
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -10,6 +11,7 @@ import seaborn as sns
 import pickle
 # from sklearn.externals import joblib
 import joblib
+
 
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
@@ -178,7 +180,7 @@ if __name__ == '__main__':
         'age': ['mean', 'std', 'min', 'max'],
         'sex': 'size'
     }
-    if not args.dataset == 'freesurf_combined':
+    if args.dataset == 'BANC_freesurf':
         demographics.groupby(['original_dataset', 'sex']).aggregate(aggregations)
 
         # Print total N per dataset
@@ -269,14 +271,28 @@ if __name__ == '__main__':
     print('X_test: '  + str(Xtest.shape))
     print('Y_train: ' + str(Ytrain.shape))
     print('Y_test: '  + str(Ytest.shape))
+
+    # Normalise the test dataset and apply the transformation to the train
+    # dataset
+    robustscaler = RobustScaler().fit(Xtrain)
+    Xtrain_scaled = robustscaler.transform(Xtrain)
+    Xtest_scaled = robustscaler.transform(Xtest)
+    # Transform pandas into numpy arrays (no nneed to do it if you are scaling
+    # the results)
+    # Xtrain = Xtrain.values
+    Ytrain = Ytrain.values
+    # Xtest = Xtest.values
+    Ytest = Ytest.values
+
     if args.dataset == 'freesurf_combined':
         print('Y_validate: ' + str(Yvalidate.shape))
-        print('X_validate: '  + str(Xvalidate.shape))
+        print('X_validate: ' + str(Xvalidate.shape))
 
+        Xvalidate_scaled = robustscaler.transform(Xvalidate)
         # Dump the validation set and delete the loaded subjects
-        import pickle
         validation = {'Xvalidate': Xvalidate,
-                      'Yvalidate': Yvalidate}
+                      'Yvalidate': Yvalidate,
+                      'Xvalidate_scaled': Xvalidate_scaled}
         with open(os.path.join(project_wd, 'validation_dataset.pickle'), 'wb') as handle:
             pickle.dump(validation, handle)
         del Xvalidate, Yvalidate
@@ -305,13 +321,8 @@ if __name__ == '__main__':
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
     print('Offspring Size: %d' %args.offspring_size)
-    # njobs=-1 uses all cores present in the machine
-    # Transform pandas into numpy arrays
-    Xtrain = Xtrain.values
-    Ytrain = Ytrain.values
-    Xtest = Xtest.values
-    Ytest = Ytest.values
-    tpot.fit(Xtrain, Ytrain, Xtest, Ytest)
+
+    tpot.fit(Xtrain_scaled, Ytrain, Xtest_scaled, Ytest)
     print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')

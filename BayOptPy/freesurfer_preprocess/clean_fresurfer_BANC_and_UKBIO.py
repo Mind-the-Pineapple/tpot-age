@@ -170,7 +170,6 @@ freesurfer_df_ukbio.rename(columns=renameCols, inplace=True)
 # Keep only the columns that both datasets have in common
 df_ukbio = freesurfer_df_ukbio[freesurfer_banc_columns]
 df_ukbio.index.name = 'id'
-
 #-----------------------------------------------------------------------------
 # UKBIO vs BANC
 #-----------------------------------------------------------------------------
@@ -245,7 +244,7 @@ plt.close()
 # from the BANC dataset
 save_path_ukbio = os.path.join(save_path, 'matched_dataset')
 df_ukbio.to_csv(os.path.join(save_path_ukbio, 'aparc_aseg_UKB.csv'),
-                columns=df_ukbio.columns, index_label='id')
+                columns=df_ukbio.columns)
 print('Saved modifed Biobank dataset: %s' %save_path)
 
 # As we deleted the orignal lh_MeanThickness recaculate those values
