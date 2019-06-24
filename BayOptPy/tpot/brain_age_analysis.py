@@ -157,7 +157,7 @@ if __name__ == '__main__':
         tpot_config = tpot_config_gpr
     elif args.config_dict == 'vanilla_combi':
         # Load models for feature combination
-        from BayOptPy.tpot.gpr_tpot_config_feat_combi import tpot_config_gpr
+        from BayOptPy.tpot.gpr_tpot_config_vanilla_combi import tpot_config_gpr
         tpot_config = tpot_config_gpr
 
     # Get data paths, the actual data and check if the output paths exists
@@ -229,7 +229,6 @@ if __name__ == '__main__':
                                                  test_size=.05,
                                                  stratify=train_demographics['stratify'],
                                                  random_state=args.random_seed)
-
 
         ax = sns.violinplot(x='stratify', y='age', hue='sex',
                         data=demographics.loc[Xtrain.index],palette="muted")

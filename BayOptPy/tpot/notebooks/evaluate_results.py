@@ -19,6 +19,7 @@ def predecessor_generation(results, curr_generation, verbose):
                 data_df = data_df.append({'model': key, 'predecessor': predecessor, 'generation': int(generation),
                                           'mae': mae},
                                  ignore_index=True)
+
     if verbose:
         print('Current Generation: %d' %curr_generation)
         print('List of repeated models')
