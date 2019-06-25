@@ -322,7 +322,7 @@ if __name__ == '__main__':
     print('Offspring Size: %d' %args.offspring_size)
 
     tpot.fit(Xtrain_scaled, Ytrain, Xtest_scaled, Ytest)
-    print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
+    print('Test score using optimal model: %f ' % tpot.score(Xtest_scaled, Ytest))
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
 

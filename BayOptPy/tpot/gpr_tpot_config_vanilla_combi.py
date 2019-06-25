@@ -77,12 +77,6 @@ tpot_config_gpr = {
            'random_state': [42],
            'min_samples_leaf': range(1, 21)
     },
-        'xgboost.XGBRegressor': {
-           'max_depth': range(1, 11),
-           'learning_rate': [1e-3, 1e-2, 1e-1, 0.5, 1.],
-           'subsample': np.arange(0.05, 1.01, 0.05),
-           'min_child_weight': range(1, 21),
-    },
 ###############################################################################
 ## Preprocessors
 ################################################################################

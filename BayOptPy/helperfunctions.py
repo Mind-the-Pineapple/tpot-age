@@ -436,7 +436,7 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         ukbio_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'matched_dataset',
-                                               'aparc_aseg_UKB.csv'),
+                                               'aparc_aseg_UKBIO.csv'),
                                delimiter=',', index_col=0)
 
         banc_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
