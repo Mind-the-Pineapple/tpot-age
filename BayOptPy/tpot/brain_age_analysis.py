@@ -288,12 +288,18 @@ if __name__ == '__main__':
         print('X_validate: ' + str(Xvalidate.shape))
 
         Xvalidate_scaled = robustscaler.transform(Xvalidate)
-        # Dump the validation set and delete the loaded subjects
-        validation = {'Xvalidate': Xvalidate,
-                      'Yvalidate': Yvalidate,
-                      'Xvalidate_scaled': Xvalidate_scaled}
-        with open(os.path.join(project_wd, 'validation_dataset.pickle'), 'wb') as handle:
-            pickle.dump(validation, handle)
+        # Dump the train, test and validation set and delete the validation loaded subjects
+        splitted_datasets = {'Xvalidate': Xvalidate,
+                             'Yvalidate': Yvalidate,
+                             'Xvalidate_scaled': Xvalidate_scaled,
+                             'Xtrain': Xtrain,
+                             'Ytrain': Ytrain,
+                             'Xtrain_scaled': Xtrain_scaled,
+                             'Xtest': Xtest,
+                             'Ytest': Ytest,
+                             'Xtest_scaled': Xtest_scaled}
+        with open(os.path.join(output_path, 'splitted_dataset.pickle'), 'wb') as handle:
+            pickle.dump(splitted_datasets, handle)
         del Xvalidate, Yvalidate
 
     # Plot age distribution for the training and test dataset
@@ -323,7 +329,8 @@ if __name__ == '__main__':
 
     tpot.fit(Xtrain_scaled, Ytrain, Xtest_scaled, Ytest)
     print('Test score using optimal model: %f ' % tpot.score(Xtest_scaled, Ytest))
-    tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
+    # save script with the best pipeline
+    tpot.export(os.path.join(output_path, 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
 
     print('Number of models analysed: %d' % len(tpot.predictions))
@@ -337,8 +344,6 @@ if __name__ == '__main__':
     print('Dump predictions, evaluated pipelines and sklearn objects')
     tpot_save = {}
     tpot_pipelines = {}
-    tpot_save['Xtest'] = Xtest
-    tpot_save['Ytest'] = Ytest
     tpot_save['predictions'] = tpot.predictions
     # List of
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_

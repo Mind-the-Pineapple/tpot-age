@@ -98,7 +98,7 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
                                        '%03d_generations' %ngen)
     elif analysis == 'population':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+            output_path = os.path.join('BayOptPy', 'tpot', 'Output', analysis,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
         else:
@@ -107,7 +107,7 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
                                        '%03d_generations' %ngen)
     elif analysis == 'mutation':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+            output_path = os.path.join('BayOptPy', 'tpot', 'Output', analysis,
                                        '%03d_generations' %ngen,
                                        '%.01f_mut_%.01f_cross' %(mutation, crossover))
         else:
