@@ -11,7 +11,7 @@ import seaborn as sns
 import pickle
 # from sklearn.externals import joblib
 import joblib
-
+import pandas as pd
 
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
@@ -19,6 +19,15 @@ from BayOptPy.helperfunctions import (get_data, get_paths,
                                       get_config_dictionary, get_output_path,
                                       get_best_pipeline_paths,
                                       create_age_histogram)
+
+def str_to_bool(s):
+    '''
+    As arg pass does not acess boolen, transfrom the string into booleans
+    '''
+    if s == 'True':
+        return True
+    elif s == 'False':
+        return False
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-gui',
@@ -30,6 +39,17 @@ parser.add_argument('-debug',
                     dest='debug',
                     action='store_true',
                     help='Run debug with Pycharm'
+                    )
+parser.add_argument('-raw',
+                    dest='raw',
+                    help='Use raw freesurfer dataset',
+                    choices=['True', 'False'],
+                    required=True
+                    )
+parser.add_argument('-model',
+                    dest='model',
+                    help='Define if a classification or regression problem',
+                    choices=['regression', 'classification']
                     )
 parser.add_argument('-dask',
                     dest='dask',
@@ -162,18 +182,29 @@ if __name__ == '__main__':
 
     # Get data paths, the actual data and check if the output paths exists
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-    output_path = get_output_path(args.analysis, args.generations, args.random_seed,
+    output_path = get_output_path(args.model, args.analysis, args.generations,
+                                  args.random_seed,
                                   args.population_size, args.debug,
                                   args.mutation_rate, args.crossover_rate)
     # Load the already cleaned dataset
     demographics, imgs, dataframe  = get_data(project_data, args.dataset,
                                               args.debug, project_wd,
                                               args.resamplefactor,
-                                              raw=False,
+                                              raw=str_to_bool(args.raw),
                                               analysis=args.analysis)
     print('Using %d features' %len(dataframe.columns))
-    # Drop the last coumn which correspond to the dataset name
-    dataframe = dataframe.drop(['dataset'], axis=1)
+    if args.dataset == 'freesurf_combined':
+        # Drop the last coumn which correspond to the dataset name
+        dataframe = dataframe.drop(['dataset'], axis=1)
+
+    # Select the features related only to cortical volume and thickness (only
+    # for the UKBIO)
+    if args.dataset == 'UKBIO_freesurf' and args.raw =='True':
+        from freesurfer_columns import thk_and_vol as COLUMN_NAMES
+
+        # Select a list of columns that will be relevant for this analysis
+        dataframe = pd.DataFrame(dataframe[COLUMN_NAMES])
+        print('Using %d features' %len(dataframe.columns))
 
     # Show mean std and F/M count for each dataset used
     aggregations = {
@@ -193,7 +224,8 @@ if __name__ == '__main__':
     # Path to the folder where to save the best pipeline will be saved
     # Note: The pipeline will only be saved if it is different from the one in
     # the previous generation
-    best_pipe_paths = get_best_pipeline_paths(args.analysis, args.generations,
+    best_pipe_paths = get_best_pipeline_paths(args.model,
+                                              args.analysis, args.generations,
                                               args.random_seed,
                                               args.population_size,
                                               args.debug,
@@ -214,45 +246,45 @@ if __name__ == '__main__':
         # TODO: These two ifs are not tested
         client = Client(threads_per_worker=1, diagnostics_port=port)
         client
-    if args.dataset == 'freesurf_combined':
+    if args.dataset == 'freesurf_combined' or args.dataset == 'UKBIO_freesurf':
     # This assumes that your dataframe already has a column that defines the
     # popularity of every group M/F and age in the dataset
         Xtrain, Xtemp, Ytrain, Ytemp = \
                 model_selection.train_test_split(dataframe, targetAttribute,
                                                  test_size=.90,
-                                                 stratify=demographics['stratify'],
+                                                 #stratify=demographics['stratify'],
                                                  random_state=args.random_seed)
         # Get the stratified list for the training dataset
         train_demographics = demographics.loc[Xtemp.index]
         Xvalidate, Xtest, Yvalidate, Ytest = \
                 model_selection.train_test_split(Xtemp, Ytemp,
                                                  test_size=.05,
-                                                 stratify=train_demographics['stratify'],
+                                                 #stratify=train_demographics['stratify'],
                                                  random_state=args.random_seed)
 
-        ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                        data=demographics.loc[Xtrain.index],palette="muted")
-        fig = ax.get_figure()
-        fig.savefig(os.path.join(project_wd, 'train_distribution.png'))
-        plt.close()
-        plt.figure()
-        ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                        data=demographics.loc[Xtest.index],palette="muted")
-        fig = ax.get_figure()
-        fig.savefig(os.path.join(project_wd, 'test_distribution.png'))
-        plt.close()
-        plt.figure()
-        ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                        data=demographics.loc[Xvalidate.index],palette="muted")
-        fig = ax.get_figure()
-        fig.savefig(os.path.join(project_wd, 'validation_distribution.png'))
-        plt.close()
-        plt.figure()
-        ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                        data=demographics,palette="muted")
-        fig = ax.get_figure()
-        fig.savefig(os.path.join(project_wd, 'beforesplit_distribution.png'))
-        plt.close()
+        # ax = sns.violinplot(x='stratify', y='age', hue='sex',
+        #                 data=demographics.loc[Xtrain.index],palette="muted")
+        # fig = ax.get_figure()
+        # fig.savefig(os.path.join(project_wd, 'train_distribution.png'))
+        # plt.close()
+        # plt.figure()
+        # ax = sns.violinplot(x='stratify', y='age', hue='sex',
+        #                 data=demographics.loc[Xtest.index],palette="muted")
+        # fig = ax.get_figure()
+        # fig.savefig(os.path.join(project_wd, 'test_distribution.png'))
+        # plt.close()
+        # plt.figure()
+        # ax = sns.violinplot(x='stratify', y='age', hue='sex',
+        #                 data=demographics.loc[Xvalidate.index],palette="muted")
+        # fig = ax.get_figure()
+        # fig.savefig(os.path.join(project_wd, 'validation_distribution.png'))
+        # plt.close()
+        # plt.figure()
+        # ax = sns.violinplot(x='stratify', y='age', hue='sex',
+        #                 data=demographics,palette="muted")
+        # fig = ax.get_figure()
+        # fig.savefig(os.path.join(project_wd, 'beforesplit_distribution.png'))
+        # plt.close()
     else:
         Xtrain, Xtest, Ytrain, Ytest = \
                 model_selection.train_test_split(dataframe, targetAttribute,
@@ -283,7 +315,7 @@ if __name__ == '__main__':
     # Xtest = Xtest.values
     Ytest = Ytest.values
 
-    if args.dataset == 'freesurf_combined':
+    if (args.dataset == 'freesurf_combined') or (args.dataset == 'UKBIO_freesurf'):
         print('Y_validate: ' + str(Yvalidate.shape))
         print('X_validate: ' + str(Xvalidate.shape))
 
@@ -298,12 +330,12 @@ if __name__ == '__main__':
                              'Xtest': Xtest,
                              'Ytest': Ytest,
                              'Xtest_scaled': Xtest_scaled}
-        with open(os.path.join(output_path, 'splitted_dataset.pickle'), 'wb') as handle:
+        with open(os.path.join(output_path, 'splitted_dataset_%s.pickle' %(args.dataset)), 'wb') as handle:
             pickle.dump(splitted_datasets, handle)
         del Xvalidate, Yvalidate
 
     # Plot age distribution for the training and test dataset
-    create_age_histogram(Ytrain, Ytest, 'BANC')
+    create_age_histogram(Ytrain, Ytest, str(args.dataset))
 
 
     tpot = ExtendedTPOTRegressor(generations=args.generations,

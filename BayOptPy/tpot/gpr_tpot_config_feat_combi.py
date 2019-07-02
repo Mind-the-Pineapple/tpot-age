@@ -90,12 +90,11 @@ tpot_config_gpr = {
             'gamma': np.arange(0.0, 1.01, 0.05),
            'random_state': [42],
     },
-    },
 ###############################################################################
 ## Feature Combination
 ################################################################################
-            'sklearn.cluster.FeatureAgglomeration': {
-                 'linkage': ['ward', 'complete', 'average'],
-                 'affinity': ['euclidean', 'l1', 'l2',
-                              'manhattan', 'cosine'] },
+    'sklearn.cluster.FeatureAgglomeration': {
+         'linkage': ['ward', 'complete', 'average'],
+         'affinity': ['euclidean', 'l1', 'l2',
+                      'manhattan', 'cosine'] },
 }
