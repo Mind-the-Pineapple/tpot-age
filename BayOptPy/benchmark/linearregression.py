@@ -15,15 +15,16 @@ from BayOptPy.helperfunctions import (get_paths, plot_predicted_vs_true_age,
 set_publication_style()
 n_cross_val = 5
 debug = False
-dataset =  'freesurf_combined'
+dataset =  'UKBIO_freesurf'
 
 
 # Load the data
 # TODO: change the path
-save_path = '/code/BayOptPy/tpot/Output/vanilla_combi_old/100_generations/random_seed_020/'
+# save_path = '/code/BayOptPy/tpot/Output/vanilla_combi_old/100_generations/random_seed_020/'
+save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/116_freesurf_col/100_generations/random_seed_020/'
 # Load the saved validation dataset
 project_ukbio_wd, project_data_ukbio, _ = get_paths(debug, dataset)
-with open(os.path.join(save_path, 'splitted_dataset.pickle'), 'rb') as handle:
+with open(os.path.join(save_path, 'splitted_dataset_%s.pickle' %dataset), 'rb') as handle:
         splitted_dataset = pickle.load(handle)
 
 # Train the model

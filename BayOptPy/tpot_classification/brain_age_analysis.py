@@ -31,6 +31,11 @@ parser.add_argument('-debug',
                     action='store_true',
                     help='Run debug with Pycharm'
                     )
+parser.add_argument('-model',
+                    dest='model',
+                    help='Define if a classification or regression problem',
+                    choices=['regression', 'classification']
+                    )
 parser.add_argument('-dask',
                     dest='dask',
                     action='store_true',
@@ -87,7 +92,8 @@ parser.add_argument('-config_dict',
                     help='Specify which TPOT config dict to use',
                     choices=['None', 'light', 'custom',
                              'gpr', 'gpr_full', 'vanilla', 'feat_selec',
-                             'feat_combi', 'vanilla_combi'],
+                             'feat_combi', 'vanilla_combi',
+                             'vanilla_classification'],
                     required=True
                     )
 parser.add_argument('-njobs',
@@ -133,12 +139,13 @@ if __name__ == '__main__':
     if args.config_dict == 'None':
         tpot_config = None
     elif args.config_dict == 'vanilla_classification':
-        from BayOptPy.tpot_classification.gpr_tpot_config_vanilla_classification import tpot_config_gpr
+        from BayOptPy.tpot_classification.tpot_config_vanilla_classification import tpot_config_gpr
         tpot_config = tpot_config_gpr
 
     # Get data paths, the actual data and check if the output paths exists
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-    output_path = get_output_path(args.analysis, args.generations, args.random_seed,
+    output_path = get_output_path(args.model, args.analysis, args.generations,
+                                  args.random_seed,
                                   args.population_size, args.debug,
                                   args.mutation_rate, args.crossover_rate)
     # Load the already cleaned dataset
@@ -169,7 +176,8 @@ if __name__ == '__main__':
     # Path to the folder where to save the best pipeline will be saved
     # Note: The pipeline will only be saved if it is different from the one in
     # the previous generation
-    best_pipe_paths = get_best_pipeline_paths(args.analysis, args.generations,
+    best_pipe_paths = get_best_pipeline_paths(args.model,
+                                              args.analysis, args.generations,
                                               args.random_seed,
                                               args.population_size,
                                               args.debug,
@@ -258,8 +266,10 @@ if __name__ == '__main__':
     # Transform Series into Dataframe
     Ytrain = Ytrain.to_frame()
     Ytest = Ytest.to_frame()
+    Yvalidate = Yvalidate.to_frame()
     conditions_test = [Ytest <=30, Ytest >=60]
     conditions_train = [Ytrain <=30, Ytrain >=60]
+    conditions_validate = [Yvalidate <=30, Yvalidate >=60]
     # Create two classes (young and old)
     # x < 30 is considered young: Class = 0
     # 30 < x < 60 adults: Class = 2
@@ -267,14 +277,14 @@ if __name__ == '__main__':
     choices = [0, 1]
     Ytest['class'] = np.select(conditions_test, choices, default=2)
     Ytrain['class'] = np.select(conditions_train, choices, default=2)
-
-    # Classify only Young and Old
+    Yvalidate['class'] = np.select(conditions_validate, choices, default=2)
 
 
     # Transform pandas into numpy arrays (no nneed to do it if you are scaling
     # the results)
     Ytrain = Ytrain['class'].values
     Ytest = Ytest['class'].values
+    Yvalidate = Yvalidate['class'].values
 
     if args.dataset == 'freesurf_combined':
         print('Y_validate: ' + str(Yvalidate.shape))
@@ -284,13 +294,19 @@ if __name__ == '__main__':
         # Dump the validation set and delete the loaded subjects
         validation = {'Xvalidate': Xvalidate,
                       'Yvalidate': Yvalidate,
-                      'Xvalidate_scaled': Xvalidate_scaled}
-        with open(os.path.join(project_wd, 'validation_dataset.pickle'), 'wb') as handle:
+                      'Xvalidate_scaled': Xvalidate_scaled,
+                      'Xtrain': Xtrain,
+                      'Ytrain': Ytrain,
+                      'Xtrain_scaled': Xtrain_scaled,
+                      'Xtest': Xtest,
+                      'Ytest': Ytest,
+                      'Xtest_scaled': Xtest_scaled}
+        with open(os.path.join(output_path, 'splitted_dataset_%s.pickle'
+                               %args.dataset), 'wb') as handle:
             pickle.dump(validation, handle)
-        del Xvalidate, Yvalidate
 
     # Plot age distribution for the training and test dataset
-    create_age_histogram(Ytrain, Ytest, 'BANC')
+    create_age_histogram(Ytrain, Ytest, args.dataset)
 
 
     tpot = TPOTClassifier(generations=args.generations,
@@ -313,25 +329,29 @@ if __name__ == '__main__':
     print('Offspring Size: %d' %args.offspring_size)
 
     tpot.fit(Xtrain_scaled, Ytrain)
-    print('Test score using optimal model: %f ' % tpot.score(Xtest_scaled, Ytest))
+    print('Test score using optimal model: %.3f ' % tpot.score(Xtest_scaled, Ytest))
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
 
-    import pdb
-    pdb.set_trace()
     # Find the class for the predicted subjects (on the test dataset)
     tpot_predictions = tpot.predict(Xtest_scaled)
     # TODO: do the same on the validation dataset
 
-    # Create confusion matrix
+    # Create confusion matrix on test data
     class_name = np.array(['young', 'old', 'adult'], dtype='U10')
     plot_confusion_matrix(Ytest, tpot_predictions, classes=class_name,
                           title='Confusion Matrix', normalize=True)
-    # save plot
-    plt.savefig(os.path.join(output_path, 'confusion_matrix.png'))
+    plt.savefig(os.path.join(output_path, 'confusion_matrix_tpot_test.png'))
+
+    # Predict age for the validation dataset
+    print('Validation score using optimal model: %.3f' %tpot.score(Xvalidate_scaled,
+                                                                  Yvalidate))
+    tpot_predictions_val = tpot.predict(Xvalidate_scaled)
+    plot_confusion_matrix(Yvalidate, tpot_predictions_val, classes=class_name,
+                         normalize=True)
+    plt.savefig(os.path.join(output_path, 'confusion_matrix_tpot_val.png'))
+
     tpot_save = {}
-    tpot_save['Xtest'] = Xtest_scaled
-    tpot_save['Ytest'] = Ytest
     # List of
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
     # Best pipeline at the end of the genetic algorithm

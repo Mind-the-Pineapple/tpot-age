@@ -24,21 +24,15 @@ dataset =  'freesurf_combined'
 
 # Load the data
 # TODO: change the path
-save_path = '/code/BayOptPy/tpot_classification/Output/vanilla_combi/005_generations/random_seed_020/'
+save_path = '/code/BayOptPy/tpot_classification/Output/vanilla_combi/100_generations/random_seed_020/'
 # Load the saved validation dataset
 project_ukbio_wd, project_data_ukbio, _ = get_paths(debug, dataset)
 with open(os.path.join(save_path, 'splitted_dataset_%s.pickle' %dataset), 'rb') as handle:
         splitted_dataset = pickle.load(handle)
+
 # Train the model
 model = RVC(kernel='linear')
 model.fit(splitted_dataset['Xtrain_scaled'], splitted_dataset['Ytrain'])
-
-scores = cross_validate(estimator= model,
-                        X=splitted_dataset['Xtrain_scaled'],
-                        y=splitted_dataset['Ytrain'],
-                        scoring='neg_mean_absolute_error',
-                        cv=n_cross_val)
-
 
 # make cross validated predictions
 print('Perform prediction in test data')
@@ -57,8 +51,6 @@ plot_confusion_matrix(splitted_dataset['Ytest'], y_prediction_test,
                       normalize=True)
 plt.savefig(os.path.join(save_path, 'confusion_matrix_test_rvc.png'))
 # Predict on the validation dataset
-import pdb
-pdb.set_trace()
 plot_confusion_matrix(splitted_dataset['Yvalidate'], y_prediction_validation,
                       classes=class_name,
                       normalize=True)

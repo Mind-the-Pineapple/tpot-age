@@ -69,10 +69,10 @@ def get_paths(debug, dataset):
     print('Data Out: %s' %project_sink )
     return project_wd, project_data, project_sink
 
-def get_output_path(analysis, ngen, random_seed, population_size, debug,
+def get_output_path(model, analysis, ngen, random_seed, population_size, debug,
                     mutation, crossover):
     # Check if output path exists, otherwise create it
-    rnd_seed_path = get_all_random_seed_paths(analysis, ngen, population_size,
+    rnd_seed_path = get_all_random_seed_paths(model, analysis, ngen, population_size,
                                               debug, mutation, crossover)
     output_path = os.path.join(rnd_seed_path, 'random_seed_%03d' %random_seed)
 
@@ -81,7 +81,7 @@ def get_output_path(analysis, ngen, random_seed, population_size, debug,
 
     return output_path
 
-def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
+def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mutation,
                              crossover):
     # As they should have been created by the get_output_path, do not create
     # path but just find its location
@@ -90,28 +90,35 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
         analysis == 'random_seed' or analysis == 'ukbio' or \
         analysis == 'summary_data':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot', 'Output', analysis,
+            output_path = os.path.join('BayOptPy', 'tpot_%s' %model, 'Output', analysis,
                                        '%03d_generations' %ngen)
         else:
-            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot',
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy',
+                                       'tpot_%s' %model,
                                        'Output', analysis,
                                        '%03d_generations' %ngen)
     elif analysis == 'population':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot', 'Output', analysis,
+            output_path = os.path.join('BayOptPy',
+                                       'tpot_%s' %model,
+                                       'Output', analysis,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
         else:
-            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy',
+                                       'tpot_%s' %model,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
     elif analysis == 'mutation':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot', 'Output', analysis,
+            output_path = os.path.join('BayOptPy',
+                                       'tpot_%s' %model,
+                                       'Output', analysis,
                                        '%03d_generations' %ngen,
                                        '%.01f_mut_%.01f_cross' %(mutation, crossover))
         else:
-            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy',
+                                       'tpot_%s' %model,
                                        '%03d_generations' %ngen,
                                        '%.01f_mut_%.01f_cross' %(mutation, crossover))
 
@@ -124,11 +131,11 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
 
     return output_path
 
-def get_best_pipeline_paths(analysis, ngen, random_seed, population_size, debug,
+def get_best_pipeline_paths(model, analysis, ngen, random_seed, population_size, debug,
                            mutation, crossover):
     # check if folder exists and in case yes, remove it as new runs will save
     # new files without overwritting
-    output_path = get_output_path(analysis, ngen, random_seed, population_size,
+    output_path = get_output_path(model, analysis, ngen, random_seed, population_size,
                                   debug, mutation, crossover)
     checkpoint_path = os.path.join(output_path, 'checkpoint_folder')
 
@@ -176,6 +183,7 @@ def drop_missing_features(dataframe):
                         'Right-Lateral-Ventricle',
                         'Left-Inf-Lat-Vent',
                         'Right-Inf-Lat-Vent',
+
                        ]
 
 
@@ -376,6 +384,7 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
                                     delimiter=',',
                                    index_col=False)
         demographics = ukbio_full_df[['age', 'sex', 'id']].copy()
+        freesurf_df = freesurf_df.set_index('id')
         return demographics, None, freesurf_df
     elif (dataset == 'BANC_freesurf' and raw==False and not
           analysis=='summary_data'):
@@ -399,7 +408,7 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
                                                'original_dataset',
                                                'UKBIO',
                                                'UKB_10k_FS_4844_combined.csv'), delimiter=',')
-        freesurf_df.drop(columns='id.4844')
+        freesurf_df = freesurf_df.drop(columns='id.4844')
         demographics = freesurf_df[['age', 'sex', 'id']].copy()
         freesurf_df = freesurf_df.set_index('id')
         return demographics, None, freesurf_df
@@ -587,25 +596,17 @@ def create_age_histogram(training_age, test_age, dataset):
     # Define plot styple
     set_publication_style()
     plt.figure()
-    if dataset == 'BANC':
-        path_to_save = '/code/BayOptPy/tpot/age_histogram_BANC.png'
-        # Define plot range
-        # 17 and 89 are the min and max age on the dataset respectively
-        min_age = 17
-        max_age = 89
-        plt.hist(training_age, bins=65, range=(min_age,max_age), label='training')
-        plt.hist(test_age, bins=65, range=(min_age,max_age), label='test')
-    elif dataset == 'UKBIO':
-        path_to_save = '/code/UKBIO/age_histogram_UKBIO.png'
-        min_age = training_age.min()
-        max_age = training_age.max()
-        plt.hist(training_age, bins=int(max_age-min_age),
-                 range=(min_age,max_age), color='#82E0AA')
+    path_to_save = '/code/BayOptPy/tpot/age_histogram_%s.png' %dataset
+    min_age = training_age.min()
+    max_age = training_age.max()
+    plt.hist(training_age, bins=65, range=(min_age,max_age), label='training')
+    plt.hist(test_age, bins=65, range=(min_age,max_age), label='test')
     plt.xlabel('Age')
     plt.ylabel('# of Subjects')
     plt.legend()
     plt.savefig(path_to_save)
     plt.close()
+
 
 
 def plot_confusion_matrix(y_true, y_pred, classes,
@@ -660,3 +661,18 @@ def plot_confusion_matrix(y_true, y_pred, classes,
                     color="white" if cm[i, j] > thresh else "black")
     fig.tight_layout()
     return ax
+
+def plot_predicted_vs_true_age(true_y, predicted_y, save_path):
+    fig = plt.figure()
+    plt.scatter(true_y, predicted_y, alpha=.5)
+    plt.ylabel('Predicted Age')
+    plt.xlabel('True Age')
+    plt.plot(np.arange(min(true_y),
+                       max(true_y)),
+             np.arange(min(true_y),
+                       max(true_y)), alpha=.3, linestyle='--',
+             color='b')
+    plt.xticks(np.arange(20, 90, step=10))
+    plt.yticks(np.arange(20, 90, step=10))
+    plt.savefig(save_path)
+    plt.close()

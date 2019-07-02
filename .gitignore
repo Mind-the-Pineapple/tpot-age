@@ -50,6 +50,6 @@ BayOptPy/tpot/population/
 
 BayOptPy/tpot/figs/*
 BayOptPy/tpot/old_figs/*
-
+BayOptPy/tpot_classification/Output/*
 
 
