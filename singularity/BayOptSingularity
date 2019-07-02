@@ -41,12 +41,13 @@ An Ubuntu 18.04 Singularity container with basic Python 3.6.6 and packages
          TPOT==0.9.6 \
          bokeh==0.13.0 \
          dask==1.1.1 \
-         distributed==1.23.3\
-         dask-ml==0.10.0\
-         dask-glm==0.1.0\
-         joblib==0.13.1\
-         tornado==5.1.1\
-         seaborn==0.9.0 && \
+         distributed==1.23.3 \
+         dask-ml==0.10.0 \
+         dask-glm==0.1.0 \
+         joblib==0.13.1 \
+         tornado==5.1.1 \
+         seaborn==0.9.0 \
+         xgboost==0.80 && \
     pip install https://github.com/JamesRitchie/scikit-rvm/archive/master.zip"
     # Check if the project folder exists and if not create it
     if [ ! -d /code ]; then mkdir /code; fi

@@ -15,7 +15,8 @@ parser.add_argument('-dataset',
                    dest='dataset',
                    help='Specify which dataset to use',
                    choices=['OASIS', 'BANC',
-                            'BANC_freesurf']
+                            'BANC_freesurf',
+                            'freesurf_combined']
                    )
 parser.add_argument('-generations',
                     dest='generations',
@@ -69,5 +70,5 @@ for analysis in args.analysis_list:
 plt.xlabel('Generation')
 plt.ylabel('Pipeline complexity')
 plt.legend()
-plt.ylim(0, 10)
+plt.ylim(0, 6)
 plt.savefig(os.path.join(os.path.dirname(tpot_path), 'pipeline_complexity.png'))

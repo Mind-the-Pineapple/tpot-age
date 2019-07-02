@@ -12,6 +12,8 @@ from tqdm import tqdm
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+from sklearn.utils.multiclass import unique_labels
 import seaborn as sns
 sns.set()
 
@@ -51,17 +53,14 @@ def get_paths(debug, dataset):
         project_wd = '/code'
         project_data = None
         project_sink = None
-    elif not debug and dataset == 'BANC_freesurf':
+    elif not debug and (dataset == 'BANC_freesurf' or
+                        dataset == 'UKBIO_freesurf' or
+                        dataset == 'freesurf_combined'
+                       ):
         project_wd = '/code'
         project_data = os.path.join(os.sep, 'code', 'BayOptPy',
                                     'freesurfer_preprocess')
         project_sink = None
-    elif not debug and dataset == 'UKBIO_freesurf':
-        project_wd = '/code'
-        project_data = os.path.join(os.sep, 'code', 'BayOptPy',
-                                    'freesurfer_preprocess')
-        project_sink = None
-
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
 
@@ -70,10 +69,10 @@ def get_paths(debug, dataset):
     print('Data Out: %s' %project_sink )
     return project_wd, project_data, project_sink
 
-def get_output_path(analysis, ngen, random_seed, population_size, debug,
+def get_output_path(model, analysis, ngen, random_seed, population_size, debug,
                     mutation, crossover):
     # Check if output path exists, otherwise create it
-    rnd_seed_path = get_all_random_seed_paths(analysis, ngen, population_size,
+    rnd_seed_path = get_all_random_seed_paths(model, analysis, ngen, population_size,
                                               debug, mutation, crossover)
     output_path = os.path.join(rnd_seed_path, 'random_seed_%03d' %random_seed)
 
@@ -82,7 +81,7 @@ def get_output_path(analysis, ngen, random_seed, population_size, debug,
 
     return output_path
 
-def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
+def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mutation,
                              crossover):
     # As they should have been created by the get_output_path, do not create
     # path but just find its location
@@ -91,28 +90,35 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
         analysis == 'random_seed' or analysis == 'ukbio' or \
         analysis == 'summary_data':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot', 'Output', analysis,
+            output_path = os.path.join('BayOptPy', 'tpot_%s' %model, 'Output', analysis,
                                        '%03d_generations' %ngen)
         else:
-            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot',
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy',
+                                       'tpot_%s' %model,
                                        'Output', analysis,
                                        '%03d_generations' %ngen)
     elif analysis == 'population':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+            output_path = os.path.join('BayOptPy',
+                                       'tpot_%s' %model,
+                                       'Output', analysis,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
         else:
-            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy',
+                                       'tpot_%s' %model,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
     elif analysis == 'mutation':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot', analysis,
+            output_path = os.path.join('BayOptPy',
+                                       'tpot_%s' %model,
+                                       'Output', analysis,
                                        '%03d_generations' %ngen,
                                        '%.01f_mut_%.01f_cross' %(mutation, crossover))
         else:
-            output_path = os.path.join(os.sep, 'code', 'BayOptPy', 'tpot', analysis,
+            output_path = os.path.join(os.sep, 'code', 'BayOptPy',
+                                       'tpot_%s' %model,
                                        '%03d_generations' %ngen,
                                        '%.01f_mut_%.01f_cross' %(mutation, crossover))
 
@@ -125,11 +131,11 @@ def get_all_random_seed_paths(analysis, ngen, population_size, debug, mutation,
 
     return output_path
 
-def get_best_pipeline_paths(analysis, ngen, random_seed, population_size, debug,
+def get_best_pipeline_paths(model, analysis, ngen, random_seed, population_size, debug,
                            mutation, crossover):
     # check if folder exists and in case yes, remove it as new runs will save
     # new files without overwritting
-    output_path = get_output_path(analysis, ngen, random_seed, population_size,
+    output_path = get_output_path(model, analysis, ngen, random_seed, population_size,
                                   debug, mutation, crossover)
     checkpoint_path = os.path.join(output_path, 'checkpoint_folder')
 
@@ -177,6 +183,7 @@ def drop_missing_features(dataframe):
                         'Right-Lateral-Ventricle',
                         'Left-Inf-Lat-Vent',
                         'Right-Inf-Lat-Vent',
+
                        ]
 
 
@@ -309,8 +316,11 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
     :return: demographics:
     :return: dataframe.values: Just the numeric values of the dataframe
     '''
-    print('Loading Brain image data')
-    if dataset == 'OASIS':
+
+    if dataset == 'freesurf_combined' and raw == True:
+        raise ValueError('The combined analysis cannot use the raw dataset')
+        print('Loading Brain image data')
+    elif dataset == 'OASIS':
         # remove the file end and get list of all used subjects
         fileList = os.listdir(project_data)
         rawsubjectsId = [re.sub(r'^smwc1(.*?)\_mpr-1_anon.nii$', '\\1', file) for file in fileList if file.endswith('.nii')]
@@ -355,6 +365,8 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
         # return numpy array of the dataframe
+        # Rename columns to maintain consistency withe ukbio
+        demographics.rename(index=str, columns={'ID':'id', 'Age': 'age'}, inplace=True)
         return demographics, None, freesurf_df
 
     elif (dataset == 'UKBIO_freesurf' and raw==False and not
@@ -362,8 +374,18 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'matched_dataset',
-                                               'aparc_aseg_UKB.csv'), delimiter=',')
-        return None, None, freesurf_df
+                                               'aparc_aseg_UKBIO.csv'), delimiter=',')
+        # Read the full matrix to get the demographics information
+        ukbio_full_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'original_dataset',
+                                               'UKBIO',
+                                               'UKB_10k_FS_4844_combined.csv'),
+                                    delimiter=',',
+                                   index_col=False)
+        demographics = ukbio_full_df[['age', 'sex', 'id']].copy()
+        freesurf_df = freesurf_df.set_index('id')
+        return demographics, None, freesurf_df
     elif (dataset == 'BANC_freesurf' and raw==False and not
           analysis=='summary_data'):
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
@@ -375,6 +397,8 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
         # return numpy array of the dataframe
+        # Rename columns to maintain consistency withe ukbio
+        demographics.rename(index=str, columns={'ID':'id', 'Age': 'age'}, inplace=True)
         return demographics, None, freesurf_df
 
     elif (dataset == 'UKBIO_freesurf' and raw==True and not
@@ -382,16 +406,27 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'original_dataset',
-                                               'UKBIO', 'UKB_10k_FS_4844.csv'), delimiter=',')
-        return None, None, freesurf_df
+                                               'UKBIO',
+                                               'UKB_10k_FS_4844_combined.csv'), delimiter=',')
+        freesurf_df = freesurf_df.drop(columns='id.4844')
+        demographics = freesurf_df[['age', 'sex', 'id']].copy()
+        freesurf_df = freesurf_df.set_index('id')
+        return demographics, None, freesurf_df
     elif (dataset == 'UKBIO_freesurf' and raw==False and
           analysis=='summary_data'):
         # This dataset contains only 21 feature that represent summary metrics
         freesurf_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
                                                'freesurfer_preprocess',
                                                'matched_dataset',
-                                               'aparc_aseg_UKB_summary.csv'), delimiter=',')
-        return None, None, freesurf_df
+                                               'aparc_aseg_UKBIO_summary.csv'), delimiter=',')
+        # Read the full matrix to get the demographics information
+        ukbio_full_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'original_dataset',
+                                               'UKBIO',
+                                               'UKB_10k_FS_4844_combined.csv'), delimiter=',')
+        demographics = ukbio_full_df[['age', 'sex', 'id']].copy()
+        return demographics, None, freesurf_df
     elif (dataset == 'BANC_freesurf' and raw==False and
           analysis=='summary_data'):
         # This dataset contains only 21 feature that represent summary metrics
@@ -404,7 +439,63 @@ def get_data(project_data, dataset, debug, project_wd, resamplefactor, raw,
 
         # Load the demographics for each subject
         demographics, selectedSubId = get_data_covariates(project_data, rawsubjectsId, 'BANC')
+        # Rename columns to maintain consistency withe ukbio
+        demographics.rename(index=str, columns={'ID':'id', 'Age': 'age'}, inplace=True)
         return demographics, None, freesurf_df
+
+    elif (dataset == 'freesurf_combined'):
+        ukbio_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'matched_dataset',
+                                               'aparc_aseg_UKBIO.csv'),
+                               delimiter=',', index_col=0)
+
+        banc_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'matched_dataset',
+                                               'aparc_aseg_BANC.csv'),
+                                  delimiter=',', index_col=0)
+        ukbio_full_df = pd.read_csv(os.path.join(project_wd, 'BayOptPy',
+                                               'freesurfer_preprocess',
+                                               'original_dataset',
+                                               'UKBIO',
+                                               'UKB_10k_FS_4844_combined.csv'), delimiter=',')
+        rawsubjectsId = banc_df.index
+        # Load the demographics for each subject
+        banc_demographics, selectedSubId = get_data_covariates(project_data,
+                                                          rawsubjectsId,
+                                                          'BANC')
+        ukbio_demographics = ukbio_full_df[['age', 'sex', 'id']].copy()
+        # Concatenate both freesurfeer datasets
+        freesurfer_df = pd.concat([ukbio_df, banc_df])
+
+        # Concatenate demographics information (Age and Sex)
+        tmp = banc_demographics.drop('original_dataset', axis=1)
+        tmp.rename(index=str, columns={'ID':'id', 'Age': 'age'}, inplace=True)
+        # transform M/F into male/female
+        tmp['sex'] = tmp['sex'].map({'F': 'female', 'M': 'male'})
+        # Add column to specify dataset
+        tmp['dataset'] = 'banc'
+        ukbio_demographics['dataset'] = 'ukbio'
+        demographics = pd.concat([ukbio_demographics, tmp], sort=False)
+        # TODO: For now assume that the index in the BIOBANK correspond to th
+        # Stratify subjects. Divide them into classes <30, 30<40, 40<50, 50<60,
+        # 60<70, 70<80, 80<90, 90<100. Each age will be then further stratified
+        # into F/M.
+        bins = (17, 30, 40, 50, 60, 70, 80, 90)
+        group_labels = range(1,len(bins))
+        demographics['age_band'] = pd.cut(demographics['age'], bins,
+                                          labels=group_labels)
+        sex_age_group = demographics.groupby(['sex', 'age_band'])
+        # Note that the following groups are created:
+        # ('female', 1), ('female', 2), ('female', 3), ('female', 4), ('female',  5),
+        # ('female', 6), ('female', 7), ('male', 1), ('male', 2), ('male', 3),
+        # ('male', 4), ('male', 5), ('male', 6), ('male', 7)]
+        # This will label the groups cited above in a crescent order. In total
+        # you will have 1-14 groups, grouped according to their age and sex
+        demographics['stratify'] = sex_age_group.grouper.group_info[0] + 1
+        #same order between both fines
+        return demographics, None, freesurfer_df
 
     else:
         raise ValueError('Analysis for this dataset is not yet implemented!')
@@ -504,22 +595,84 @@ def create_age_histogram(training_age, test_age, dataset):
     '''
     # Define plot styple
     set_publication_style()
-    if dataset == 'BANC':
-        path_to_save = '/code/BayOptPy/tpot/age_histogram_BANC.png'
-        # Define plot range
-        # 17 and 89 are the min and max age on the dataset respectively
-        min_age = 17
-        max_age = 89
-        plt.hist(training_age, bins=65, range=(min_age,max_age), label='training')
-        plt.hist(test_age, bins=65, range=(min_age,max_age), label='test')
-    elif dataset == 'UKBIO':
-        path_to_save = '/code/UKBIO/age_histogram_UKBIO.png'
-        min_age = training_age.min()
-        max_age = training_age.max()
-        plt.hist(training_age, bins=int(max_age-min_age),
-                 range=(min_age,max_age), color='#82E0AA')
+    plt.figure()
+    path_to_save = '/code/BayOptPy/tpot/age_histogram_%s.png' %dataset
+    min_age = training_age.min()
+    max_age = training_age.max()
+    plt.hist(training_age, bins=65, range=(min_age,max_age), label='training')
+    plt.hist(test_age, bins=65, range=(min_age,max_age), label='test')
     plt.xlabel('Age')
     plt.ylabel('# of Subjects')
     plt.legend()
     plt.savefig(path_to_save)
+    plt.close()
+
+
+
+def plot_confusion_matrix(y_true, y_pred, classes,
+                          normalize=False,
+                          title=None,
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if not title:
+        if normalize:
+            title = 'Normalized confusion matrix'
+        else:
+            title = 'Confusion matrix, without normalization'
+
+    # Compute confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+    # Only use the labels that appear in the data
+    classes = classes[unique_labels(y_true, y_pred)]
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    ax.figure.colorbar(im, ax=ax)
+    # We want to show all ticks...
+    ax.set(xticks=np.arange(cm.shape[1]),
+           yticks=np.arange(cm.shape[0]),
+           # ... and label them with the respective list entries
+           xticklabels=classes, yticklabels=classes,
+           title=title,
+           ylabel='True label',
+           xlabel='Predicted label')
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, format(cm[i, j], fmt),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+    fig.tight_layout()
+    return ax
+
+def plot_predicted_vs_true_age(true_y, predicted_y, save_path):
+    fig = plt.figure()
+    plt.scatter(true_y, predicted_y, alpha=.5)
+    plt.ylabel('Predicted Age')
+    plt.xlabel('True Age')
+    plt.plot(np.arange(min(true_y),
+                       max(true_y)),
+             np.arange(min(true_y),
+                       max(true_y)), alpha=.3, linestyle='--',
+             color='b')
+    plt.xticks(np.arange(20, 90, step=10))
+    plt.yticks(np.arange(20, 90, step=10))
+    plt.savefig(save_path)
     plt.close()

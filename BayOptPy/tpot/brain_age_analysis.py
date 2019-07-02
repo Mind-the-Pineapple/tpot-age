@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import argparse
 from sklearn import model_selection
+from sklearn.preprocessing import RobustScaler
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -10,6 +11,7 @@ import seaborn as sns
 import pickle
 # from sklearn.externals import joblib
 import joblib
+import pandas as pd
 
 
 from BayOptPy.tpot.extended_tpot import ExtendedTPOTRegressor
@@ -17,6 +19,15 @@ from BayOptPy.helperfunctions import (get_data, get_paths,
                                       get_config_dictionary, get_output_path,
                                       get_best_pipeline_paths,
                                       create_age_histogram)
+
+def str_to_bool(s):
+    '''
+    As arg pass does not acess boolen, transfrom the string into booleans
+    '''
+    if s == 'True':
+        return True
+    elif s == 'False':
+        return False
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-gui',
@@ -29,6 +40,17 @@ parser.add_argument('-debug',
                     action='store_true',
                     help='Run debug with Pycharm'
                     )
+parser.add_argument('-raw',
+                    dest='raw',
+                    help='Use raw freesurfer dataset',
+                    choices=['True', 'False'],
+                    required=True
+                    )
+parser.add_argument('-model',
+                    dest='model',
+                    help='Define if a classification or regression problem',
+                    choices=['regression', 'classification']
+                    )
 parser.add_argument('-dask',
                     dest='dask',
                     action='store_true',
@@ -37,7 +59,13 @@ parser.add_argument('-dask',
 parser.add_argument('-dataset',
                     dest='dataset',
                     help='Specify which dataset to use',
-                    choices=['OASIS', 'BANC', 'BANC_freesurf']
+                    choices=['OASIS',            # Images from OASIS
+                             'BANC',             # Images from BANC
+                             'BANC_freesurf',    # Freesurfer info from BANC
+                             'freesurf_combined', # Use Freesurfer from BANC and
+                                                 # UKBIO
+                             'UKBIO_freesurf'
+                            ]
                     )
 parser.add_argument('-cv',
                     dest='cv',
@@ -149,43 +177,55 @@ if __name__ == '__main__':
         tpot_config = tpot_config_gpr
     elif args.config_dict == 'vanilla_combi':
         # Load models for feature combination
-        from BayOptPy.tpot.gpr_tpot_config_feat_combi import tpot_config_gpr
+        from BayOptPy.tpot.gpr_tpot_config_vanilla_combi import tpot_config_gpr
         tpot_config = tpot_config_gpr
 
     # Get data paths, the actual data and check if the output paths exists
     project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-    output_path = get_output_path(args.analysis, args.generations, args.random_seed,
+    output_path = get_output_path(args.model, args.analysis, args.generations,
+                                  args.random_seed,
                                   args.population_size, args.debug,
                                   args.mutation_rate, args.crossover_rate)
     # Load the already cleaned dataset
     demographics, imgs, dataframe  = get_data(project_data, args.dataset,
                                               args.debug, project_wd,
                                               args.resamplefactor,
-                                              raw=False,
+                                              raw=str_to_bool(args.raw),
                                               analysis=args.analysis)
     print('Using %d features' %len(dataframe.columns))
-    # Drop the last coumn which correspond to the dataset name
-    dataframe = dataframe.drop(['dataset'], axis=1)
-    data = dataframe.values
+    if args.dataset == 'freesurf_combined':
+        # Drop the last coumn which correspond to the dataset name
+        dataframe = dataframe.drop(['dataset'], axis=1)
+
+    # Select the features related only to cortical volume and thickness (only
+    # for the UKBIO)
+    if args.dataset == 'UKBIO_freesurf' and args.raw =='True':
+        from freesurfer_columns import thk_and_vol as COLUMN_NAMES
+
+        # Select a list of columns that will be relevant for this analysis
+        dataframe = pd.DataFrame(dataframe[COLUMN_NAMES])
+        print('Using %d features' %len(dataframe.columns))
 
     # Show mean std and F/M count for each dataset used
     aggregations = {
-        'Age': ['mean', 'std', 'min', 'max'],
+        'age': ['mean', 'std', 'min', 'max'],
         'sex': 'size'
     }
-    demographics.groupby(['original_dataset', 'sex']).aggregate(aggregations)
+    if args.dataset == 'BANC_freesurf':
+        demographics.groupby(['original_dataset', 'sex']).aggregate(aggregations)
 
-    # Print total N per dataset
-    for dataset in np.unique(demographics['original_dataset']):
-        print('%s: %d' % (dataset, sum(demographics['original_dataset'] == dataset)))
+        # Print total N per dataset
+        for dataset in np.unique(demographics['original_dataset']):
+            print('%s: %d' % (dataset, sum(demographics['original_dataset'] == dataset)))
 
     # Print demographics for the final dataset
     demographics.groupby(['sex']).aggregate(aggregations)
-
+    demographics = demographics.set_index('id')
     # Path to the folder where to save the best pipeline will be saved
     # Note: The pipeline will only be saved if it is different from the one in
     # the previous generation
-    best_pipe_paths = get_best_pipeline_paths(args.analysis, args.generations,
+    best_pipe_paths = get_best_pipeline_paths(args.model,
+                                              args.analysis, args.generations,
                                               args.random_seed,
                                               args.population_size,
                                               args.debug,
@@ -196,7 +236,7 @@ if __name__ == '__main__':
 
     print('Running regression analyis with TPOT')
     # split train-test dataset
-    targetAttribute = np.array(demographics['Age'])
+    targetAttribute = demographics['age']
     if args.debug and args.dask:
         print('Start DASK client')
         port = 8889
@@ -206,9 +246,56 @@ if __name__ == '__main__':
         # TODO: These two ifs are not tested
         client = Client(threads_per_worker=1, diagnostics_port=port)
         client
+    if args.dataset == 'freesurf_combined' or args.dataset == 'UKBIO_freesurf':
+    # This assumes that your dataframe already has a column that defines the
+    # popularity of every group M/F and age in the dataset
+        Xtrain, Xtemp, Ytrain, Ytemp = \
+                model_selection.train_test_split(dataframe, targetAttribute,
+                                                 test_size=.90,
+                                                 #stratify=demographics['stratify'],
+                                                 random_state=args.random_seed)
+        # Get the stratified list for the training dataset
+        train_demographics = demographics.loc[Xtemp.index]
+        Xvalidate, Xtest, Yvalidate, Ytest = \
+                model_selection.train_test_split(Xtemp, Ytemp,
+                                                 test_size=.05,
+                                                 #stratify=train_demographics['stratify'],
+                                                 random_state=args.random_seed)
 
-    Xtrain, Xtest, Ytrain, Ytest = model_selection.train_test_split(data, targetAttribute, test_size=.25,
-                                                                    random_state=args.random_seed)
+        # ax = sns.violinplot(x='stratify', y='age', hue='sex',
+        #                 data=demographics.loc[Xtrain.index],palette="muted")
+        # fig = ax.get_figure()
+        # fig.savefig(os.path.join(project_wd, 'train_distribution.png'))
+        # plt.close()
+        # plt.figure()
+        # ax = sns.violinplot(x='stratify', y='age', hue='sex',
+        #                 data=demographics.loc[Xtest.index],palette="muted")
+        # fig = ax.get_figure()
+        # fig.savefig(os.path.join(project_wd, 'test_distribution.png'))
+        # plt.close()
+        # plt.figure()
+        # ax = sns.violinplot(x='stratify', y='age', hue='sex',
+        #                 data=demographics.loc[Xvalidate.index],palette="muted")
+        # fig = ax.get_figure()
+        # fig.savefig(os.path.join(project_wd, 'validation_distribution.png'))
+        # plt.close()
+        # plt.figure()
+        # ax = sns.violinplot(x='stratify', y='age', hue='sex',
+        #                 data=demographics,palette="muted")
+        # fig = ax.get_figure()
+        # fig.savefig(os.path.join(project_wd, 'beforesplit_distribution.png'))
+        # plt.close()
+    else:
+        Xtrain, Xtest, Ytrain, Ytest = \
+                model_selection.train_test_split(dataframe, targetAttribute,
+                                                 test_size=.25,
+                                                 random_state=args.random_seed)
+
+    # Check the group distribution
+    # It is not that easy because your labels are not thesabe as Y. But the mean
+    # age of the Ytrain and Ytest is vvery similar!
+    # print(np.unique(Ytrain, return_counts=True))
+    # print(np.unique(Ytest, return_counts=True))
     print('Divided dataset into test and training')
     print('Check train test split sizes')
     print('X_train: ' + str(Xtrain.shape))
@@ -216,8 +303,40 @@ if __name__ == '__main__':
     print('Y_train: ' + str(Ytrain.shape))
     print('Y_test: '  + str(Ytest.shape))
 
+    # Normalise the test dataset and apply the transformation to the train
+    # dataset
+    robustscaler = RobustScaler().fit(Xtrain)
+    Xtrain_scaled = robustscaler.transform(Xtrain)
+    Xtest_scaled = robustscaler.transform(Xtest)
+    # Transform pandas into numpy arrays (no nneed to do it if you are scaling
+    # the results)
+    # Xtrain = Xtrain.values
+    Ytrain = Ytrain.values
+    # Xtest = Xtest.values
+    Ytest = Ytest.values
+
+    if (args.dataset == 'freesurf_combined') or (args.dataset == 'UKBIO_freesurf'):
+        print('Y_validate: ' + str(Yvalidate.shape))
+        print('X_validate: ' + str(Xvalidate.shape))
+
+        Xvalidate_scaled = robustscaler.transform(Xvalidate)
+        # Dump the train, test and validation set and delete the validation loaded subjects
+        splitted_datasets = {'Xvalidate': Xvalidate,
+                             'Yvalidate': Yvalidate,
+                             'Xvalidate_scaled': Xvalidate_scaled,
+                             'Xtrain': Xtrain,
+                             'Ytrain': Ytrain,
+                             'Xtrain_scaled': Xtrain_scaled,
+                             'Xtest': Xtest,
+                             'Ytest': Ytest,
+                             'Xtest_scaled': Xtest_scaled}
+        with open(os.path.join(output_path, 'splitted_dataset_%s.pickle' %(args.dataset)), 'wb') as handle:
+            pickle.dump(splitted_datasets, handle)
+        del Xvalidate, Yvalidate
+
     # Plot age distribution for the training and test dataset
-    create_age_histogram(Ytrain, Ytest, 'BANC')
+    create_age_histogram(Ytrain, Ytest, str(args.dataset))
+
 
     tpot = ExtendedTPOTRegressor(generations=args.generations,
                          population_size=args.population_size,
@@ -239,10 +358,11 @@ if __name__ == '__main__':
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
     print('Offspring Size: %d' %args.offspring_size)
-    # njobs=-1 uses all cores present in the machine
-    tpot.fit(Xtrain, Ytrain, Xtest, Ytest)
-    print('Test score using optimal model: %f ' % tpot.score(Xtest, Ytest))
-    tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
+
+    tpot.fit(Xtrain_scaled, Ytrain, Xtest_scaled, Ytest)
+    print('Test score using optimal model: %f ' % tpot.score(Xtest_scaled, Ytest))
+    # save script with the best pipeline
+    tpot.export(os.path.join(output_path, 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
 
     print('Number of models analysed: %d' % len(tpot.predictions))
@@ -256,8 +376,6 @@ if __name__ == '__main__':
     print('Dump predictions, evaluated pipelines and sklearn objects')
     tpot_save = {}
     tpot_pipelines = {}
-    tpot_save['Xtest'] = Xtest
-    tpot_save['Ytest'] = Ytest
     tpot_save['predictions'] = tpot.predictions
     # List of
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_

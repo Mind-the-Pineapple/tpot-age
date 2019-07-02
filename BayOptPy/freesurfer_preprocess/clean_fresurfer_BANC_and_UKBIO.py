@@ -169,8 +169,7 @@ lh_thickness, rh_thickness, renameCols = dict_rename_columns(freesurfer_banc_col
 freesurfer_df_ukbio.rename(columns=renameCols, inplace=True)
 # Keep only the columns that both datasets have in common
 df_ukbio = freesurfer_df_ukbio[freesurfer_banc_columns]
-df_ukbio.index.name = 'ID'
-
+df_ukbio.index.name = 'id'
 #-----------------------------------------------------------------------------
 # UKBIO vs BANC
 #-----------------------------------------------------------------------------
@@ -244,7 +243,8 @@ plt.close()
 # Dump the pre-processed biobank dataset that now overlaps with the features
 # from the BANC dataset
 save_path_ukbio = os.path.join(save_path, 'matched_dataset')
-df_ukbio.to_csv(os.path.join(save_path_ukbio, 'aparc_aseg_UKB.csv'), columns=df_ukbio.columns, index_label='ID')
+df_ukbio.to_csv(os.path.join(save_path_ukbio, 'aparc_aseg_UKB.csv'),
+                columns=df_ukbio.columns)
 print('Saved modifed Biobank dataset: %s' %save_path)
 
 # As we deleted the orignal lh_MeanThickness recaculate those values
@@ -300,7 +300,7 @@ pairplot.savefig(os.path.join(save_path_banc, 'pairplot_banc.png'), format='png'
 summary_df_ukbio = df_ukbio[summary_columns]
 summary_df_ukbio.to_csv(os.path.join(save_path_ukbio,
                        'aparc_aseg_UKBIO_summary.csv'),
-                       index_label='ID')
+                       index_label='id')
 print('Saved summary ukbio dataset: %s' %save_path_banc)
 pairplot = sns.pairplot(summary_df_ukbio)
 pairplot.savefig(os.path.join(save_path_banc, 'pairplot_ukbio.png'), format='png')

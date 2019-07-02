@@ -4,26 +4,20 @@ import pdb
 from itertools import product
 
 from skrvm import RVR
+from xgboost import XGBRegressor
 
 # Define list of Kernels
 from sklearn.gaussian_process.kernels import (RBF, Matern, RationalQuadratic,
                                               ExpSineSquared, DotProduct,
                                               ConstantKernel)
-kernels_rbf = [RBF(length_scale=x) for x in np.arange(0., 1.1, .1)]
-kernels_rq = [RationalQuadratic(length_scale=x, alpha=y) for x,y in
-              product(np.arange(0., 1.1, .1), np.arange(0.1, 10.1,1))]
-kernels_exp = [ExpSineSquared(length_scale=x, periodicity=y) for x,y in
-                     product(np.arange(0., 1.1, .1), np.arange(.01, 10.1,1))]
-kernels_mat = [Matern(length_scale=x, nu=y) for x,y in
-                     product(np.arange(0.1, 1.1,.1), [.5, 1.5, 2.5])]
-kernel_dot = [DotProduct(sigma_0=x) for x in np.arange(0., 1, .01)]
-kernels = kernels_rbf + kernels_rq + kernels_exp + kernels_mat + kernel_dot
+# The hyperparameters for the GPR, will be optimised during fitting
+kernels = [RBF(), RationalQuadratic(), ExpSineSquared(), Matern()]
 
 tpot_config_gpr = {
     'sklearn.gaussian_process.GaussianProcessRegressor': {
         'kernel': kernels,
         'random_state': [42],
-        'alpha': [1e-100, 1e-20, 1e-12, 1e-10, 1e-5, 1e-3]
+        'alpha': np.arange(1e-2, 10, 30)
     },
     'skrvm.RVR': {
            'kernel': kernels,
@@ -37,8 +31,8 @@ tpot_config_gpr = {
            'dual': [True, False],
            'random_state': [42],
            'tol': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
-           'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5.,
-                 10., 15., 20., 25.],
+           'C': [2 ** -6, 2 ** -5, 2 ** -4, 2 ** -3, 2 ** -2, 2 ** -1, 2 ** 0,
+                 2 ** 1.],
            'epsilon': [1e-4, 1e-3, 1e-2, 1e-1, 1.]
     },
     'sklearn.ensemble.RandomForestRegressor': {
@@ -74,11 +68,6 @@ tpot_config_gpr = {
         'random_state': [42],
         'bootstrap': [True, False]
     },
-    'sklearn.neighbors.KNeighborsRegressor': {
-         'n_neighbors': range(1,101),
-          'weights': ["uniform", "distance"],
-          'p': [1, 2]
-    },
     'sklearn.linear_model.LassoLarsCV': {
            'normalize': [True, False]
     },
@@ -98,20 +87,9 @@ tpot_config_gpr = {
             'random_state': [42],
             'n_components': range(1, 11)
     },
-        'sklearn.preprocessing.RobustScaler': {
-                                              },
-         'sklearn.preprocessing.StandardScaler': {
-                                                 },
         'sklearn.kernel_approximation.RBFSampler': {
             'gamma': np.arange(0.0, 1.01, 0.05),
            'random_state': [42],
-    },
-        'sklearn.preprocessing.MaxAbsScaler': {
-                                              },
-        'sklearn.preprocessing.MinMaxScaler': {
-                                              },
-        'sklearn.preprocessing.Normalizer':{
-            'norm':['l1', 'l2', 'max']
     },
 #################################################################################
 ### Feature Selection

@@ -47,9 +47,12 @@ BayOptPy/tpot/vanilla_combi/*
 BayOptPy/tpot/random_seed/*
 BayOptPy/tpot/mutation/*
 BayOptPy/tpot/population/
+BayOptPy/tpot/Output/*
+BayOptPy/tpot/old_population/
+../BayOptPy/tpot_regression/
 
 BayOptPy/tpot/figs/*
 BayOptPy/tpot/old_figs/*
-
+BayOptPy/tpot_classification/Output/*
 
 

@@ -3,7 +3,8 @@ This scripts define functions that will be used by the different notebooks to
 analyse the results
 '''
 import pandas as pd
-
+from plotly import tools
+import plotly.graph_objs as go
 
 def predecessor_generation(results, curr_generation, verbose):
     '''
@@ -18,6 +19,7 @@ def predecessor_generation(results, curr_generation, verbose):
                 data_df = data_df.append({'model': key, 'predecessor': predecessor, 'generation': int(generation),
                                           'mae': mae},
                                  ignore_index=True)
+
     if verbose:
         print('Current Generation: %d' %curr_generation)
         print('List of repeated models')
@@ -48,3 +50,38 @@ def prepare_df_for_plotly(data_df):
           'Curr Model list: ' + data_df['list_models_curr_model'].astype(str)
     return data_df
 
+def plot_plotly(results, n_plots, curr_gen_idx, ex_plot, subplots):
+    # Create the same plot for other 5 generations and put the next to
+    # each other
+    data = []
+    rows = 2
+    columns = 5
+
+    fig = tools.make_subplots(rows=rows, cols=columns,
+    subplot_titles=tuple(['Gen %d'%x for x in
+                          range(1 + n_plots*ex_plot,
+                                n_plots + n_plots * ex_plot + 1)]))
+
+    for i in range(rows):
+        for j in range(columns):
+            curr_gen = subplots[curr_gen_idx] # Load the data for the current generation
+            data_df = predecessor_generation(results, curr_gen, verbose=False)
+            # Add additional columns for visualisation
+            data_df = prepare_df_for_plotly(data_df)
+            sp = go.Scatter(y = data_df['mae'],
+                          mode='markers',
+                          text=data_df['visualisation'],
+                          hoverinfo = 'text',
+                          marker=dict(
+                                size=16,
+                                color=data_df['generation'], #set color equal to a variable
+                         colorscale='Viridis',
+                         cmin=0,
+                         cmax = 100),
+                         showlegend=False)
+            fig.append_trace(sp, i+1, j+1)
+            curr_gen_idx +=1
+
+
+    fig['layout'].update(height=600, width=1000, title='Multiple Generations')
+    return fig, curr_gen_idx

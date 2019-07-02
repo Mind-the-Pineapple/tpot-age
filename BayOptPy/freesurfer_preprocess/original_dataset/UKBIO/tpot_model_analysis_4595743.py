@@ -20,11 +20,13 @@ from BayOptPy.helperfunctions import (get_paths, get_data,
                                       set_publication_style)
 
 """
+BANC + TPOT dataset
 This script tests the best model recommened by TPOT for 100 generations, random
 seed 42, initial population 1000, mutation rate and cross-validation rate 0.9
 and cross-over 0.1
 """
 
+set_publication_style()
 # General Settings
 #-------------------------------------------------------------------------------
 debug = False
@@ -38,7 +40,7 @@ project_ukbio_wd, project_data_ukbio, _ = get_paths(debug, 'UKBIO_freesurf')
 _, _, df_ukbio =  \
              get_data(project_data_ukbio, 'UKBIO_freesurf', debug,
                       project_ukbio_wd, resamplefactor, raw=False, analysis=None)
-df_ukbio = df_ukbio.set_index('ID')
+df_ukbio = df_ukbio.set_index('id')
 # Drop the last column that corresponds the name of the dataset
 df_ukbio = df_ukbio.drop('dataset', axis=1)
 
@@ -62,7 +64,7 @@ targetAttribute_ukbio = np.array(age_UKBIO['age'])
 data_banc = df_banc.values
 data_ukbio = df_ukbio.values
 # Find age for the BANC dataset
-targetAttribute_banc = np.array(demographics_banc['Age'])
+targetAttribute_banc = np.array(demographics_banc['age'])
 
 # Add a few of the BIOBANK Dataset into the training set
 Xtrain_ukbio, Xtest_ukbio, Ytrain_ukbio, Ytest_ukbio = train_test_split(data_ukbio, targetAttribute_ukbio,

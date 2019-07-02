@@ -26,7 +26,7 @@ parser.add_argument('-dataset',
                    dest='dataset',
                    help='Specify which dataset to use',
                    choices=['OASIS', 'BANC',
-                            'BANC_freesurf']
+                            'BANC_freesurf', 'freesurf_combined']
                    )
 parser.add_argument('-analysis',
                     dest='analysis',
@@ -141,7 +141,7 @@ for random_seed in args.random_seeds:
     plt.legend()
     plt.xlabel('Generation')
     plt.ylabel('MAE')
-    plt.ylim(5,8)
+    plt.ylim(4,7)
     plt.savefig(os.path.join(generation_analysis_path, 'train_test_fitness.png'))
 
     # Plot the different MAE for each generation and use the complexity of the
@@ -246,6 +246,32 @@ for random_seed in args.random_seeds:
     plt.savefig(os.path.join(generation_analysis_path, 'boxplot2.png'))
     plt.close()
 
+    #Plot Boxplot
+    import joblib
+    # Load the correct dataset
+    with open(os.path.join(tpot_path, 'random_seed_020',
+                           'tpot_%s_%s_100gen.dump' %(args.dataset,
+                                                      args.analysis)), 'rb') as handle:
+        results = joblib.load(handle)
+    data1 = [[abs(results['evaluated_individuals'][generation][model]['internal_cv_score'])
+              for model in results['evaluated_individuals'][generation].keys()] for
+             generation in range(len(results['evaluated_individuals']))]
+
+    # import pdb
+    # pdb.set_trace()
+    plt.figure()
+    fig, ax = plt.subplots(1,1)
+    outliers = dict(markerfacecolor='#FFA500', marker='o', alpha=.1)
+    plt.boxplot(data1, positions=range(0, len(data1)), showfliers=True, flierprops=outliers)
+    plt.ylabel('MAE')
+    plt.xlabel('Generations')
+    # TODO: improve how you determine this threshold (there are models that are worse)
+    plt.ylim(0, 45)
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    plt.savefig(os.path.join(generation_analysis_path, 'boxplot3.png'))
+    plt.close()
+
     #Plot Boxplot at every 10-th generation
     plt.figure()
     fig, ax = plt.subplots(1,1)
@@ -283,8 +309,9 @@ for random_seed in args.random_seeds:
     # plot the MAE for a selected number of generations
     selected_gens = np.arange(0,args.generations+1,5)
     tpot_obj_path = os.path.join(tpot_path, 'random_seed_%03d',
-                                  'tpot_BANC_freesurf_%s_%03dgen.dump'
-                                 ) %(random_seed, args.config_dict, args.generations)
+                                  'tpot_%s_%s_%03dgen.dump'
+                                 ) %(random_seed, args.dataset,
+                                     args.config_dict, args.generations)
     tpot_obj = joblib.load(tpot_obj_path)
     for selected_gen in selected_gens:
         print(selected_gen)
