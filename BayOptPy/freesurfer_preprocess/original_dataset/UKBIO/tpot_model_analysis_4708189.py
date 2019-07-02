@@ -33,11 +33,11 @@ and cross-over 0.1
 set_publication_style()
 # General Settings
 #-------------------------------------------------------------------------------
-dataset = 'freesurf_combined'
+dataset = 'UKBIO_freesurf'
 debug = False
 resamplefactor = 1
 random_seed = 20
-save_path = '/code/BayOptPy/tpot/Output/vanilla_combi/100_generations/random_seed_020/'
+save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/116_freesurf_col/100_generations/random_seed_020/'
 # Load the clean data for both the UKBIO and the BANC analysis
 # This version of the UKBIOBANK dataset contains the same columns as the BANC
 # dataset
@@ -48,7 +48,7 @@ exported_pipeline = tpot['fitted_pipeline']
 
 # Load the saved validation dataset
 project_ukbio_wd, project_data_ukbio, _ = get_paths(debug, dataset)
-with open(os.path.join(save_path, 'splitted_dataset.pickle'), 'rb') as handle:
+with open(os.path.join(save_path, 'splitted_dataset_%s.pickle' %dataset), 'rb') as handle:
     splitted_dataset = pickle.load(handle)
 
 # Print some results
