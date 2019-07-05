@@ -339,7 +339,7 @@ if __name__ == '__main__':
 
     # Create confusion matrix on test data
     class_name = np.array(['young', 'old', 'adult'], dtype='U10')
-    plot_confusion_matrix(Ytest, tpot_predictions, classes=class_name,
+    ax, cm_test = plot_confusion_matrix(Ytest, tpot_predictions, classes=class_name,
                           title='Confusion Matrix', normalize=True)
     plt.savefig(os.path.join(output_path, 'confusion_matrix_tpot_test.png'))
 
@@ -347,12 +347,14 @@ if __name__ == '__main__':
     print('Validation score using optimal model: %.3f' %tpot.score(Xvalidate_scaled,
                                                                   Yvalidate))
     tpot_predictions_val = tpot.predict(Xvalidate_scaled)
-    plot_confusion_matrix(Yvalidate, tpot_predictions_val, classes=class_name,
+    ax, cm_validate = plot_confusion_matrix(Yvalidate, tpot_predictions_val, classes=class_name,
                          normalize=True)
     plt.savefig(os.path.join(output_path, 'confusion_matrix_tpot_val.png'))
 
     tpot_save = {}
-    # List of
+    # List of variables to save
+    tpot_save['confusion_matrix_test'] = cm_test
+    tpot_save['confusion_matrix_validatate'] = cm_validate
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
     # Best pipeline at the end of the genetic algorithm
 
