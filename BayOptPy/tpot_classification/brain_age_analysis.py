@@ -11,9 +11,9 @@ import seaborn as sns
 import pickle
 # from sklearn.externals import joblib
 import joblib
-from tpot import TPOTClassifier
 
 
+from BayOptPy.tpot.extended_tpot import ExtendedTPOTClassifier
 from BayOptPy.helperfunctions import (get_data, get_paths,
                                       get_config_dictionary, get_output_path,
                                       get_best_pipeline_paths,
@@ -309,7 +309,7 @@ if __name__ == '__main__':
     create_age_histogram(Ytrain, Ytest, args.dataset)
 
 
-    tpot = TPOTClassifier(generations=args.generations,
+    tpot = ExtendedTPOTClassifier(generations=args.generations,
                          population_size=args.population_size,
                          offspring_size=args.offspring_size,
                          mutation_rate=args.mutation_rate,
@@ -322,13 +322,15 @@ if __name__ == '__main__':
                          scoring='accuracy',
                          periodic_checkpoint_folder=best_pipe_paths,
                          use_dask=False,
+                         debug=args.debug,
+                         analysis=args.analysis,
                         )
     print('Number of cross-validation: %d' %args.cv)
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
     print('Offspring Size: %d' %args.offspring_size)
 
-    tpot.fit(Xtrain_scaled, Ytrain)
+    tpot.fit(Xtrain_scaled, Ytrain, Xtest_scaled, Ytest)
     tpot_score_test = tpot.score(X_test_scaled, Ytest)
     print('Test score using optimal model: %.3f ' % tpot_score_test)
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
@@ -360,6 +362,8 @@ if __name__ == '__main__':
     tpot_save['fitted_model'] = tpot.fitted_pipeline_ # best pipeline
     tpot_save['score_test'] = tpot_score_test
     tpot_save['score_validation'] = tpot_score_validation
+    tpot_save['evaluated_individuals'] = tpot.evaluated_individuals
+    tpot_save['log'] = tpot.log
     # Best pipeline at the end of the genetic algorithm
 
     # Dump results

@@ -11,6 +11,7 @@ from tpot.operator_utils import set_sample_weight
 from tpot.gp_deap import initialize_stats_dict, varOr
 from tpot.gp_types import Output_Array
 from tpot.config.regressor import regressor_config_dict
+from tpot.config.classifier import classifier_config_dict
 from tpot.export_utils import generate_pipeline_code, export_pipeline, expr_to_tree
 from tpot.builtins import CombineDFs, StackingEstimator
 
@@ -72,6 +73,68 @@ class ExtendedTPOTBase(TPOTBase):
             random.seed(random_state)
             np.random.seed(random_state)
 
+    def _add_terminals(self, arg_types):
+        # Copied from a new version of TPOT
+        for _type in arg_types:
+            type_values = list(_type.values)
+
+        for val in type_values:
+            terminal_name = _type.__name__ + "=" + str(val)
+            self._pset.addTerminal(val, _type, name=terminal_name)
+
+    def _add_operators(self):
+        main_type = ["Classifier", "Regressor", "Selector", "Transformer"]
+        ret_types = []
+        self.op_list = []
+        if self.template == "RandomTree": # default pipeline structure
+            step_in_type = np.ndarray
+            step_ret_type = Output_Array
+            for operator in self.operators:
+                arg_types =  operator.parameter_types()[0][1:]
+                p_types = ([step_in_type] + arg_types, step_ret_type)
+                if operator.root:
+                    # We need to add rooted primitives twice so that they can
+                    # return both an Output_Array (and thus be the root of the tree),
+                    # and return a np.ndarray so they can exist elsewhere in the tree.
+                    self._pset.addPrimitive(operator, *p_types)
+                tree_p_types = ([step_in_type] + arg_types, step_in_type)
+                self._pset.addPrimitive(operator, *tree_p_types)
+                self._import_hash_and_add_terminals(operator, arg_types)
+            self._pset.addPrimitive(CombineDFs(), [step_in_type, step_in_type], step_in_type)
+        else:
+            gp_types = {}
+            for idx, step in enumerate(self.template_comp):
+
+                # input class in each step
+                if idx:
+                    step_in_type = ret_types[-1]
+                else:
+                    step_in_type = np.ndarray
+                if step != 'CombineDFs':
+                    if idx < len(self.template_comp) - 1:
+                        # create an empty for returning class for strongly-type GP
+                        step_ret_type_name = 'Ret_{}'.format(idx)
+                        step_ret_type = type(step_ret_type_name, (object,), {})
+                        ret_types.append(step_ret_type)
+                    else:
+                        step_ret_type = Output_Array
+                if step == 'CombineDFs':
+                    self._pset.addPrimitive(CombineDFs(), [step_in_type, step_in_type], step_in_type)
+                elif main_type.count(step): # if the step is a main type
+                    for operator in self.operators:
+                        arg_types =  operator.parameter_types()[0][1:]
+                        if operator.type() == step:
+                            p_types = ([step_in_type] + arg_types, step_ret_type)
+                            self._pset.addPrimitive(operator, *p_types)
+                            self._import_hash_and_add_terminals(operator, arg_types)
+                else: # is the step is a specific operator
+                    for operator in self.operators:
+                        arg_types =  operator.parameter_types()[0][1:]
+                        if operator.__name__ == step:
+                            p_types = ([step_in_type] + arg_types, step_ret_type)
+                            self._pset.addPrimitive(operator, *p_types)
+                            self._import_hash_and_add_terminals(operator, arg_types)
+        self.ret_types = [np.ndarray, Output_Array] + ret_types
     def _setup_toolbox(self):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -102,7 +165,6 @@ class ExtendedTPOTBase(TPOTBase):
         self._pset = gp.PrimitiveSetTyped('MAIN', [np.ndarray], Output_Array)
         self._pset.renameArguments(ARG0='input_matrix')
         self._add_operators()
-        self._add_terminals()
 
         if self.verbosity > 2:
             print('{} operators have been imported by TPOT.'.format(len(self.operators)))
@@ -830,3 +892,11 @@ class ExtendedTPOTRegressor(ExtendedTPOTBase):
     default_config_dict = regressor_config_dict  # Regression dictionary
     classification = False
     regression = True
+
+class ExtendedTPOTClassifier(ExtendedTPOTBase):
+    """TPOT estimator for classification problems."""
+
+    scoring_function = 'accuracy'  # Classification scoring
+    default_config_dict = classifier_config_dict  # Classification dictionary
+    classification = True
+    regression = False
