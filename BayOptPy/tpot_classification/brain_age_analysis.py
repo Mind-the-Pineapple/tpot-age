@@ -327,9 +327,9 @@ if __name__ == '__main__':
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
     print('Offspring Size: %d' %args.offspring_size)
-
     tpot.fit(Xtrain_scaled, Ytrain)
-    print('Test score using optimal model: %.3f ' % tpot.score(Xtest_scaled, Ytest))
+    tpot_score_test = tpot.score(Xtest_scaled, Ytest)
+    print('Test score using optimal model: %.3f ' % tpot_score_test)
     tpot.export(os.path.join(project_wd, 'BayOptPy', 'tpot', 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
 
@@ -344,8 +344,8 @@ if __name__ == '__main__':
     plt.savefig(os.path.join(output_path, 'confusion_matrix_tpot_test.png'))
 
     # Predict age for the validation dataset
-    print('Validation score using optimal model: %.3f' %tpot.score(Xvalidate_scaled,
-                                                                  Yvalidate))
+    tpot_score_validation = tpot.score(Xvalidate_scaled, Yvalidate)
+    print('Validation score using optimal model: %.3f' %tpot_score_validation)
     tpot_predictions_val = tpot.predict(Xvalidate_scaled)
     ax, cm_validate = plot_confusion_matrix(Yvalidate, tpot_predictions_val, classes=class_name,
                          normalize=True)
@@ -356,6 +356,9 @@ if __name__ == '__main__':
     tpot_save['confusion_matrix_test'] = cm_test
     tpot_save['confusion_matrix_validatate'] = cm_validate
     tpot_save['evaluated_individuals_'] = tpot.evaluated_individuals_
+    tpot_save['fitted_model'] = tpot.fitted_pipeline_ # best pipeline
+    tpot_save['score_test'] = tpot_score_test
+    tpot_save['score_validation'] = tpot_score_validation
     # Best pipeline at the end of the genetic algorithm
 
     # Dump results
