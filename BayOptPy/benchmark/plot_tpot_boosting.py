@@ -7,7 +7,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.stats import ttest_ind
 
-from BayOptPy.helperfunctions import set_publication_style
+from BayOptPy.helperfunctions import (set_publication_style,
+                                      plot_confusion_matrix_boosting)
 
 
 def barplot_annotate_brackets(num1, num2, data, center, height, yerr=None, dh=.05, barh=.05, fs=None, maxasterix=None):
@@ -76,59 +77,124 @@ def barplot_annotate_brackets(num1, num2, data, center, height, yerr=None, dh=.0
 #----------------------------------------------------------------------------
 ind = np.arange(2)
 set_publication_style()
+# analysis = 'regression'
+analysis = 'classification'
+classes = np.array(['young', 'old', 'adult'], dtype='U10')
 
-# Load the dat from the saved pickles
-save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/100_generations/'
+if analysis == 'regression':
+    # Load the dat from the saved pickle
+    save_path = '/code/BayOptPy/tpot_%s/Output/vanilla_combi/100_generations' %analysis
+    with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
+        tpot_results = pickle.load(handle)
 
-with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
-    tpot_results = pickle.load(handle)
+    with open(os.path.join(save_path, 'rvr_all_seeds.pckl'), 'rb') as handle:
+        rvr_results = pickle.load(handle)
 
-with open(os.path.join(save_path, 'rvr_all_seeds.pckl'), 'rb') as handle:
-    rvr_results = pickle.load(handle)
+    # Validation plot
+    #----------------------------------------------------------------------------
+    # Do some statistics to see if the results from tpot is significantly differen from rvr
+    print('Test dataset')
+    t, prob = ttest_ind(tpot_results['mae_test'], rvr_results['mae_test'])
+    print('T-statistics: %.3f, p-value: %.10f' %(t, prob))
 
-# Validation plot
-#----------------------------------------------------------------------------
-# Do some statistics to see if the results from tpot is significantly differen from rvr
-print('Test dataset')
-t, prob = ttest_ind(tpot_results['mae_test'], rvr_results['mae_test'])
-print('T-statistics: %.3f, p-value: %.10f' %(t, prob))
+    plt.figure()
+    plt.bar(ind,
+            [np.mean(tpot_results['mae_test']), np.mean(rvr_results['mae_test'])],
+            yerr=[np.std(tpot_results['mae_test']),
+                  np.std(tpot_results['mae_test'])],
+            color=['b', 'r']
+                 )
+    barplot_annotate_brackets(0, 1, 'p<.001', ind,
+                              height=[np.mean(tpot_results['mae_test']),
+                                       np.mean(rvr_results['mae_test'])])
+    plt.xticks(ind, ('TPOT', 'RVR'))
+    plt.ylim([4.5, 7])
+    plt.yticks(np.arange(4.5, 7.25, .25))
+    plt.ylabel('MAE')
+    plt.savefig(os.path.join(save_path, 'MAE_bootstrap_test.png'))
+    plt.close()
 
-plt.figure()
-plt.bar(ind,
-        [np.mean(tpot_results['mae_test']), np.mean(rvr_results['mae_test'])],
-        yerr=[np.std(tpot_results['mae_test']),
-              np.std(tpot_results['mae_test'])],
-        color=['b', 'r']
-             )
-barplot_annotate_brackets(0, 1, 'p<.001', ind,
-                          height=[np.mean(tpot_results['mae_test']),
-                                   np.mean(rvr_results['mae_test'])])
-plt.xticks(ind, ('TPOT', 'RVR'))
-plt.ylim([4, 7])
-plt.yticks(np.arange(4, 7.25, .25))
-plt.ylabel('MAE')
-plt.savefig(os.path.join(save_path, 'MAE_bootstrap_test.png'))
-plt.close()
+    # Validation plot
+    #----------------------------------------------------------------------------
+    print('Validation dataset')
+    t, prob = ttest_ind(tpot_results['mae_validation'], rvr_results['mae_validation'])
+    print('T-statistics: %.3f, p-value: %.25f' %(t, prob))
 
-# Validation plot
-#----------------------------------------------------------------------------
-print('Validation dataset')
-t, prob = ttest_ind(tpot_results['mae_validation'], rvr_results['mae_validation'])
-print('T-statistics: %.3f, p-value: %.25f' %(t, prob))
+    plt.figure()
+    plt.bar(ind,
+            [np.mean(tpot_results['mae_validation']),
+             np.mean(rvr_results['mae_validation'])],
+            yerr=[np.std(tpot_results['mae_validation']),
+                  np.std(tpot_results['mae_validation'])],
+            color=['b', 'r']
+                 )
+    plt.xticks(ind, ('TPOT', 'RVR'))
+    plt.ylim([4.5, 7])
+    plt.yticks(np.arange(4.5, 7.25, .25))
+    barplot_annotate_brackets(0, 1, 'p<.001', ind,
+                              height=[np.mean(tpot_results['mae_validation']),
+                                       np.mean(rvr_results['mae_validation'])])
+    plt.ylabel('MAE')
+    plt.savefig(os.path.join(save_path, 'MAE_bootstrap_validation.png'))
 
-plt.figure()
-plt.bar(ind,
-        [np.mean(tpot_results['mae_validation']),
-         np.mean(rvr_results['mae_validation'])],
-        yerr=[np.std(tpot_results['mae_validation']),
-              np.std(tpot_results['mae_validation'])],
-        color=['b', 'r']
-             )
-plt.xticks(ind, ('TPOT', 'RVR'))
-plt.ylim([4, 7])
-plt.yticks(np.arange(4, 7.25, .25))
-barplot_annotate_brackets(0, 1, 'p<.001', ind,
-                          height=[np.mean(tpot_results['mae_validation']),
-                                   np.mean(rvr_results['mae_validation'])])
-plt.ylabel('MAE')
-plt.savefig(os.path.join(save_path, 'MAE_bootstrap_validation.png'))
+elif analysis == 'classification':
+    # Load the dat from the saved pickle
+    save_path = '/code/BayOptPy/tpot_%s/Output/vanilla_combi/100_generations/' %analysis
+
+    with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
+        tpot_results = pickle.load(handle)
+
+    with open(os.path.join(save_path, 'rvc_all_seeds.pckl'), 'rb') as handle:
+        rvc_results = pickle.load(handle)
+
+    # Do some statistics to see if the results from tpot is significantly differen from rvr
+    print('--------------------------------------------------------')
+    print('Test dataset')
+    print('--------------------------------------------------------')
+    t, prob = ttest_ind(tpot_results['confusion_matrix_test'],
+                        rvc_results['confusion_matrix_test'], axis=0)
+    print('T-statistics:')
+    print(t)
+    print('p-value: ')
+    print(prob)
+
+    print('--------------------------------------------------------')
+    print('Validation dataset')
+    print('--------------------------------------------------------')
+    t, prob = ttest_ind(tpot_results['confusion_matrix_validation'],
+                        rvc_results['confusion_matrix_validation'], axis=0)
+    print('T-statistics:')
+    print(t)
+    print('p-value: ')
+    print(prob)
+
+
+    plot_confusion_matrix_boosting(
+                    np.mean(tpot_results['confusion_matrix_test'], axis=0),
+                    np.std(tpot_results['confusion_matrix_test'], axis=0),
+                    classes=classes,
+                    title='TPOT_test')
+
+    plt.savefig(os.path.join(save_path, 'tpot_test_boosting.pdf'))
+
+    plot_confusion_matrix_boosting(
+                    np.mean(rvc_results['confusion_matrix_test'], axis=0),
+                    np.std(rvc_results['confusion_matrix_test'], axis=0),
+                    classes=classes,
+                    title='RVC_test')
+    plt.savefig(os.path.join(save_path, 'rvc_test_boosting.pdf'))
+
+    plot_confusion_matrix_boosting(
+                    np.mean(tpot_results['confusion_matrix_validation'], axis=0),
+                    np.std(tpot_results['confusion_matrix_validation'], axis=0),
+                    classes=classes,
+                    title='TPOT_validation')
+
+    plt.savefig(os.path.join(save_path, 'tpot_validation_boosting.pdf'))
+
+    plot_confusion_matrix_boosting(
+                    np.mean(rvc_results['confusion_matrix_validation'], axis=0),
+                    np.std(rvc_results['confusion_matrix_validation'], axis=0),
+                    classes=classes,
+                    title='RVC_validation')
+    plt.savefig(os.path.join(save_path, 'rvc_validation_boosting.pdf'))
