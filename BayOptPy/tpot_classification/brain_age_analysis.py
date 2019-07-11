@@ -13,7 +13,7 @@ import pickle
 import joblib
 from tpot import TPOTClassifier
 
-
+from BayOptPy.tpot_classification.extended_tpot import ExtendedTPOTClassifier
 from BayOptPy.helperfunctions import (get_data, get_paths,
                                       get_config_dictionary, get_output_path,
                                       get_best_pipeline_paths,
@@ -309,7 +309,7 @@ if __name__ == '__main__':
     create_age_histogram(Ytrain, Ytest, args.dataset)
 
 
-    tpot = TPOTClassifier(generations=args.generations,
+    tpot = ExtendedTPOTClassifier(generations=args.generations,
                          population_size=args.population_size,
                          offspring_size=args.offspring_size,
                          mutation_rate=args.mutation_rate,
@@ -359,6 +359,7 @@ if __name__ == '__main__':
     tpot_save['fitted_model'] = tpot.fitted_pipeline_ # best pipeline
     tpot_save['score_test'] = tpot_score_test
     tpot_save['score_validation'] = tpot_score_validation
+    # tpot_save['evaluated_individuals'] = tpot.evaluated_individuals
     # Best pipeline at the end of the genetic algorithm
 
     # Dump results
