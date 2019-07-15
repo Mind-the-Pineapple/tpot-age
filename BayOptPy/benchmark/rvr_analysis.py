@@ -84,7 +84,7 @@ def rvr_analysis(random_seed, save_path):
                                     y_predicted_validation)
     print('R is: %.4f' %r_val)
     print('-------------------------------------------------------------------')
-    return mae_test, mae_validation, r_val
+    return mae_test, mae_validation, r_val, r_test
 
 
 # Settings
@@ -105,21 +105,26 @@ if analysis == 'bootstrap':
     mae_test_all = []
     mae_validation_all = []
     r_val_all = []
+    r_test_all = []
     for random_seed in random_seeds:
-        mae_test, mae_validation, r_val = rvr_analysis(random_seed, save_path)
+        mae_test, mae_validation, r_val, r_test = rvr_analysis(random_seed, save_path)
         mae_test_all.append(mae_test)
         mae_validation_all.append(mae_validation)
         r_val_all.append(r_val)
+        r_test_all.append(r_test)
     print('Mean and std for test data')
     print(np.mean(mae_test_all), np.std(mae_test_all))
     print('Mean and std for validation data')
     print(np.mean(mae_validation_all), np.std(mae_validation_all))
-    print('Mean and std pearson corr')
+    print('Mean and std pearson corr test data')
+    print(np.mean(r_test_all), np.std(r_test_all))
+    print('Mean and std pearson corr validation data')
     print(np.mean(r_val_all), np.std(r_val_all))
 
     results = {'mae_test': mae_test_all,
                'mae_validation': mae_validation_all,
-               'r_val': r_val_all}
+               'r_val': r_val_all,
+               'r_test': r_test_all}
     with open(os.path.join(save_path, 'rvr_all_seeds.pckl'), 'wb') as handle:
         pickle.dump(results, handle)
 else:

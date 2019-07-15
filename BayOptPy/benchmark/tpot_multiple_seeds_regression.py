@@ -85,13 +85,23 @@ def tpot_model_analysis(random_seed, save_path):
                                  y_predicted_validation)
     rho_test, rho_p_value_test = spearmanr(splitted_dataset['Ytest'],
                                  y_predicted_test)
+    print('Statistics for the test dataset')
+    print('shape of the dataset: %s' %(splitted_dataset['Ytest'].shape,))
+    print('Rho and p-value: %.4f %.4f' %(rho_test, rho_p_value_test))
+
+    r_score_test = r2_score(splitted_dataset['Ytest'], y_predicted_test)
+    print('R2 is: %.4f' %r_score_test)
+
+    r_test, r_p_value_test = pearsonr(splitted_dataset['Ytest'],
+                                          y_predicted_test)
+    print('R is: %.4f' %r_test)
 
     print('Statistics for the full validation dataset')
     print('shape of the dataset: %s' %(splitted_dataset['Yvalidate'].shape,))
     print('Rho and p-value: %.4f %.4f' %(rho_val, rho_p_value_val))
 
-    r_score = r2_score(splitted_dataset['Yvalidate'], y_predicted_validation)
-    print('R2 is: %.4f' %r_score)
+    r_score_val = r2_score(splitted_dataset['Yvalidate'], y_predicted_validation)
+    print('R2 is: %.4f' %r_score_val)
 
     r_val, r_p_value_val = pearsonr(splitted_dataset['Yvalidate'], y_predicted_validation)
     print('R is: %.4f' %r_val)
@@ -122,29 +132,34 @@ def tpot_model_analysis(random_seed, save_path):
     plot_predicted_vs_true_age(y_train_val, predicted_subset_val,
                                output_path_test)
     print('-------------------------------------------------------------------------------')
-    return mae_test, mae_validation, r_val
+    return mae_test, mae_validation, r_val, r_test
 
 
 save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/100_generations/'
 mae_test_all = []
 mae_validation_all = []
 r_val_all = []
+r_test_all = []
 for random_seed in random_seeds:
-    mae_test, mae_validation, r_val = tpot_model_analysis(random_seed, save_path)
+    mae_test, mae_validation, r_val, r_test = tpot_model_analysis(random_seed, save_path)
     mae_test_all.append(mae_test)
     mae_validation_all.append(mae_validation)
     r_val_all.append(r_val)
+    r_test_all.append(r_test)
 
 print('Mean and std for test data')
 print(np.mean(mae_test_all), np.std(mae_test_all))
 print('Mean and std for validation data')
 print(np.mean(mae_validation_all), np.std(mae_validation_all))
-print('Mean and std pearson corr')
+print('Mean and std pearson corr test data')
+print(np.mean(r_test_all), np.std(r_test_all))
+print('Mean and std pearson corr validation data')
 print(np.mean(r_val_all), np.std(r_val_all))
 
 results = {'mae_test': mae_test_all,
            'mae_validation': mae_validation_all,
-           'r_val': r_val_all}
+           'r_val': r_val_all,
+           'r_test': r_test_all}
 with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'wb') as handle:
     pickle.dump(results, handle)
 

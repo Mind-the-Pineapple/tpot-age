@@ -77,8 +77,8 @@ def barplot_annotate_brackets(num1, num2, data, center, height, yerr=None, dh=.0
 #----------------------------------------------------------------------------
 ind = np.arange(2)
 set_publication_style()
-# analysis = 'regression'
-analysis = 'classification'
+analysis = 'regression'
+# analysis = 'classification'
 classes = np.array(['young', 'old', 'adult'], dtype='U10')
 
 if analysis == 'regression':
@@ -90,7 +90,7 @@ if analysis == 'regression':
     with open(os.path.join(save_path, 'rvr_all_seeds.pckl'), 'rb') as handle:
         rvr_results = pickle.load(handle)
 
-    # Validation plot
+    # MAE - Validation plot
     #----------------------------------------------------------------------------
     # Do some statistics to see if the results from tpot is significantly differen from rvr
     print('Test dataset')
@@ -111,10 +111,10 @@ if analysis == 'regression':
     plt.ylim([4.5, 7])
     plt.yticks(np.arange(4.5, 7.25, .25))
     plt.ylabel('MAE')
-    plt.savefig(os.path.join(save_path, 'MAE_bootstrap_test.png'))
+    plt.savefig(os.path.join(save_path, 'MAE_bootstrap_test.eps'))
     plt.close()
 
-    # Validation plot
+    # MAE - Validation plot
     #----------------------------------------------------------------------------
     print('Validation dataset')
     t, prob = ttest_ind(tpot_results['mae_validation'], rvr_results['mae_validation'])
@@ -135,7 +135,62 @@ if analysis == 'regression':
                               height=[np.mean(tpot_results['mae_validation']),
                                        np.mean(rvr_results['mae_validation'])])
     plt.ylabel('MAE')
-    plt.savefig(os.path.join(save_path, 'MAE_bootstrap_validation.png'))
+    plt.savefig(os.path.join(save_path, 'MAE_bootstrap_validation.eps'))
+
+    # Pearsons Correlation Analysis
+    #----------------------------------------------------------------------------
+    # Pearsons Correlation - test plot
+    print('Pearsons Correlation: Test dataset')
+    t, prob = ttest_ind(tpot_results['r_test'], rvr_results['r_test'])
+    print('T-statistics: %.3f, p-value: %.25f' %(t, prob))
+    print('Mean %.3f Std %.5f Pearsons TPOT' %(np.mean(tpot_results['r_test']),
+                                      np.std(tpot_results['r_test'])))
+    print('Mean %.3f Std %.5f Pearsons RVR' %(np.mean(rvr_results['r_test']),
+                                      np.std(rvr_results['r_test'])))
+    plt.figure()
+    plt.bar(ind,
+            [np.mean(tpot_results['r_test']),
+             np.mean(rvr_results['r_test'])],
+            yerr=[np.std(tpot_results['r_test']),
+                  np.std(tpot_results['r_test'])],
+            color=['b', 'r']
+                 )
+    plt.xticks(ind, ('TPOT', 'RVR'))
+    plt.ylim([.75, 1])
+    plt.yticks(np.arange(.75, 1.005, .05))
+    barplot_annotate_brackets(0, 1, 'p<.001', ind,
+                              height=[np.mean(tpot_results['r_test']),
+                                       np.mean(rvr_results['r_test'])])
+    plt.ylabel('Pearson\'s Correlation')
+    plt.savefig(os.path.join(save_path, 'r_bootstrap_test.eps'))
+    plt.close()
+
+    # Pearson Correlation - Validation plot
+    print('Pearsons Correlation: Validation dataset')
+    t, prob = ttest_ind(tpot_results['r_val'], rvr_results['r_val'])
+    print('T-statistics: %.3f, p-value: %.25f' %(t, prob))
+    print('Mean %.3f Std %.5f Pearsons TPOT' %(np.mean(tpot_results['r_val']),
+                                      np.std(tpot_results['r_val'])))
+    print('Mean %.3f Std %.5f Pearsons RVR' %(np.mean(rvr_results['r_val']),
+                                      np.std(rvr_results['r_val'])))
+    plt.figure()
+    plt.bar(ind,
+            [np.mean(tpot_results['r_val']),
+             np.mean(rvr_results['r_val'])],
+            yerr=[np.std(tpot_results['r_val']),
+                  np.std(tpot_results['r_val'])],
+            color=['b', 'r']
+                 )
+    plt.xticks(ind, ('TPOT', 'RVR'))
+    plt.ylim([.75, 1])
+    plt.yticks(np.arange(.75, 1.005, .05))
+    barplot_annotate_brackets(0, 1, 'p<.001', ind,
+                              height=[np.mean(tpot_results['r_val']),
+                                       np.mean(rvr_results['r_val'])])
+    plt.ylabel('Pearson\'s Correlation')
+    plt.savefig(os.path.join(save_path, 'r_bootstrap_val.eps'))
+
+
 
 elif analysis == 'classification':
     # Load the dat from the saved pickle
@@ -175,14 +230,14 @@ elif analysis == 'classification':
                     classes=classes,
                     title='TPOT_test')
 
-    plt.savefig(os.path.join(save_path, 'tpot_test_boosting.pdf'))
+    plt.savefig(os.path.join(save_path, 'tpot_test_boosting.eps'))
 
     plot_confusion_matrix_boosting(
                     np.mean(rvc_results['confusion_matrix_test'], axis=0),
                     np.std(rvc_results['confusion_matrix_test'], axis=0),
                     classes=classes,
                     title='RVC_test')
-    plt.savefig(os.path.join(save_path, 'rvc_test_boosting.pdf'))
+    plt.savefig(os.path.join(save_path, 'rvc_test_boosting.eps'))
 
     plot_confusion_matrix_boosting(
                     np.mean(tpot_results['confusion_matrix_validation'], axis=0),
@@ -190,11 +245,11 @@ elif analysis == 'classification':
                     classes=classes,
                     title='TPOT_validation')
 
-    plt.savefig(os.path.join(save_path, 'tpot_validation_boosting.pdf'))
+    plt.savefig(os.path.join(save_path, 'tpot_validation_boosting.eps'))
 
     plot_confusion_matrix_boosting(
                     np.mean(rvc_results['confusion_matrix_validation'], axis=0),
                     np.std(rvc_results['confusion_matrix_validation'], axis=0),
                     classes=classes,
                     title='RVC_validation')
-    plt.savefig(os.path.join(save_path, 'rvc_validation_boosting.pdf'))
+    plt.savefig(os.path.join(save_path, 'rvc_validation_boosting.eps'))
