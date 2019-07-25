@@ -83,7 +83,7 @@ classes = np.array(['young', 'old', 'adult'], dtype='U10')
 
 if analysis == 'regression':
     # Load the dat from the saved pickle
-    save_path = '/code/BayOptPy/tpot_%s/Output/vanilla_combi/100_generations' %analysis
+    save_path = '/code/BayOptPy/tpot_%s/Output/vanilla_combi/age/100_generations' %analysis
     with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
         tpot_results = pickle.load(handle)
 

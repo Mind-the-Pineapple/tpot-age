@@ -50,7 +50,7 @@ def tpot_confusion_matrix(random_seed, save_path):
     tpot_con_val = tpot['confusion_matrix_validatate']
     return tpot_con_test, tpot_con_val
 
-save_path = '/code/BayOptPy/tpot_classification/Output/vanilla_combi/100_generations/'
+save_path = '/code/BayOptPy/tpot_classification/Output/vanilla_combi/age/100_generations/'
 confusion_matrix_test_all = []
 confusion_matrix_validation_all = []
 tpot_best_models_all = []

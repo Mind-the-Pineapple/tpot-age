@@ -70,10 +70,11 @@ def get_paths(debug, dataset):
     return project_wd, project_data, project_sink
 
 def get_output_path(model, analysis, ngen, random_seed, population_size, debug,
-                    mutation, crossover):
+                    mutation, crossover, predicted_attribute):
     # Check if output path exists, otherwise create it
     rnd_seed_path = get_all_random_seed_paths(model, analysis, ngen, population_size,
-                                              debug, mutation, crossover)
+                                              debug, mutation, crossover,
+                                              predicted_attribute)
     output_path = os.path.join(rnd_seed_path, 'random_seed_%03d' %random_seed)
 
     if not os.path.exists(output_path):
@@ -82,7 +83,7 @@ def get_output_path(model, analysis, ngen, random_seed, population_size, debug,
     return output_path
 
 def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mutation,
-                             crossover):
+                             crossover, predicted_attribute):
     # As they should have been created by the get_output_path, do not create
     # path but just find its location
     if analysis == 'vanilla' or analysis == 'feat_selec' or \
@@ -90,23 +91,26 @@ def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mut
         analysis == 'random_seed' or analysis == 'ukbio' or \
         analysis == 'summary_data':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot_%s' %model, 'Output', analysis,
+            output_path = os.path.join('BayOptPy', 'tpot_%s' %model, 'Output',
+                                       analysis, predicted_attribute,
                                        '%03d_generations' %ngen)
         else:
             output_path = os.path.join(os.sep, 'code', 'BayOptPy',
                                        'tpot_%s' %model,
                                        'Output', analysis,
+                                       predicted_attribute,
                                        '%03d_generations' %ngen)
     elif analysis == 'population':
         if debug:
             output_path = os.path.join('BayOptPy',
                                        'tpot_%s' %model,
-                                       'Output', analysis,
+                                       'Output', analysis, predicted_attribute,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
         else:
             output_path = os.path.join(os.sep, 'code', 'BayOptPy',
                                        'tpot_%s' %model,
+                                       predicted_attribute,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
     elif analysis == 'mutation':
@@ -114,11 +118,14 @@ def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mut
             output_path = os.path.join('BayOptPy',
                                        'tpot_%s' %model,
                                        'Output', analysis,
+                                       predicted_attribute,
                                        '%03d_generations' %ngen,
                                        '%.01f_mut_%.01f_cross' %(mutation, crossover))
         else:
             output_path = os.path.join(os.sep, 'code', 'BayOptPy',
                                        'tpot_%s' %model,
+                                       'Output', analysis,
+                                       predicted_attribute,
                                        '%03d_generations' %ngen,
                                        '%.01f_mut_%.01f_cross' %(mutation, crossover))
 
@@ -132,11 +139,12 @@ def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mut
     return output_path
 
 def get_best_pipeline_paths(model, analysis, ngen, random_seed, population_size, debug,
-                           mutation, crossover):
+                           mutation, crossover, predicted_attribute):
     # check if folder exists and in case yes, remove it as new runs will save
     # new files without overwritting
     output_path = get_output_path(model, analysis, ngen, random_seed, population_size,
-                                  debug, mutation, crossover)
+                                  debug, mutation, crossover,
+                                  predicted_attribute)
     checkpoint_path = os.path.join(output_path, 'checkpoint_folder')
 
     # Delete folder if it already exists and create a new one
@@ -699,18 +707,21 @@ def plot_confusion_matrix_boosting(cm_mean, cm_std,
     fig.tight_layout()
     return ax
 
-def plot_predicted_vs_true_age(true_y, predicted_y, save_path):
+def plot_predicted_vs_true(true_y, predicted_y, save_path, metric):
     fig = plt.figure()
     plt.scatter(true_y, predicted_y, alpha=.5)
-    plt.ylabel('Predicted Age')
-    plt.xlabel('True Age')
+    plt.ylabel('Predicted %s' %metric)
+    plt.xlabel('True %s'%metric)
     plt.plot(np.arange(min(true_y),
                        max(true_y)),
              np.arange(min(true_y),
                        max(true_y)), alpha=.3, linestyle='--',
              color='b')
-    plt.xticks(np.arange(20, 90, step=10))
-    plt.yticks(np.arange(20, 90, step=10))
+    if metric == 'Age':
+        plt.xticks(np.arange(min(min(true_y), min(predicted_y)),
+                             max(max(true_y), max(predicted_y)), step=10))
+        plt.yticks(np.arange(min(min(true_y), min(predicted_y)),
+                             max(max(true_y), max(predicted_y)), step=10))
     plt.savefig(save_path)
     plt.close()
 

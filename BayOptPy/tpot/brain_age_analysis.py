@@ -231,7 +231,8 @@ if __name__ == '__main__':
     output_path = get_output_path(args.model, args.analysis, args.generations,
                                   args.random_seed,
                                   args.population_size, args.debug,
-                                  args.mutation_rate, args.crossover_rate)
+                                  args.mutation_rate, args.crossover_rate,
+                                  args.predicted_attribute)
     # Load the already cleaned dataset
     demographics, imgs, dataframe  = get_data(project_data, args.dataset,
                                               args.debug, project_wd,
@@ -272,7 +273,8 @@ if __name__ == '__main__':
                                               args.population_size,
                                               args.debug,
                                               args.mutation_rate,
-                                              args.crossover_rate)
+                                              args.crossover_rate,
+                                              args.predicted_attribute)
     print('Checkpoint folder path')
     print(best_pipe_paths)
 
@@ -286,7 +288,7 @@ if __name__ == '__main__':
         targetAttribute = demographics['age']
     elif args.predicted_attribute == 'gender':
         # transform female/male into numeric values
-        gender = {'male':1, 'female':2}
+        gender = {'male':0, 'female':1}
         demographics['gender'] = [gender[sub] for sub in demographics['sex']]
         targetAttribute = demographics['gender']
 
@@ -608,6 +610,8 @@ if __name__ == '__main__':
         if args.predicted_attribute == 'Prospective_memory':
             class_name = np.array(['Not_remembered', 'Second_Attempt',
                                     'First_Attempt'], dtype='U30')
+        elif args.predicted_attribute == 'gender':
+            class_name = np.array(['male', 'female'], dtype='U10')
         else:
             class_name = np.array(['young', 'old', 'adult'], dtype='U10')
         ax, cm_test = plot_confusion_matrix(Ytest, tpot_predictions, classes=class_name,

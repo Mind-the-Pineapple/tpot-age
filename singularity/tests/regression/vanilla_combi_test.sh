@@ -12,7 +12,7 @@
 
 /home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
 /code/BayOptPy/tpot/brain_age_analysis.py -raw False -model regression \
--predicted_attribute 'age' -dataset freesurf_combined -cv 5 \
+-predicted_attribute age -dataset freesurf_combined -cv 5 \
 -generations 3 -population_size 5 -offspring_size 5 -config_dict vanilla_combi \
 -njobs 1 -random_seed 999 -analysis vanilla_combi -mutation_rate 0.9 \
 -crossover_rate 0.1

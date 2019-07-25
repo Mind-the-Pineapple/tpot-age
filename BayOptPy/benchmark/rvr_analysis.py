@@ -7,7 +7,7 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import cross_validate, cross_val_predict
 from skrvm import RVR
 
-from BayOptPy.helperfunctions import (get_paths, plot_predicted_vs_true_age,
+from BayOptPy.helperfunctions import (get_paths, plot_predicted_vs_true,
                                       set_publication_style)
 
 def rvr_analysis(random_seed, save_path):
@@ -35,8 +35,8 @@ def rvr_analysis(random_seed, save_path):
     print('Perform prediction in test data')
     y_predicted_test = model.predict(splitted_dataset['Xtest_scaled'])
     output_path_test = os.path.join(save_path, 'test_predicted_true_age_rvr.png')
-    plot_predicted_vs_true_age(splitted_dataset['Ytest'],  y_predicted_test,
-                                                         output_path_test)
+    plot_predicted_vs_true(splitted_dataset['Ytest'],  y_predicted_test,
+                                                         output_path_test, 'Age')
     mae_test = mean_absolute_error(splitted_dataset['Ytest'],
                                          y_predicted_test)
     print('MAE on test: %.2f' %mae_test)
@@ -48,8 +48,8 @@ def rvr_analysis(random_seed, save_path):
     #                                 cv=n_cross_val)
     y_predicted_validation = model.predict(splitted_dataset['Xvalidate_scaled'])
     output_path_val = os.path.join(save_path, 'validation_predicted_true_age_rvr.png')
-    plot_predicted_vs_true_age(splitted_dataset['Yvalidate'], y_predicted_validation,
-                               output_path_val)
+    plot_predicted_vs_true(splitted_dataset['Yvalidate'], y_predicted_validation,
+                               output_path_val, 'Age')
     mae_validation = mean_absolute_error(splitted_dataset['Yvalidate'],
                                          y_predicted_validation)
     print('MAE on validation: %.2f' % mae_validation)
@@ -96,7 +96,7 @@ debug = False
 dataset =  'freesurf_combined'
 # dataset =  'UKBIO_freesurf'
 analysis = 'bootstrap'
-save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/100_generations/'
+save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/age/100_generations/'
 
 
 if analysis == 'bootstrap':

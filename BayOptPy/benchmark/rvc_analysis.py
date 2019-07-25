@@ -8,7 +8,7 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import cross_validate, cross_val_predict
 from skrvm import RVC
 
-from BayOptPy.helperfunctions import (get_paths, plot_predicted_vs_true_age,
+from BayOptPy.helperfunctions import (get_paths,
                                       set_publication_style,
                                       plot_confusion_matrix)
 
@@ -59,7 +59,7 @@ debug = False
 dataset =  'freesurf_combined'
 # dataset =  'UKBIO_freesurf'
 analysis = 'bootstrap'
-save_path = '/code/BayOptPy/tpot_classification/Output/vanilla_combi/100_generations/'
+save_path = '/code/BayOptPy/tpot_classification/Output/vanilla_combi/age/100_generations/'
 
 if analysis =='bootstrap' :
     random_seeds = np.arange(0, 110, 10)

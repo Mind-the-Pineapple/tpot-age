@@ -21,7 +21,7 @@ from tpot.builtins import StackingEstimator
 from BayOptPy.helperfunctions import (get_paths, get_data,
                                       drop_missing_features,
                                       set_publication_style,
-                                      plot_predicted_vs_true_age)
+                                      plot_predicted_vs_true)
 
 """
 BANC + TPOT dataset
@@ -69,13 +69,13 @@ def tpot_model_analysis(random_seed, save_path):
 
     # plot predicted vs true for the test
     output_path_test = os.path.join(save_path, 'test_predicted_true_age.png')
-    plot_predicted_vs_true_age(splitted_dataset['Ytest'], y_predicted_test,
-                               output_path_test)
+    plot_predicted_vs_true(splitted_dataset['Ytest'], y_predicted_test,
+                               output_path_test, 'Age')
 
     # plot predicted vs true for the validation
     output_path_val = os.path.join(save_path, 'validation_predicted_true_age.png')
-    plot_predicted_vs_true_age(splitted_dataset['Yvalidate'],
-                               y_predicted_validation, output_path_val)
+    plot_predicted_vs_true(splitted_dataset['Yvalidate'],
+                               y_predicted_validation, output_path_val, 'Age')
 
     # Do some statistics. Calculate R2 and the Spearman
     from scipy.stats import spearmanr, pearsonr
@@ -129,13 +129,13 @@ def tpot_model_analysis(random_seed, save_path):
 
     # plot predicted vs true for the test
     output_path_test = os.path.join(save_path, 'subset_val_predicted_true_age.png')
-    plot_predicted_vs_true_age(y_train_val, predicted_subset_val,
-                               output_path_test)
+    plot_predicted_vs_true(y_train_val, predicted_subset_val,
+                               output_path_test, 'Age')
     print('-------------------------------------------------------------------------------')
     return mae_test, mae_validation, r_val, r_test
 
 
-save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/100_generations/'
+save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/age/100_generations/'
 mae_test_all = []
 mae_validation_all = []
 r_val_all = []
