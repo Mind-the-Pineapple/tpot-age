@@ -596,7 +596,7 @@ def create_age_histogram(training_age, test_age, dataset):
     # Define plot styple
     set_publication_style()
     plt.figure()
-    path_to_save = '/code/BayOptPy/tpot/age_histogram_%s.png' %dataset
+    path_to_save = '/code/BayOptPy/tpot/age_histogram_%s.eps' %dataset
     min_age = training_age.min()
     max_age = training_age.max()
     plt.hist(training_age, bins=65, range=(min_age,max_age), label='training')

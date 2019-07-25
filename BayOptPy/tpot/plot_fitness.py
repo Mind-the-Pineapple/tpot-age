@@ -28,6 +28,11 @@ parser.add_argument('-dataset',
                    choices=['OASIS', 'BANC',
                             'BANC_freesurf', 'freesurf_combined']
                    )
+parser.add_argument('-model',
+                    dest='model',
+                    help='Define if a classification or regression problem',
+                    choices=['regression', 'classification']
+                   )
 parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
@@ -84,7 +89,8 @@ random_seeds = [20, 30, 40, 50, 60]
 
 # get correct path
 project_wd, project_data, project_sink = get_paths(args.debug, args.dataset)
-tpot_path = get_all_random_seed_paths(args.analysis, args.generations,
+tpot_path = get_all_random_seed_paths(args.model,
+                                      args.analysis, args.generations,
                                       args.population_size,
                                       args.debug,
                                       args.mutation_rate,
@@ -288,6 +294,9 @@ for random_seed in args.random_seeds:
     plt.close()
 
     # Plot violin plot
+    # import pdb
+    # pdb.set_trace()
+
     plt.figure()
     fig, ax = plt.subplots(1, 1)
     plt.violinplot(data, positions=range(0, len(fitness)), showmedians=True)
@@ -405,7 +414,7 @@ for random_seed in args.random_seeds:
              cmap='YlGnBu')
     plt.xlabel('Generations')
     plt.tight_layout()
-    plt.savefig(os.path.join(generation_analysis_path, 'heatmap.png'))
+    plt.savefig(os.path.join(generation_analysis_path, 'heatmap.eps'))
     plt.close()
 
     print('Maximum Count for each algorithm')

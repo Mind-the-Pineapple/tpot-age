@@ -11,9 +11,10 @@ import seaborn as sns
 import pickle
 # from sklearn.externals import joblib
 import joblib
+import pandas as pd
+
 from tpot import TPOTClassifier
 
-from BayOptPy.tpot_classification.extended_tpot import ExtendedTPOTClassifier
 from BayOptPy.helperfunctions import (get_data, get_paths,
                                       get_config_dictionary, get_output_path,
                                       get_best_pipeline_paths,
@@ -34,7 +35,7 @@ parser.add_argument('-debug',
 parser.add_argument('-model',
                     dest='model',
                     help='Define if a classification or regression problem',
-                    choices=['regression', 'classification']
+                    choices=['regression', 'classification', 'classification2']
                     )
 parser.add_argument('-dask',
                     dest='dask',
@@ -201,42 +202,68 @@ if __name__ == '__main__':
     if args.dataset == 'freesurf_combined':
     # This assumes that your dataframe already has a column that defines the
     # popularity of every group M/F and age in the dataset
-        Xtrain, Xtemp, Ytrain, Ytemp = \
+        if args.model == 'classification':
+            # Classification will separate the training, test and validation
+            # dataset using stratification
+            Xtrain, Xtemp, Ytrain, Ytemp = \
                 model_selection.train_test_split(dataframe, targetAttribute,
                                                  test_size=.90,
                                                  stratify=demographics['stratify'],
                                                  random_state=args.random_seed)
-        # Get the stratified list for the training dataset
-        train_demographics = demographics.loc[Xtemp.index]
-        Xvalidate, Xtest, Yvalidate, Ytest = \
-                model_selection.train_test_split(Xtemp, Ytemp,
-                                                 test_size=.05,
-                                                 stratify=train_demographics['stratify'],
-                                                 random_state=args.random_seed)
+            # Get the stratified list for the training dataset
+            train_demographics = demographics.loc[Xtemp.index]
+            Xvalidate, Xtest, Yvalidate, Ytest = \
+                    model_selection.train_test_split(Xtemp, Ytemp,
+                                                     test_size=.05,
+                                                     stratify=train_demographics['stratify'],
+                                                     random_state=args.random_seed)
+            ax = sns.violinplot(x='stratify', y='age', hue='sex',
+                            data=demographics.loc[Xtrain.index],palette="muted")
+            fig = ax.get_figure()
+            fig.savefig(os.path.join(project_wd, 'train_distribution.png'))
+            plt.close()
+            plt.figure()
+            ax = sns.violinplot(x='stratify', y='age', hue='sex',
+                            data=demographics.loc[Xtest.index],palette="muted")
+            fig = ax.get_figure()
+            fig.savefig(os.path.join(project_wd, 'test_distribution.png'))
+            plt.close()
+            plt.figure()
+            ax = sns.violinplot(x='stratify', y='age', hue='sex',
+                            data=demographics.loc[Xvalidate.index],palette="muted")
+            fig = ax.get_figure()
+            fig.savefig(os.path.join(project_wd, 'validation_distribution.png'))
+            plt.close()
+            plt.figure()
+            ax = sns.violinplot(x='stratify', y='age', hue='sex',
+                            data=demographics,palette="muted")
+            fig = ax.get_figure()
+            fig.savefig(os.path.join(project_wd, 'beforesplit_distribution.png'))
+            plt.close()
 
-        ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                        data=demographics.loc[Xtrain.index],palette="muted")
-        fig = ax.get_figure()
-        fig.savefig(os.path.join(project_wd, 'train_distribution.png'))
-        plt.close()
-        plt.figure()
-        ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                        data=demographics.loc[Xtest.index],palette="muted")
-        fig = ax.get_figure()
-        fig.savefig(os.path.join(project_wd, 'test_distribution.png'))
-        plt.close()
-        plt.figure()
-        ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                        data=demographics.loc[Xvalidate.index],palette="muted")
-        fig = ax.get_figure()
-        fig.savefig(os.path.join(project_wd, 'validation_distribution.png'))
-        plt.close()
-        plt.figure()
-        ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                        data=demographics,palette="muted")
-        fig = ax.get_figure()
-        fig.savefig(os.path.join(project_wd, 'beforesplit_distribution.png'))
-        plt.close()
+        elif args.model == 'classification2':
+            # Use only 500 young subjects (aged 18-30) and 500 old subjects
+            # (70-90).
+            young_demographics = demographics.loc[demographics['age'] < 30]
+            old_demographics = demographics.loc[demographics['age'] > 70]
+            demographics = pd.concat([young_demographics[:600],
+                                     old_demographics[:600]])
+            print('new demographics shape: %s' %(demographics.shape,))
+            # Select the data for the corresponding subjects
+            dataframe = dataframe.loc[demographics.index]
+            targetAttribute = targetAttribute.loc[demographics.index]
+            # Split tain, test and validate
+            Xtrain, Xtemp, Ytrain, Ytemp = \
+                model_selection.train_test_split(dataframe, targetAttribute,
+                                                 test_size=.5,
+                                                 random_state=args.random_seed)
+            # Get the stratified list for the training dataset
+            train_demographics = demographics.loc[Xtemp.index]
+            Xvalidate, Xtest, Yvalidate, Ytest = \
+                    model_selection.train_test_split(Xtemp, Ytemp,
+                                                     test_size=.5,
+                                                     random_state=args.random_seed)
+
     else:
         Xtrain, Xtest, Ytrain, Ytest = \
                 model_selection.train_test_split(dataframe, targetAttribute,
@@ -261,23 +288,40 @@ if __name__ == '__main__':
     Xtrain_scaled = robustscaler.transform(Xtrain)
     Xtest_scaled = robustscaler.transform(Xtest)
 
-    # Create Young, Adults and Old Classes
+    # Create classes for the classification
     #--------------------------------------------------------------------------
-    # Transform Series into Dataframe
-    Ytrain = Ytrain.to_frame()
-    Ytest = Ytest.to_frame()
-    Yvalidate = Yvalidate.to_frame()
-    conditions_test = [Ytest <=30, Ytest >=60]
-    conditions_train = [Ytrain <=30, Ytrain >=60]
-    conditions_validate = [Yvalidate <=30, Yvalidate >=60]
-    # Create two classes (young and old)
-    # x < 30 is considered young: Class = 0
-    # 30 < x < 60 adults: Class = 2
-    # x > 60 is considered old: Class = 1
-    choices = [0, 1]
-    Ytest['class'] = np.select(conditions_test, choices, default=2)
-    Ytrain['class'] = np.select(conditions_train, choices, default=2)
-    Yvalidate['class'] = np.select(conditions_validate, choices, default=2)
+    if args.model == 'classification':
+        # Create Young, Adults and Old Classes
+        # Transform Series into Dataframe
+        Ytrain = Ytrain.to_frame()
+        Ytest = Ytest.to_frame()
+        Yvalidate = Yvalidate.to_frame()
+        conditions_test = [Ytest <=30, Ytest >=60]
+        conditions_train = [Ytrain <=30, Ytrain >=60]
+        conditions_validate = [Yvalidate <=30, Yvalidate >=60]
+        # Create three classes (young, old, adults)
+        # x < 30 is considered young: Class = 0
+        # 30 < x < 60 adults: Class = 2
+        # x > 60 is considered old: Class = 1
+        choices = [0, 1]
+        Ytest['class'] = np.select(conditions_test, choices, default=2)
+        Ytrain['class'] = np.select(conditions_train, choices, default=2)
+        Yvalidate['class'] = np.select(conditions_validate, choices, default=2)
+    elif args.model == 'classification2':
+        # Create yound and old classes
+        Ytrain = Ytrain.to_frame()
+        Ytest = Ytest.to_frame()
+        Yvalidate = Yvalidate.to_frame()
+        conditions_test = [Ytest <=30]
+        conditions_train = [Ytrain <=30]
+        conditions_validate = [Yvalidate<=30]
+        # Create two classes (young and old)
+        # x < 30 is considered young: Class = 0
+        # x > 60 is considered old: Class = 1
+        choices = [0]
+        Ytest['class'] = np.select(conditions_test, choices, default=1)
+        Ytrain['class'] = np.select(conditions_train, choices, default=1)
+        Yvalidate['class'] = np.select(conditions_validate, choices, default=1)
 
 
     # Transform pandas into numpy arrays (no nneed to do it if you are scaling
@@ -309,7 +353,7 @@ if __name__ == '__main__':
     create_age_histogram(Ytrain, Ytest, args.dataset)
 
 
-    tpot = ExtendedTPOTClassifier(generations=args.generations,
+    tpot = TPOTClassifier(generations=args.generations,
                          population_size=args.population_size,
                          offspring_size=args.offspring_size,
                          mutation_rate=args.mutation_rate,
@@ -359,7 +403,6 @@ if __name__ == '__main__':
     tpot_save['fitted_model'] = tpot.fitted_pipeline_ # best pipeline
     tpot_save['score_test'] = tpot_score_test
     tpot_save['score_validation'] = tpot_score_validation
-    # tpot_save['evaluated_individuals'] = tpot.evaluated_individuals
     # Best pipeline at the end of the genetic algorithm
 
     # Dump results
