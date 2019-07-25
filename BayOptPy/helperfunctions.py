@@ -626,7 +626,8 @@ def plot_confusion_matrix(y_true, y_pred, classes,
     # Compute confusion matrix
     cm = confusion_matrix(y_true, y_pred)
     # Only use the labels that appear in the data
-    classes = classes[unique_labels(y_true, y_pred)]
+    labels = [int(x) for x in unique_labels(y_true, y_pred)]
+    classes = classes[labels]
     if normalize:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         print("Normalized confusion matrix")
@@ -712,3 +713,10 @@ def plot_predicted_vs_true_age(true_y, predicted_y, save_path):
     plt.yticks(np.arange(20, 90, step=10))
     plt.savefig(save_path)
     plt.close()
+
+def load_cognitive_data(project_data):
+    cog_path = os.path.join(project_data, 'cog_ukbio')
+    cog_df = pd.read_csv(os.path.join(cog_path, 'UKB_10k_cog_bmi.csv'))
+    cog_df = cog_df.set_index('ID')
+    return cog_df
+
