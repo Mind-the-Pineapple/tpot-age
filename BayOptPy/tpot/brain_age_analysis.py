@@ -395,7 +395,7 @@ if __name__ == '__main__':
             # Split tain, test and validate
             Xtrain, Xtemp, Ytrain, Ytemp = \
                 model_selection.train_test_split(dataframe, targetAttribute,
-                                                 test_size=.5,
+                                                 test_size=.85,
                                                  random_state=args.random_seed)
             # Get the stratified list for the training dataset
             train_demographics = demographics.loc[Xtemp.index]
@@ -404,11 +404,11 @@ if __name__ == '__main__':
                                                      test_size=.5,
                                                      random_state=args.random_seed)
 
-    if args.dataset == 'UKBIO_freesurf':
+    elif args.dataset == 'UKBIO_freesurf':
             # Split tain, test and validate
             Xtrain, Xtemp, Ytrain, Ytemp = \
                 model_selection.train_test_split(dataframe, targetAttribute,
-                                                 test_size=.5,
+                                                 test_size=.85,
                                                  random_state=args.random_seed)
             # Get the stratified list for the training dataset
             train_demographics = demographics.loc[Xtemp.index]
