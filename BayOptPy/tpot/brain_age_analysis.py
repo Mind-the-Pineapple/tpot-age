@@ -311,6 +311,21 @@ if __name__ == '__main__':
         # Remove the subjects who has NaN as values for this targetAttribute
         dataframe = dataframe.loc[targetAttribute.index]
 
+        if args.predicted_attribute == 'Prospective_memory':
+            # Because there is an imbalanced distribution. Way more subjects are
+            # classified as First Attempt then other categories. We trim the
+            # sample size down so that all 3 categories are evenly distributed.
+
+            # randomly select 190 (lower bound) for all 3 categories
+            selected_idx = []
+            for category in targetAttribute.value_counts().index:
+                selected_idx.append(np.random.choice(
+                            targetAttribute[targetAttribute == category].index.values, 190,
+                                           replace=False))
+            flatten_selected_idx = [x for sublist in selected_idx for x in
+                                    sublist]
+            dataframe = dataframe[dataframe.index.isin(flatten_selected_idx)]
+            targetAttribute = targetAttribute[targetAttribute.index.isin(flatten_selected_idx)]
     if args.debug and args.dask:
         print('Start DASK client')
         port = 8889
@@ -405,17 +420,31 @@ if __name__ == '__main__':
                                                      random_state=args.random_seed)
 
     elif args.dataset == 'UKBIO_freesurf':
-            # Split tain, test and validate
-            Xtrain, Xtemp, Ytrain, Ytemp = \
-                model_selection.train_test_split(dataframe, targetAttribute,
-                                                 test_size=.85,
-                                                 random_state=args.random_seed)
-            # Get the stratified list for the training dataset
-            train_demographics = demographics.loc[Xtemp.index]
-            Xvalidate, Xtest, Yvalidate, Ytest = \
-                    model_selection.train_test_split(Xtemp, Ytemp,
+            if args.predicted_attribute == 'Prospective_memory':
+                # Split tain, test and validate
+                Xtrain, Xtemp, Ytrain, Ytemp = \
+                    model_selection.train_test_split(dataframe, targetAttribute,
                                                      test_size=.5,
                                                      random_state=args.random_seed)
+                # Get the stratified list for the training dataset
+                train_demographics = demographics.loc[Xtemp.index]
+                Xvalidate, Xtest, Yvalidate, Ytest = \
+                        model_selection.train_test_split(Xtemp, Ytemp,
+                                                         test_size=.5,
+                                                         random_state=args.random_seed)
+
+            else:
+                # Split tain, test and validate
+                Xtrain, Xtemp, Ytrain, Ytemp = \
+                    model_selection.train_test_split(dataframe, targetAttribute,
+                                                     test_size=.85,
+                                                     random_state=args.random_seed)
+                # Get the stratified list for the training dataset
+                train_demographics = demographics.loc[Xtemp.index]
+                Xvalidate, Xtest, Yvalidate, Ytest = \
+                        model_selection.train_test_split(Xtemp, Ytemp,
+                                                         test_size=.5,
+                                                         random_state=args.random_seed)
 
     else:
         Xtrain, Xtest, Ytrain, Ytest = \
