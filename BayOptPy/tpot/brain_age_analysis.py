@@ -278,6 +278,9 @@ if __name__ == '__main__':
     print('Checkpoint folder path')
     print(best_pipe_paths)
 
+    # Plot age distribution for the training and test dataset
+    create_age_histogram(demographics, args.dataset)
+
     print(' ')
     print('-----------------------------------------------------------------')
     print('Get target Attribute:')
@@ -343,44 +346,43 @@ if __name__ == '__main__':
     if args.dataset == 'freesurf_combined':
     # This assumes that your dataframe already has a column that defines the
     # popularity of every group M/F and age in the dataset
+        def classification_groups(col):
+            if col <= 30:
+                return 0
+            if (col> 31) and (col<=69):
+                return 1
+            if col>70:
+                return 2
+
         if args.model == 'classification' and args.predicted_attribute == 'age':
+            # Transform the age into classes
+            demographics['classification_groups'] = demographics['age'].apply(classification_groups)
+
+            young_demographics = demographics.loc[demographics['age']<= 30]
+            adults_demographics = demographics.loc[(demographics['age']> 31) &
+                                                   (demographics['age']<= 69)]
+            old_demographics = demographics.loc[demographics['age'] > 70]
+            # get the demographics for each new gruop
+            demographics = pd.concat([young_demographics[:600],
+                                      adults_demographics[:600],
+                                      old_demographics[:600]])
+            # Select the data for the corresponding subjects
+            dataframe = dataframe.loc[demographics.index]
+            targetAttribute = demographics['classification_groups']
+
             # Classification will separate the training, test and validation
             # dataset using stratification
             Xtrain, Xtemp, Ytrain, Ytemp = \
                 model_selection.train_test_split(dataframe, targetAttribute,
-                                                 test_size=.90,
-                                                 stratify=demographics['stratify'],
+                                                 test_size=.65,
                                                  random_state=args.random_seed)
             # Get the stratified list for the training dataset
             train_demographics = demographics.loc[Xtemp.index]
             Xvalidate, Xtest, Yvalidate, Ytest = \
                     model_selection.train_test_split(Xtemp, Ytemp,
-                                                     test_size=.05,
-                                                     stratify=train_demographics['stratify'],
+                                                     test_size=.5,
                                                      random_state=args.random_seed)
-            ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                            data=demographics.loc[Xtrain.index],palette="muted")
-            fig = ax.get_figure()
-            fig.savefig(os.path.join(project_wd, 'train_distribution.png'))
-            plt.close()
-            plt.figure()
-            ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                            data=demographics.loc[Xtest.index],palette="muted")
-            fig = ax.get_figure()
-            fig.savefig(os.path.join(project_wd, 'test_distribution.png'))
-            plt.close()
-            plt.figure()
-            ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                            data=demographics.loc[Xvalidate.index],palette="muted")
-            fig = ax.get_figure()
-            fig.savefig(os.path.join(project_wd, 'validation_distribution.png'))
-            plt.close()
-            plt.figure()
-            ax = sns.violinplot(x='stratify', y='age', hue='sex',
-                            data=demographics,palette="muted")
-            fig = ax.get_figure()
-            fig.savefig(os.path.join(project_wd, 'beforesplit_distribution.png'))
-            plt.close()
+
 
 
         elif args.model == 'classification2' and args.predicted_attribute == 'age':
@@ -491,24 +493,7 @@ if __name__ == '__main__':
 
     # Create classes for the classification
     #--------------------------------------------------------------------------
-    if args.model == 'classification' and args.predicted_attribute == 'age':
-        # Create Young, Adults and Old Classes
-        # Transform Series into Dataframe
-        Ytrain = Ytrain.to_frame()
-        Ytest = Ytest.to_frame()
-        Yvalidate = Yvalidate.to_frame()
-        conditions_test = [Ytest <=30, Ytest >=60]
-        conditions_train = [Ytrain <=30, Ytrain >=60]
-        conditions_validate = [Yvalidate <=30, Yvalidate >=60]
-        # Create three classes (young, old, adults)
-        # x < 30 is considered young: Class = 0
-        # 30 < x < 60 adults: Class = 2
-        # x > 60 is considered old: Class = 1
-        choices = [0, 1]
-        Ytest['class'] = np.select(conditions_test, choices, default=2)
-        Ytrain['class'] = np.select(conditions_train, choices, default=2)
-        Yvalidate['class'] = np.select(conditions_validate, choices, default=2)
-    elif args.model == 'classification2' and args.predicted_attribute == 'age':
+    if args.model == 'classification2' and args.predicted_attribute == 'age':
         # Create yound and old classes
         Ytrain = Ytrain.to_frame()
         Ytest = Ytest.to_frame()
@@ -531,14 +516,14 @@ if __name__ == '__main__':
         Ytrain = Ytrain.values
         Ytest = Ytest.values
         Yvalidate = Yvalidate.values
+    elif args.model == 'classification':
+        pass
     else:
         Ytrain = Ytrain['class'].values
         Ytest = Ytest['class'].values
         Yvalidate = Yvalidate['class'].values
 
 
-    # Plot age distribution for the training and test dataset
-    create_age_histogram(Ytrain, Ytest, args.dataset)
 
 
     print(' ')
@@ -645,7 +630,7 @@ if __name__ == '__main__':
             class_name = np.array(['young', 'old', 'adult'], dtype='U10')
         ax, cm_test = plot_confusion_matrix(Ytest, tpot_predictions, classes=class_name,
                               title='Confusion Matrix', normalize=True)
-        plt.savefig(os.path.join(output_path, 'confusion_matrix_tpot_test.png'))
+        plt.savefig(os.path.join(output_path, 'confusion_matrix_tpot_test.eps'))
 
         # Predict age for the validation dataset
         tpot_score_validation = tpot.score(Xvalidate_scaled, Yvalidate)
@@ -654,7 +639,7 @@ if __name__ == '__main__':
         ax, cm_validate = plot_confusion_matrix(Yvalidate, tpot_predictions_val,
                                                 classes=class_name,
                                                  normalize=True)
-        plt.savefig(os.path.join(output_path, 'confusion_matrix_tpot_val.png'))
+        plt.savefig(os.path.join(output_path, 'confusion_matrix_tpot_val.eps'))
 
         tpot_save = {}
         # List of variables to save

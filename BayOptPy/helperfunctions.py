@@ -597,7 +597,7 @@ def set_publication_style():
                             "axes.spines.right": False,
                             "axes.labelsize": 'large'})
 
-def create_age_histogram(training_age, test_age, dataset):
+def create_age_histogram(df, dataset):
     '''
     Get an age array and plot and save the age histogram for the analysed sample
     '''
@@ -605,10 +605,9 @@ def create_age_histogram(training_age, test_age, dataset):
     set_publication_style()
     plt.figure()
     path_to_save = '/code/BayOptPy/tpot/age_histogram_%s.eps' %dataset
-    min_age = training_age.min()
-    max_age = training_age.max()
-    plt.hist(training_age, bins=65, range=(min_age,max_age), label='training')
-    plt.hist(test_age, bins=65, range=(min_age,max_age), label='test')
+    min_age = df['age'].min()
+    max_age = df['age'].max()
+    plt.hist(df['age'], bins=65, range=(min_age,max_age))
     plt.xlabel('Age')
     plt.ylabel('# of Subjects')
     plt.legend()

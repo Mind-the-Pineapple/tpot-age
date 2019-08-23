@@ -41,12 +41,12 @@ def rvc_analysis(random_seed, save_path):
     ax, cm_test = plot_confusion_matrix(splitted_dataset['Ytest'], y_prediction_test,
                           classes=class_name,
                           normalize=True)
-    plt.savefig(os.path.join(save_path, 'confusion_matrix_test_rvc.png'))
+    plt.savefig(os.path.join(save_path, 'confusion_matrix_test_rvc.eps'))
     # Predict on the validation dataset
     ax, cm_validation = plot_confusion_matrix(splitted_dataset['Yvalidate'], y_prediction_validation,
                           classes=class_name,
                           normalize=True)
-    plt.savefig(os.path.join(save_path, 'confusion_matrix_validation_rvc.png'))
+    plt.savefig(os.path.join(save_path, 'confusion_matrix_validation_rvc.eps'))
     return cm_test, cm_validation
 
 

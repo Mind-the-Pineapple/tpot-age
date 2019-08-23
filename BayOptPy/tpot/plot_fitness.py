@@ -73,6 +73,13 @@ parser.add_argument('-mutation_rate',
                    type=float,
                    default=.9
                    )
+parser.add_argument('-predicted_attribute',
+                    dest='predicted_attribute',
+                    help='Define the cognitive task of interest',
+                    choices=['age', 'Reaction_time',
+                    'Prospective_memory',
+                    'Fluid_intelligence', 'gender']
+                                       )
 parser.add_argument('-crossover_rate',
                     dest='crossover_rate',
                     help='Cross over of the genetic algorithm. Must be on \
@@ -94,7 +101,8 @@ tpot_path = get_all_random_seed_paths(args.model,
                                       args.population_size,
                                       args.debug,
                                       args.mutation_rate,
-                                      args.crossover_rate)
+                                      args.crossover_rate,
+                                      args.predicted_attribute)
 
 colour_list = ['#5dade2', '#e67e22']
 def plt_filled_std(ax, data, data_mean, data_std, color, label=None):
@@ -148,7 +156,7 @@ for random_seed in args.random_seeds:
     plt.xlabel('Generation')
     plt.ylabel('MAE')
     plt.ylim(4,7)
-    plt.savefig(os.path.join(generation_analysis_path, 'train_test_fitness.png'))
+    plt.savefig(os.path.join(generation_analysis_path, 'train_test_fitness.eps'))
 
     # Plot the different MAE for each generation and use the complexity of the
     # model as hue
@@ -235,7 +243,7 @@ for random_seed in args.random_seeds:
     # TODO: improve how you determine this threshold (there are models that are worse)
     ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-    plt.savefig(os.path.join(generation_analysis_path, 'boxplot.png'))
+    plt.savefig(os.path.join(generation_analysis_path, 'boxplot.eps'))
     plt.close()
 
     #Plot Boxplot
@@ -249,7 +257,7 @@ for random_seed in args.random_seeds:
     plt.ylim(0, 45)
     ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-    plt.savefig(os.path.join(generation_analysis_path, 'boxplot2.png'))
+    plt.savefig(os.path.join(generation_analysis_path, 'boxplot2.eps'))
     plt.close()
 
     #Plot Boxplot
@@ -275,7 +283,7 @@ for random_seed in args.random_seeds:
     plt.ylim(0, 45)
     ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-    plt.savefig(os.path.join(generation_analysis_path, 'boxplot3.png'))
+    plt.savefig(os.path.join(generation_analysis_path, 'boxplot3.eps'))
     plt.close()
 
     #Plot Boxplot at every 10-th generation
@@ -290,7 +298,7 @@ for random_seed in args.random_seeds:
     plt.ylim(0, 45)
     ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-    plt.savefig(os.path.join(generation_analysis_path, 'boxplot3.png'))
+    plt.savefig(os.path.join(generation_analysis_path, 'boxplot3.eps'))
     plt.close()
 
     # Plot violin plot
@@ -375,7 +383,7 @@ for random_seed in args.random_seeds:
             plt.scatter(cluster_idx[group], cluster_mae[group], marker=markers, hatch=hatchs[group])
         plt.ylabel('MAE')
         plt.xlabel('Models')
-        plt.savefig(os.path.join(generation_analysis_path, '%d_gen_mae.png'
+        plt.savefig(os.path.join(generation_analysis_path, '%d_gen_mae.eps'
             %selected_gen))
         plt.close()
     print('')

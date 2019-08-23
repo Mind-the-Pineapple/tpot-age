@@ -21,7 +21,7 @@ from tpot.builtins import StackingEstimator
 from BayOptPy.helperfunctions import (get_paths, get_data,
                                       drop_missing_features,
                                       set_publication_style,
-                                      plot_predicted_vs_true_age)
+                                      plot_predicted_vs_true)
 
 """
 BANC + TPOT dataset

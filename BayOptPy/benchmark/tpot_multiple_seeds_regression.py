@@ -68,12 +68,12 @@ def tpot_model_analysis(random_seed, save_path):
     print(mae_validation)
 
     # plot predicted vs true for the test
-    output_path_test = os.path.join(save_path, 'test_predicted_true_age.png')
+    output_path_test = os.path.join(save_path, 'test_predicted_true_age.eps')
     plot_predicted_vs_true(splitted_dataset['Ytest'], y_predicted_test,
                                output_path_test, 'Age')
 
     # plot predicted vs true for the validation
-    output_path_val = os.path.join(save_path, 'validation_predicted_true_age.png')
+    output_path_val = os.path.join(save_path, 'validation_predicted_true_age.eps')
     plot_predicted_vs_true(splitted_dataset['Yvalidate'],
                                y_predicted_validation, output_path_val, 'Age')
 
@@ -128,7 +128,8 @@ def tpot_model_analysis(random_seed, save_path):
     print('R is: %.4f' %r_subset_val)
 
     # plot predicted vs true for the test
-    output_path_test = os.path.join(save_path, 'subset_val_predicted_true_age.png')
+    output_path_test = os.path.join(save_path,
+                                    'subset_val_predicted_true_age.eps')
     plot_predicted_vs_true(y_train_val, predicted_subset_val,
                                output_path_test, 'Age')
     print('-------------------------------------------------------------------------------')
