@@ -9,7 +9,7 @@
 # NOTE: mpi use multiple cores on different machines
 #       smp use multiple cores on the same machine
 #$ -pe smp 1
-
+#-t 20-110:10
 # Where to save the STDOUT and STDERR
 #$ -o ~/BayOpt/singularity/logs/ukbio
 #$ -e ~/BayOpt/singularity/logs/ukbio
@@ -18,6 +18,6 @@
 /code/BayOptPy/tpot/brain_age_analysis.py -raw False -model regression \
 -predicted_attribute age -dataset freesurf_combined -cv 5 \
 -generations 10 -population_size 1000 -offspring_size 100 -config_dict vanilla_combi \
--njobs 1 -random_seed 10 -analysis mutation -mutation_rate 0.1 \
+-njobs 1 -random_seed $SGE_TASK_ID -analysis mutation -mutation_rate 0.9 \
 -crossover_rate 0.9
 
