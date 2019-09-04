@@ -18,13 +18,14 @@ set_publication_style()
 dataset = 'UKBIO_freesurf'
 debug = False
 
-cog_tests = ['Fluid_intelligence', 'Reaction_time']
+# cog_tests = ['Fluid_intelligence', 'Reaction_time']
+cog_tests = ['Reaction_time']
 
 for cog_test in cog_tests:
-    save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/%s/003_generations/random_seed_999' % cog_test
+    save_path ='/code/BayOptPy/tpot_regression/Output/vanilla_combi/%s/050_generations/random_seed_020' % cog_test
 
     tpot = joblib.load(os.path.join(save_path,
-                                    'tpot_%s_vanilla_combi_003gen.dump'
+                                    'tpot_%s_vanilla_combi_050gen.dump'
                                    %dataset))
     exported_pipeline = tpot['fitted_pipeline']
 
