@@ -96,8 +96,8 @@ debug = False
 dataset =  'freesurf_combined'
 # dataset =  'UKBIO_freesurf'
 analysis = 'bootstrap'
-save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/age/100_generations/'
-
+n_generations = 100
+save_path = '/code/BayOptPy/tpot_regression/Output/vanilla_combi/age/%03d_generations/' %(n_generations)
 
 if analysis == 'bootstrap':
     random_seeds = np.arange(0, 110, 10)

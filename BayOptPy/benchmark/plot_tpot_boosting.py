@@ -1,6 +1,7 @@
 import os
 import pickle
 
+import argparse
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -10,6 +11,19 @@ from scipy.stats import ttest_ind
 from BayOptPy.helperfunctions import (set_publication_style,
                                       plot_confusion_matrix_boosting)
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-model',
+                    dest='model',
+                    help='Define if a classification or regression problem',
+                    choices=['regression', 'classification', 'classification2']
+                    )
+parser.add_argument('-generations',
+                     dest='generations',
+                     help='Specify number of generations to use',
+                     type=int,
+                     required=True
+                     )
+args = parser.parse_args()
 
 def barplot_annotate_brackets(num1, num2, data, center, height, yerr=None, dh=.05, barh=.05, fs=None, maxasterix=None):
     """
@@ -77,13 +91,12 @@ def barplot_annotate_brackets(num1, num2, data, center, height, yerr=None, dh=.0
 #----------------------------------------------------------------------------
 ind = np.arange(2)
 set_publication_style()
-analysis = 'regression'
-# analysis = 'classification'
 classes = np.array(['young', 'old', 'adult'], dtype='U10')
 
-if analysis == 'regression':
+if args.model == 'regression':
     # Load the dat from the saved pickle
-    save_path = '/code/BayOptPy/tpot_%s/Output/vanilla_combi/age/100_generations' %analysis
+    save_path = '/code/BayOptPy/tpot_%s/Output/vanilla_combi/age/%03d_generations' \
+    %(args.model, args.generations)
     with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
         tpot_results = pickle.load(handle)
 
@@ -95,6 +108,10 @@ if analysis == 'regression':
     # Do some statistics to see if the results from tpot is significantly differen from rvr
     print('Test dataset')
     t, prob = ttest_ind(tpot_results['mae_test'], rvr_results['mae_test'])
+    print('Mean %.3f Std %.5f MAE Test TPOT' %(np.mean(tpot_results['mae_test']),
+                                      np.std(tpot_results['mae_test'])))
+    print('Mean %.3f Std %.5f MAE Test RVR' %(np.mean(rvr_results['mae_test']),
+                                      np.std(rvr_results['mae_test'])))
     print('T-statistics: %.3f, p-value: %.10f' %(t, prob))
 
     plt.figure()
@@ -106,7 +123,8 @@ if analysis == 'regression':
                  )
     barplot_annotate_brackets(0, 1, 'p<.001', ind,
                               height=[np.mean(tpot_results['mae_test']),
-                                       np.mean(rvr_results['mae_test'])])
+                                       np.
+                                      mean(rvr_results['mae_test'])])
     plt.xticks(ind, ('TPOT', 'RVR'))
     plt.ylim([4.5, 7])
     plt.yticks(np.arange(4.5, 7.25, .25))
@@ -118,6 +136,12 @@ if analysis == 'regression':
     #----------------------------------------------------------------------------
     print('Validation dataset')
     t, prob = ttest_ind(tpot_results['mae_validation'], rvr_results['mae_validation'])
+    print('Mean %.3f Std %.5f MAE Validation TPOT'
+          %(np.mean(tpot_results['mae_validation']),
+                                      np.std(tpot_results['mae_validation'])))
+    print('Mean %.3f Std %.5f MAE Validation RVR'
+          %(np.mean(rvr_results['mae_validation']),
+                                      np.std(rvr_results['mae_validation'])))
     print('T-statistics: %.3f, p-value: %.25f' %(t, prob))
 
     plt.figure()
@@ -192,9 +216,10 @@ if analysis == 'regression':
 
 
 
-elif analysis == 'classification':
+elif args.model == 'classification':
     # Load the dat from the saved pickle
-    save_path = '/code/BayOptPy/tpot_%s/Output/vanilla_combi/100_generations/' %analysis
+    save_path = '/code/BayOptPy/tpot_%s/Output/vanilla_combi/age/%03d_generations/' \
+                    %(args.model, args.generations)
 
     with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
         tpot_results = pickle.load(handle)
@@ -204,7 +229,7 @@ elif analysis == 'classification':
 
     # Do some statistics to see if the results from tpot is significantly differen from rvr
     print('--------------------------------------------------------')
-    print('Test dataset')
+    print('Confusion Matrix - Test dataset')
     print('--------------------------------------------------------')
     t, prob = ttest_ind(tpot_results['confusion_matrix_test'],
                         rvc_results['confusion_matrix_test'], axis=0)
@@ -214,7 +239,7 @@ elif analysis == 'classification':
     print(prob)
 
     print('--------------------------------------------------------')
-    print('Validation dataset')
+    print('Confusion Matrix - Validation dataset')
     print('--------------------------------------------------------')
     t, prob = ttest_ind(tpot_results['confusion_matrix_validation'],
                         rvc_results['confusion_matrix_validation'], axis=0)
@@ -253,3 +278,40 @@ elif analysis == 'classification':
                     classes=classes,
                     title='RVC_validation')
     plt.savefig(os.path.join(save_path, 'rvc_validation_boosting.eps'))
+
+    print('--------------------------------------------------------')
+    print('Accuracy - Test dataset')
+    print('--------------------------------------------------------')
+
+    print('Mean Accuracy - tpot:')
+    print(tpot_results['score_test'])
+    print('Mean Accuracy - rvc:')
+    print(rvc_results['score_test'])
+    t, prob = ttest_ind(tpot_results['score_test'],
+                        rvc_results['score_test'], axis=0)
+    print('TPOT - boostrap: %.3f +- %.3f' %(np.mean(tpot_results['score_test']),
+                                           np.std(tpot_results['score_test'])))
+    print('RVC - boostrap: %.3f +- %.3f' %(np.mean(rvc_results['score_test']),
+                                           np.std(rvc_results['score_test'])))
+    print('T-statistics:')
+    print(t)
+    print('p-value: ')
+    print(prob)
+
+    print('--------------------------------------------------------')
+    print('Accuracy - Validation dataset')
+    print('--------------------------------------------------------')
+    print('Mean Accuracy - tpot: ')
+    print(tpot_results['score_test'])
+    print('Mean Accuracy - rvc:')
+    print(rvc_results['score_test'])
+    t, prob = ttest_ind(tpot_results['score_val'],
+                        rvc_results['score_val'], axis=0)
+    print('TPOT - boostrap: %.3f +- %.3f' %(np.mean(tpot_results['score_val']),
+                                           np.std(tpot_results['score_val'])))
+    print('RVC - boostrap: %.3f +- %.3f' %(np.mean(rvc_results['score_val']),
+                                           np.std(rvc_results['score_val'])))
+    print('T-statistics:')
+    print(t)
+    print('p-value: ')
+    print(prob)

@@ -35,7 +35,8 @@ set_publication_style()
 dataset = 'freesurf_combined'
 debug = False
 resamplefactor = 1
-random_seeds = np.arange(0, 110, 10)
+random_seeds = np.arange(0, 100, 10)
+n_generations = 5
 
 def tpot_confusion_matrix(random_seed, save_path):
     save_path = os.path.join(save_path, 'random_seed_%03d' %random_seed)
@@ -45,19 +46,28 @@ def tpot_confusion_matrix(random_seed, save_path):
     # dataset
 
     # Load the saved trained model
-    tpot = joblib.load(os.path.join(save_path, 'tpot_%s_vanilla_classification_100gen.dump' %dataset))
+    tpot = joblib.load(os.path.join(save_path,
+                                    'tpot_%s_vanilla_classification_%03dgen.dump'
+                                    %(dataset, n_generations)))
     tpot_con_test = tpot['confusion_matrix_test']
     tpot_con_val = tpot['confusion_matrix_validatate']
-    return tpot_con_test, tpot_con_val
+    tpot_score_test = tpot['score_test']
+    tpot_score_val = tpot['score_validation']
+    return tpot_con_test, tpot_con_val, tpot_score_test, tpot_score_val
 
-save_path = '/code/BayOptPy/tpot_classification/Output/vanilla_combi/age/100_generations/'
+save_path = '/code/BayOptPy/tpot_classification/Output/vanilla_combi/age/%03d_generations/' %(n_generations)
 confusion_matrix_test_all = []
 confusion_matrix_validation_all = []
 tpot_best_models_all = []
+tpot_score_test_all = []
+tpot_score_val_all = []
 for random_seed in random_seeds:
-    con_matrix_test, con_matrix_validation = tpot_confusion_matrix(random_seed, save_path)
+    con_matrix_test, con_matrix_validation, tpot_score_test, tpot_score_val = \
+            tpot_confusion_matrix(random_seed, save_path)
     confusion_matrix_test_all.append(con_matrix_test)
     confusion_matrix_validation_all.append(con_matrix_validation)
+    tpot_score_test_all.append(tpot_score_test)
+    tpot_score_val_all.append(tpot_score_val)
 
 print('Mean and std for test data')
 print(np.mean(confusion_matrix_test_all, axis=0),
@@ -68,7 +78,10 @@ print(np.mean(confusion_matrix_validation_all, axis=0),
 
 results = {'confusion_matrix_test': confusion_matrix_test_all,
            'confusion_matrix_validation': confusion_matrix_validation_all,
-           }
+           'score_test': tpot_score_test_all,
+           'score_val': tpot_score_val_all}
+
+print('Recalculated values')
 with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'wb') as handle:
     pickle.dump(results, handle)
 
