@@ -188,8 +188,27 @@ if __name__ == '__main__':
                                         'subset_val_predicted_true_age.eps')
         plot_predicted_vs_true(y_train_val, predicted_subset_val,
                                    output_path_test, 'Age')
+        #-----------------------------------------------------------------------------
+        # Save count of the number of models
+            # Define the list of possible models
+        algorithms_list = ['GaussianProcessRegressor', 'RVR',
+                           'LinearSVR',
+                            'RandomForestRegressor',
+                            'KNeighborsRegressor',
+                            'LinearRegression',
+                            'Ridge','ElasticNetCV',
+                            'ExtraTreesRegressor',
+                            'LassoLarsCV',
+                            'DecisionTreeRegressor']
+
+        algorithms_count = dict.fromkeys(algorithms_list, 0)
+        # Trasform the pipeline into a string and search for patterns
+        values = str(exported_pipeline.named_steps.values())
+        for algorithm in algorithms_list:
+            algorithms_count[algorithm] += values.count(algorithm + '(')
+        algorithms_count['random_seed'] = random_seed
         print('-------------------------------------------------------------------------------')
-        return mae_test, mae_validation, r_val, r_test
+        return mae_test, mae_validation, r_val, r_test, algorithms_count
 
 
     if args.analysis == 'mutation':
@@ -204,12 +223,32 @@ if __name__ == '__main__':
     mae_validation_all = []
     r_val_all = []
     r_test_all = []
+    algorithms_count_all = []
     for random_seed in random_seeds:
-        mae_test, mae_validation, r_val, r_test = tpot_model_analysis(random_seed, save_path)
+        mae_test, mae_validation, r_val, r_test, algorithms_count = tpot_model_analysis(random_seed, save_path)
         mae_test_all.append(mae_test)
         mae_validation_all.append(mae_validation)
         r_val_all.append(r_val)
         r_test_all.append(r_test)
+        algorithms_count_all.append(algorithms_count)
+
+    # Transfrom algorithm counts into a dataframe and plot heatmap
+    df = pd.DataFrame(algorithms_count_all)
+    df = df.set_index('random_seed')
+    df = df.transpose()
+    plt.figure(figsize=(28,8))
+    sns.heatmap(df, cmap='YlGnBu')
+    plt.xlabel('Random Seeds')
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path, 'algorithms_count.eps'))
+    plt.close()
+
+    # Plot MAE across all random seeds
+    plt.figure()
+    ind = np.arange(1)
+    plt.bar(ind, np.mean(mae_test_all), yerr=[np.std(mae_test_all)])
+    plt.xticks(ind, (args.analysis))
+    plt.savefig(os.path.join(save_path, 'MAE_%s_bootsraped.eps' %args.analysis))
 
     print('Mean and std for test data')
     print(np.mean(mae_test_all), np.std(mae_test_all))
