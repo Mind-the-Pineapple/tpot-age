@@ -90,7 +90,7 @@ args = parser.parse_args()
 if __name__ == '__main__':
     # General Settings
     #-------------------------------------------------------------------------------
-    random_seeds = np.arange(30, 110+10, 10)
+    random_seeds = np.arange(10, 110+10, 10)
 
     def tpot_model_analysis(random_seed, save_path):
         save_path = os.path.join(save_path, 'random_seed_%03d' %random_seed)
@@ -100,8 +100,8 @@ if __name__ == '__main__':
         # dataset
 
         # Load the saved trained model
-        tpot = joblib.load(os.path.join(save_path, 'tpot_%s_vanilla_combi_%03dgen.dump'
-                                        %(args.dataset, args.generations)))
+        tpot = joblib.load(os.path.join(save_path, 'tpot_%s_%s_%03dgen.dump'
+                                        %(args.dataset, args.analysis, args.generations)))
         exported_pipeline = tpot['fitted_pipeline']
 
         # Load the saved validation dataset
