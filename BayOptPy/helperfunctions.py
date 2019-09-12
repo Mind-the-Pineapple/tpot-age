@@ -110,6 +110,7 @@ def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mut
         else:
             output_path = os.path.join(os.sep, 'code', 'BayOptPy',
                                        'tpot_%s' %model,
+                                       'Output', analysis,
                                        predicted_attribute,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
