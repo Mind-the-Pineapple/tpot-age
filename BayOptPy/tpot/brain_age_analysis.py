@@ -410,16 +410,10 @@ if __name__ == '__main__':
 
         elif args.model == 'regression':
             # Split tain, test and validate
-            Xtrain, Xtemp, Ytrain, Ytemp = \
+            Xtrain, Xtest, Ytrain, Ytest = \
                 model_selection.train_test_split(dataframe, targetAttribute,
                                                  test_size=.85,
                                                  random_state=args.random_seed)
-            # Get the stratified list for the training dataset
-            train_demographics = demographics.loc[Xtemp.index]
-            Xvalidate, Xtest, Yvalidate, Ytest = \
-                    model_selection.train_test_split(Xtemp, Ytemp,
-                                                     test_size=.5,
-                                                     random_state=args.random_seed)
 
     elif args.dataset == 'UKBIO_freesurf':
             if args.predicted_attribute == 'Prospective_memory':
@@ -473,14 +467,15 @@ if __name__ == '__main__':
     Xtest_scaled = robustscaler.transform(Xtest)
 
     if args.dataset == 'freesurf_combined' or args.dataset == 'UKBIO_freesurf':
-        print('Y_validate: ' + str(Yvalidate.shape))
-        print('X_validate: ' + str(Xvalidate.shape))
+        # print('Y_validate: ' + str(Yvalidate.shape))
+        # print('X_validate: ' + str(Xvalidate.shape))
 
-        Xvalidate_scaled = robustscaler.transform(Xvalidate)
+        # Xvalidate_scaled = robustscaler.transform(Xvalidate)
         # Dump the validation set and delete the loaded subjects
-        validation = {'Xvalidate': Xvalidate,
-                      'Yvalidate': Yvalidate,
-                      'Xvalidate_scaled': Xvalidate_scaled,
+        validation = {
+                      # 'Xvalidate': Xvalidate,
+                      # 'Yvalidate': Yvalidate,
+                      # 'Xvalidate_scaled': Xvalidate_scaled,
                       'Xtrain': Xtrain,
                       'Ytrain': Ytrain,
                       'Xtrain_scaled': Xtrain_scaled,
@@ -497,7 +492,7 @@ if __name__ == '__main__':
         # Create yound and old classes
         Ytrain = Ytrain.to_frame()
         Ytest = Ytest.to_frame()
-        Yvalidate = Yvalidate.to_frame()
+        # Yvalidate = Yvalidate.to_frame()
         conditions_test = [Ytest <=30]
         conditions_train = [Ytrain <=30]
         conditions_validate = [Yvalidate<=30]
@@ -515,7 +510,7 @@ if __name__ == '__main__':
     if args.model == 'regression' or args.predicted_attribute != 'age':
         Ytrain = Ytrain.values
         Ytest = Ytest.values
-        Yvalidate = Yvalidate.values
+        # Yvalidate = Yvalidate.values
     elif args.model == 'classification':
         pass
     else:
