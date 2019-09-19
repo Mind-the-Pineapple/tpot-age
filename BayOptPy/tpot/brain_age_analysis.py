@@ -20,7 +20,8 @@ from BayOptPy.helperfunctions import (get_data, get_paths,
                                       get_best_pipeline_paths,
                                       create_age_histogram,
                                       plot_confusion_matrix,
-                                      load_cognitive_data)
+                                      load_cognitive_data,
+                                      get_uniform_dist_data)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-gui',
@@ -125,7 +126,8 @@ parser.add_argument('-analysis',
                     help='Specify which type of analysis to use',
                     choices=['vanilla', 'population', 'feat_selec',
                              'feat_combi', 'vanilla_combi', 'mutation',
-                             'random_seed', 'ukbio', 'summary_data'],
+                             'random_seed', 'ukbio', 'summary_data',
+                             'uniform_dist'],
                     required=True
                     )
 parser.add_argument('-mutation_rate',
@@ -177,6 +179,8 @@ if __name__ == '__main__':
                                              ['vanilla_classification', 'None']:
         parser.error('The only dictionary implemented for classification \
                      analysis is the vanilla_classification and None')
+    if args.analysis == 'uniform_dist' and args.model != 'regression':
+        parser.error('Uniform distribution only tested for regression problemsr')
     print('The current args are: %s' %args)
     print(' ')
 
@@ -240,6 +244,15 @@ if __name__ == '__main__':
                                               raw=str_to_bool(args.raw),
                                               analysis=args.analysis)
     print('Using %d features' %len(dataframe.columns))
+
+    # If we are looking at the uniform distribution, get the corresponding
+    # dataset
+    if args.analysis == 'uniform_dist':
+        demographics, dataframe = get_uniform_dist_data(args.debug, args.dataset,
+                                                        args.resamplefactor,
+                                                        str_to_bool(args.raw),
+                                                        args.analysis)
+
     if args.dataset == 'freesurf_combined' or args.dataset == 'UKBIO_freesurf':
         # Drop the last coumn which correspond to the dataset name
         dataframe = dataframe.drop(['dataset'], axis=1)

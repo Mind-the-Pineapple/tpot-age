@@ -89,7 +89,7 @@ def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mut
     if analysis == 'vanilla' or analysis == 'feat_selec' or \
         analysis == 'feat_combi' or analysis == 'vanilla_combi' or \
         analysis == 'random_seed' or analysis == 'ukbio' or \
-        analysis == 'summary_data':
+        analysis == 'summary_data' or analysis == 'uniform_dist':
         if debug:
             output_path = os.path.join('BayOptPy', 'tpot_%s' %model, 'Output',
                                        analysis, predicted_attribute,
@@ -138,6 +138,52 @@ def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mut
         os.makedirs(output_path)
 
     return output_path
+
+def get_uniform_dist_data(debug, dataset, resamplefactor, raw, analysis):
+    """
+    This function gets the original dataset and transforms it into a uniformly
+    distributed dataset.
+    """
+
+    project_wd, project_data, project_sink = get_paths(debug, dataset)
+
+    demographics, imgs, dataframe  = get_data(project_data, dataset,
+                                            debug, project_wd,
+                                            resamplefactor,
+                                            raw=raw,
+                                            analysis=analysis)
+
+    # transform age into ints
+    demographics['age_int'] = demographics['age'].astype('int32', copy=False)
+
+    # Select 14 subjects for all ages that have 14 representatives.
+    age_range = np.arange(demographics['age'].min(), demographics['age'].max())
+    # remove entry where you don't have 14 subjects
+    max_n = 14
+    age_to_remove = [35, 36, 39, 42, 78, 79, 80, 81, 82, 83, 85, 89]
+    age_range = np.setdiff1d(age_range, age_to_remove)
+    # iterate over the dataframe and select 14 subjects for each age range
+    ids_to_use = []
+    for age in age_range:
+        ids_to_use.append(demographics.index[demographics['age_int'] ==
+                                             age].tolist()[:max_n])
+
+    # flatten ids_to_use
+    ids_to_use = [item for sublist in ids_to_use for item in sublist]
+    # Filter the demographics dataframe
+    demographics = demographics[demographics.index.isin(ids_to_use)]
+    # set subject's id as index
+    # filter dataset using index of the subjects
+    dataframe = dataframe.loc[demographics['id']]
+
+    # Print some diagnosis
+    print('Shape of the new demographics:')
+    print(demographics.shape)
+    print('Oldest %d and youngest %d subject' %(demographics['age_int'].max(),
+                                                demographics['age_int'].min()))
+    print('Number of age bins %d' %len(demographics['age_int'].unique()))
+    return demographics, dataframe
+
 
 def get_best_pipeline_paths(model, analysis, ngen, random_seed, population_size, debug,
                            mutation, crossover, predicted_attribute):
