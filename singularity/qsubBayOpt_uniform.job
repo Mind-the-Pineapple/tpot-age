@@ -9,7 +9,7 @@
 # NOTE: mpi use multiple cores on different machines
 #       smp use multiple cores on the same machine
 #$ -pe smp 1
-#$ -t 10-110:10
+#$ -t 120-310:10
 # Where to save the STDOUT and STDERR
 #$ -o ~/BayOpt/singularity/logs/ukbio
 #$ -e ~/BayOpt/singularity/logs/ukbio
