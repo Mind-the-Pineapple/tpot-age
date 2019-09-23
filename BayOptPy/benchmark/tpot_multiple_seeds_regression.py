@@ -12,17 +12,20 @@ sns.set()
 import joblib
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 from sklearn.pipeline import make_pipeline, make_union
 from sklearn.metrics import mean_absolute_error
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.linear_model import ElasticNetCV
 from tpot.builtins import StackingEstimator
+from scipy.stats import spearmanr, pearsonr
+from sklearn.metrics import r2_score
 
 from BayOptPy.helperfunctions import (get_paths, get_data,
                                       drop_missing_features,
                                       set_publication_style,
-                                      plot_predicted_vs_true)
+                                      plot_predicted_vs_true,
+                                      ttest_ind_corrected)
 
 """
 BANC + TPOT dataset
@@ -64,12 +67,20 @@ parser.add_argument('-resamplefactor',
                     type=int,
                     default=1 # no resampling is performed
                     )
+parser.add_argument('-config_dic',
+                    dest='config_dic',
+                    help='Specify which type of config_dic to use',
+                    choices=['vanilla', 'feat_selec',
+                             'feat_combi', 'vanilla_combi'],
+                    required=True
+                    )
 parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
                     choices=['vanilla', 'population', 'feat_selec',
                              'feat_combi', 'vanilla_combi', 'mutation',
-                             'random_seed', 'ukbio', 'summary_data'],
+                             'random_seed', 'ukbio', 'summary_data',
+                             'uniform_dist'],
                     required=True
                     )
 parser.add_argument('-mutation_rate',
@@ -90,9 +101,14 @@ args = parser.parse_args()
 if __name__ == '__main__':
     # General Settings
     #-------------------------------------------------------------------------------
-    random_seeds = np.arange(10, 110+10, 10)
+    # Analysed random seeds
+    min_repetition = 10
+    max_repetition = 210
+    step_repetition = 10
+    random_seeds = np.arange(min_repetition, max_repetition+step_repetition,
+                             step_repetition)
 
-    def tpot_model_analysis(random_seed, save_path):
+    def tpot_model_analysis(random_seed, save_path, n_folds, algorithms_list):
         save_path = os.path.join(save_path, 'random_seed_%03d' %random_seed)
         print('Random seed: %03d' %random_seed)
         # Load the clean data for both the UKBIO and the BANC analysis
@@ -101,105 +117,69 @@ if __name__ == '__main__':
 
         # Load the saved trained model
         tpot = joblib.load(os.path.join(save_path, 'tpot_%s_%s_%03dgen.dump'
-                                        %(args.dataset, args.analysis, args.generations)))
+                                        %(args.dataset, args.config_dic, args.generations)))
         exported_pipeline = tpot['fitted_pipeline']
 
-        # Load the saved validation dataset
+        # Load the saved validatVion dataset
         project_ukbio_wd, project_data_ukbio, _ = get_paths(args.debug, args.dataset)
         with open(os.path.join(save_path, 'splitted_dataset_%s.pickle' %args.dataset), 'rb') as handle:
             splitted_dataset = pickle.load(handle)
 
-        # Print some results
-        print('Print MAE - test')
-        y_predicted_test = exported_pipeline.predict(splitted_dataset['Xtest_scaled'])
-        mae_test = mean_absolute_error(splitted_dataset['Ytest'], y_predicted_test)
-        print(mae_test)
-        print('Print MAE - training')
-        y_predicted_train = exported_pipeline.predict(splitted_dataset['Xtrain_scaled'])
-        mae_train = mean_absolute_error(splitted_dataset['Ytrain'], y_predicted_train)
-        print(mae_train)
-        print('Print MAE - validation')
-        y_predicted_validation = exported_pipeline.predict(splitted_dataset['Xvalidate_scaled'])
-        mae_validation = mean_absolute_error(splitted_dataset['Yvalidate'], y_predicted_validation)
-        print(mae_validation)
+        # Set target and features
+        x = splitted_dataset['Xtest_scaled']
+        y = splitted_dataset['Ytest']
 
-        # plot predicted vs true for the test
-        output_path_test = os.path.join(save_path, 'test_predicted_true_age.eps')
+        # # Test on the entire dataset and see if the value is similar to K-Fold
+        # x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=.4,
+        #                                                    random_state=random_seed)
+        # new_new_model = exported_pipeline.fit(x_train, y_train)
+        # new_y_predicted = new_new_model.predict(x_test)
+        # new_acc = mean_absolute_error(y_test, new_y_predicted)
+        # print('MAE on entire dataset')
+        # print(new_acc)
+
+        # Perform KFold analysis
+        kf = KFold(n_splits=n_folds, random_state=random_seed)
+        mae_cv = np.zeros((n_folds, 1))
+        pearsons_corr = np.zeros((n_folds, 1))
+        pearsons_pval = np.zeros((n_folds, 1))
+
+        for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
+            x_train, x_test = x[train_idx, :], x[test_idx, :]
+            y_train, y_test = y[train_idx], y[test_idx]
+
+            print('CV iteration: %d' %(i_fold + 1))
+            print('Shape of the trainig and test dataset')
+            print(y_train.shape, y_test.shape)
+
+            # train the model
+            new_model = exported_pipeline.fit(x_train, y_train)
+
+            # test the model
+            y_predicted = new_model.predict(x_test)
+            mae_kfold = mean_absolute_error(y_test, y_predicted)
+            mae_cv[i_fold, :] = mae_kfold
+            # now look at the pearson's correlation
+            r_test, r_p_value_test = pearsonr(y_test, y_predicted)
+            pearsons_corr[i_fold, :] = r_test
+            pearsons_pval[i_fold, :] = r_p_value_test
+
+        print('CV results')
+        print('MAE: Mean(SD) = %.3f(%.3f)' % (mae_cv.mean(), mae_cv.std()))
+        print('Pearson\'s Correlation: Mean(SD) = %.3f(%.3f)' % (r_test.mean(),
+                                                                 r_test.std()))
+
+        # plot predicted vs true for the test (Entire sample)
+        print('Plotting Predicted Vs True Age for all the sample')
+        output_path_test = os.path.join(save_path,
+                                        'test_predicted_true_age_rnd_seed%d.eps'
+                                       %random_seed)
+        y_predicted_test = exported_pipeline.predict(splitted_dataset['Xtest_scaled'])
         plot_predicted_vs_true(splitted_dataset['Ytest'], y_predicted_test,
                                    output_path_test, 'Age')
 
-        # plot predicted vs true for the validation
-        output_path_val = os.path.join(save_path, 'validation_predicted_true_age.eps')
-        plot_predicted_vs_true(splitted_dataset['Yvalidate'],
-                                   y_predicted_validation, output_path_val, 'Age')
-
-        # Do some statistics. Calculate R2 and the Spearman
-        from scipy.stats import spearmanr, pearsonr
-        from sklearn.metrics import r2_score
-
-        rho_val, rho_p_value_val = spearmanr(splitted_dataset['Yvalidate'],
-                                     y_predicted_validation)
-        rho_test, rho_p_value_test = spearmanr(splitted_dataset['Ytest'],
-                                     y_predicted_test)
-        print('Statistics for the test dataset')
-        print('shape of the dataset: %s' %(splitted_dataset['Ytest'].shape,))
-        print('Rho and p-value: %.4f %.4f' %(rho_test, rho_p_value_test))
-
-        r_score_test = r2_score(splitted_dataset['Ytest'], y_predicted_test)
-        print('R2 is: %.4f' %r_score_test)
-
-        r_test, r_p_value_test = pearsonr(splitted_dataset['Ytest'],
-                                              y_predicted_test)
-        print('R is: %.4f' %r_test)
-
-        print('Statistics for the full validation dataset')
-        print('shape of the dataset: %s' %(splitted_dataset['Yvalidate'].shape,))
-        print('Rho and p-value: %.4f %.4f' %(rho_val, rho_p_value_val))
-
-        r_score_val = r2_score(splitted_dataset['Yvalidate'], y_predicted_validation)
-        print('R2 is: %.4f' %r_score_val)
-
-        r_val, r_p_value_val = pearsonr(splitted_dataset['Yvalidate'], y_predicted_validation)
-        print('R is: %.4f' %r_val)
-
-        #-----------------------------------------------------------------------------
-        # Use just part of the validation dataset
-        from sklearn.model_selection import train_test_split
-
-        X_train_val, X_test_val, y_train_val, y_test_val = train_test_split(
-                         splitted_dataset['Xvalidate_scaled'],
-                         splitted_dataset['Yvalidate'],
-                         test_size=.4, random_state=42)
-
-        predicted_subset_val = exported_pipeline.predict(X_train_val)
-        rho_subset_val, rho_p_value_subset_val = spearmanr(y_train_val,
-                                                          predicted_subset_val)
-
-        r_subset_val, r_p_value_subset_val = pearsonr(y_train_val,
-                                                      predicted_subset_val)
-        print('')
-        print('Statistics on part of the dataset')
-        print('shape of the dataset: %s' %(X_train_val.shape,))
-        print('Rho and p-value: %.4f %.4f' %(rho_subset_val, rho_p_value_subset_val))
-        print('R is: %.4f' %r_subset_val)
-
-        # plot predicted vs true for the test
-        output_path_test = os.path.join(save_path,
-                                        'subset_val_predicted_true_age.eps')
-        plot_predicted_vs_true(y_train_val, predicted_subset_val,
-                                   output_path_test, 'Age')
         #-----------------------------------------------------------------------------
         # Save count of the number of models
-            # Define the list of possible models
-        algorithms_list = ['GaussianProcessRegressor', 'RVR',
-                           'LinearSVR',
-                            'RandomForestRegressor',
-                            'KNeighborsRegressor',
-                            'LinearRegression',
-                            'Ridge','ElasticNetCV',
-                            'ExtraTreesRegressor',
-                            'LassoLarsCV',
-                            'DecisionTreeRegressor']
 
         algorithms_count = dict.fromkeys(algorithms_list, 0)
         # Trasform the pipeline into a string and search for patterns
@@ -208,7 +188,7 @@ if __name__ == '__main__':
             algorithms_count[algorithm] += values.count(algorithm + '(')
         algorithms_count['random_seed'] = random_seed
         print('-------------------------------------------------------------------------------')
-        return mae_test, mae_validation, r_val, r_test, algorithms_count
+        return mae_cv, pearsons_corr, algorithms_count
 
 
     if args.analysis == 'mutation':
@@ -218,18 +198,28 @@ if __name__ == '__main__':
     else:
         save_path = '/code/BayOptPy/tpot_regression/Output/%s/age/%03d_generations/' %(args.analysis, args.generations)
 
-
-    mae_test_all = []
-    mae_validation_all = []
-    r_val_all = []
-    r_test_all = []
+    # Define the list of possible models
+    algorithms_list = ['GaussianProcessRegressor',
+                       'RVR',
+                       'LinearSVR',
+                       'RandomForestRegressor',
+                       'KNeighborsRegressor',
+                       'LinearRegression',
+                       'Ridge','ElasticNetCV',
+                       'ExtraTreesRegressor',
+                       'LassoLarsCV',
+                       'DecisionTreeRegressor']
+    n_folds = 10
+    mae_test_all = np.zeros((len(random_seeds), n_folds))
+    r_test_all = np.zeros((len(random_seeds), n_folds))
     algorithms_count_all = []
-    for random_seed in random_seeds:
-        mae_test, mae_validation, r_val, r_test, algorithms_count = tpot_model_analysis(random_seed, save_path)
-        mae_test_all.append(mae_test)
-        mae_validation_all.append(mae_validation)
-        r_val_all.append(r_val)
-        r_test_all.append(r_test)
+    for seed_idx, random_seed in enumerate(random_seeds):
+        mae_test, r_test, algorithms_count = tpot_model_analysis(random_seed,
+                                                                 save_path,
+                                                                 n_folds,
+                                                                 algorithms_list)
+        mae_test_all[seed_idx, :] = mae_test.T
+        r_test_all[seed_idx, :] = r_test.T
         algorithms_count_all.append(algorithms_count)
 
     # Transfrom algorithm counts into a dataframe and plot heatmap
@@ -243,25 +233,24 @@ if __name__ == '__main__':
     plt.savefig(os.path.join(save_path, 'algorithms_count.eps'))
     plt.close()
 
+    # Print the sum information
+    print('Total count for each model:')
+    print(df.sum(axis=1))
+
     # Plot MAE across all random seeds
     plt.figure()
     ind = np.arange(1)
-    plt.bar(ind, np.mean(mae_test_all), yerr=[np.std(mae_test_all)])
+    plt.bar(ind, np.mean(np.mean(mae_test_all, axis=0)),
+                 yerr=[np.std(np.std(mae_test_all, axis=0))])
     plt.xticks(ind, (args.analysis))
     plt.savefig(os.path.join(save_path, 'MAE_%s_bootsraped.eps' %args.analysis))
 
     print('Mean and std for test data')
-    print(np.mean(mae_test_all), np.std(mae_test_all))
-    print('Mean and std for validation data')
-    print(np.mean(mae_validation_all), np.std(mae_validation_all))
+    print(np.mean(mae_test_all, axis=0), np.std(mae_test_all, axis=0))
     print('Mean and std pearson corr test data')
-    print(np.mean(r_test_all), np.std(r_test_all))
-    print('Mean and std pearson corr validation data')
-    print(np.mean(r_val_all), np.std(r_val_all))
+    print(np.mean(r_test_all, axis=0), np.std(r_test_all, axis=0))
 
     results = {'mae_test': mae_test_all,
-               'mae_validation': mae_validation_all,
-               'r_val': r_val_all,
                'r_test': r_test_all}
     with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'wb') as handle:
         pickle.dump(results, handle)
