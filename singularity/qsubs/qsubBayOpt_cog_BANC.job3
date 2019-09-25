@@ -1,0 +1,22 @@
+#!/bin/bash --login
+# How much memory needed *per core*
+#$ -l h_vmem=20G
+
+# Which operating system to use
+#$ -l cns_os=el7
+
+# Which queues the job should use:
+# NOTE: mpi use multiple cores on different machines
+#       smp use multiple cores on the same machine
+
+# Where to save the STDOUT and STDERR
+#$ -o ~/BayOpt/singularity/logs/ukbio
+#$ -e ~/BayOpt/singularity/logs/ukbio
+
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/tpot/brain_age_analysis.py -raw False -model classification \
+-predicted_attribute Prospective_memory -dataset UKBIO_freesurf -cv 5 \
+-generations 50 -population_size 1000 -offspring_size 100 \
+-config_dict vanilla_classification -njobs 1 -random_seed 10 \
+-analysis vanilla_combi -mutation_rate 0.9 -crossover_rate 0.1
+
