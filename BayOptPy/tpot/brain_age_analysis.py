@@ -274,6 +274,7 @@ if __name__ == '__main__':
         for dataset in np.unique(demographics['original_dataset']):
             print('%s: %d' % (dataset, sum(demographics['original_dataset'] == dataset)))
 
+
     # Print demographics for the final dataset
     demographics.groupby(['sex']).aggregate(aggregations)
     demographics = demographics.set_index('id')
@@ -460,6 +461,7 @@ if __name__ == '__main__':
                 model_selection.train_test_split(dataframe, targetAttribute,
                                                  test_size=.25,
                                                  random_state=args.random_seed)
+
 
     # Check the group distribution
     # It is not that easy because your labels are not thesabe as Y. But the mean

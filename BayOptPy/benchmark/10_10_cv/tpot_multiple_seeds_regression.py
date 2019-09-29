@@ -96,6 +96,15 @@ parser.add_argument('-crossover_rate',
                     type=float,
                     default=.1
                    )
+parser.add_argument('-population_size',
+                    dest='population_size',
+                    help="Specify population size to use. This value specifiy \
+                    the number of individuals to retain in the genetic         \
+                    programiming population at every generation.",
+                    type=int,
+                    default=100, # use the same default as
+                                 #TPOT default population value
+                    )
 args = parser.parse_args()
 
 if __name__ == '__main__':
@@ -103,7 +112,7 @@ if __name__ == '__main__':
     #-------------------------------------------------------------------------------
     # Analysed random seeds
     min_repetition = 10
-    max_repetition = 210
+    max_repetition = 100
     step_repetition = 10
     random_seeds = np.arange(min_repetition, max_repetition+step_repetition,
                              step_repetition)
@@ -120,7 +129,7 @@ if __name__ == '__main__':
                                         %(args.dataset, args.config_dic, args.generations)))
         exported_pipeline = tpot['fitted_pipeline']
 
-        # Load the saved validatVion dataset
+        # Load the saved validation dataset
         project_ukbio_wd, project_data_ukbio, _ = get_paths(args.debug, args.dataset)
         with open(os.path.join(save_path, 'splitted_dataset_%s.pickle' %args.dataset), 'rb') as handle:
             splitted_dataset = pickle.load(handle)
@@ -195,8 +204,14 @@ if __name__ == '__main__':
         save_path = '/code/BayOptPy/tpot_regression/Output/%s/age/%03d_generations/%s_mut_%s_cross'  \
                 %(args.analysis, args.generations, args.mutation_rate,
                   args.crossover_rate)
+    elif args.analysis == 'population':
+            save_path = '/code/BayOptPy/tpot_regression/Output/%s/age/%05d_population_size/%03d_generations/' \
+            %(args.analysis, args.population_size, args.generations)
     else:
         save_path = '/code/BayOptPy/tpot_regression/Output/%s/age/%03d_generations/' %(args.analysis, args.generations)
+
+    print('Path where results will be saved')
+    print(save_path)
 
     # Define the list of possible models
     algorithms_list = ['GaussianProcessRegressor',

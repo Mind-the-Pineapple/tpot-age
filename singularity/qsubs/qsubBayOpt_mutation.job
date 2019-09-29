@@ -1,6 +1,6 @@
 #!/bin/bash --login
 # How much memory needed *per core*
-#$ -l h_vmem=1G
+#$ -l h_vmem=10G
 
 # Which operating system to use
 #$ -l cns_os=el7

@@ -3,10 +3,12 @@ import pickle
 
 import argparse
 import numpy as np
+import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
+import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind, friedmanchisquare
 
 
 from BayOptPy.helperfunctions import (set_publication_style,
@@ -29,7 +31,9 @@ parser.add_argument('-analysis',
                     dest='analysis',
                     help='Specify which type of analysis to use',
                     choices=['vanilla_combi',
-                             'uniform_dist'],
+                             'uniform_dist',
+                             'preprocessing',
+                             'population'],
                     required=True
                     )
 args = parser.parse_args()
@@ -98,90 +102,228 @@ def barplot_annotate_brackets(num1, num2, data, center, height, yerr=None, dh=.0
 
 # Settings
 #----------------------------------------------------------------------------
-ind = np.arange(2)
 set_publication_style()
 classes = np.array(['young', 'old', 'adult'], dtype='U10')
 
-if args.model == 'regression':
-    # Load the dat from the saved pickle
-    save_path = '/code/BayOptPy/tpot_%s/Output/%s/age/%03d_generations' \
-    %(args.model,args.analysis, args.generations)
-    with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
-        tpot_results = pickle.load(handle)
+if (args.model == 'regression'):
+    if args.analysis == 'preprocessing':
+        print('Pre-processing analysis')
+        preprocessing_types = [
+                               'vanilla',
+                               'feat_selec',
+                               'feat_combi',
+                               'vanilla_combi']
+        ind = np.arange(0, len(preprocessing_types))
+        df = pd.DataFrame(columns=['mae_test', 'r_test', 'preprocessing',
+                                   ])
+        for preprocessing in preprocessing_types:
+            save_path = '/code/BayOptPy/tpot_%s/Output/%s/age/%03d_generations' \
+                        %(args.model, preprocessing, args.generations)
+            with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
+                tpot_results = pickle.load(handle)
+                tpot_results['preprocessing'] = preprocessing
+                tpot_results['mean_flatten'] = np.ndarray.flatten(tpot_results['mae_test'])
+                # save information to dataframe
+                df = df.append(tpot_results, ignore_index=True)
 
-    with open(os.path.join(save_path, 'rvr_all_seeds.pckl'), 'rb') as handle:
-        rvr_results = pickle.load(handle)
+        # Calculate mean for every
+        # Plot MAE
+        plt.figure(figsize=(10,15))
+        plt.bar(ind,
+                [np.mean(df['mean_flatten'][0]),
+                 np.mean(df['mean_flatten'][1]),
+                 np.mean(df['mean_flatten'][2]),
+                 np.mean(df['mean_flatten'][3])
+                ],
+                yerr=[np.std(df['mean_flatten'][0]),
+                 np.std(df['mean_flatten'][1]),
+                 np.std(df['mean_flatten'][2]),
+                 np.mean(df['mean_flatten'][3])
+                     ],
+                color=['b', 'r', 'g', 'orange']
+                     )
+        plt.xticks(ind, (preprocessing_types))
+        plt.ylim([4, 5])
+        plt.yticks(np.arange(4, 5, .2))
+        plt.ylabel('MAE')
+        plt.savefig(os.path.join(save_path, 'MAE_preprocessinge.eps'))
 
-    # MAE - Validation plot
-    #----------------------------------------------------------------------------
-    # Do some statistics to see if the results from tpot is significantly differen from rvr
-    print('Test dataset')
-    print('-------------------------------------------------------------------')
-    print('MAE analysis')
-    t, prob = ttest_ind_corrected(tpot_results['mae_test'],
-                                  rvr_results['mae_test'], k=10, r=11)
-    # Test how it would be with the standat TPOT
-    seed_tpot_mean = np.mean(tpot_results['mae_test'], axis=1)
-    seed_rvr_mean = np.mean(rvr_results['mae_test'], axis=1)
+        data = [df['mean_flatten'][0], df['mean_flatten'][1],
+                df['mean_flatten'][2], df['mean_flatten'][3]]
 
-    t_old, prob_old = ttest_ind(seed_tpot_mean, seed_rvr_mean)
-    print('T old method')
-    print('T-statistics: %.3f, p-value: %.10f' %(t_old, prob_old))
+        plt.figure()
+        sns.swarmplot(data=data)
+        plt.ylabel('MAE')
+        plt.xticks(ind, (preprocessing_types))
+        plt.savefig(os.path.join(save_path, 'MAE_preprocessing_box.eps'))
 
-    print('Mean over the different seeds')
-    print('Mean %.3f Std %.5f MAE Test TPOT' %(np.mean(seed_tpot_mean),
-                                              np.std(seed_tpot_mean)))
-    print('Mean %.3f Std %.5f MAE Test RVR' %(np.mean(seed_rvr_mean),
-                                             np.std(seed_rvr_mean)))
-    print('T-statistics: %.3f, p-value: %.10f' %(t, prob))
+        # Print statistics
+        f, p = friedmanchisquare(df['mean_flatten'][0], df['mean_flatten'][1],
+                                 df['mean_flatten'][2])
+        print('Statisitcs')
+        print('F-value %.3f' %f)
+        print('p-value: %.3f' %p)
 
-    plt.figure()
-    plt.bar(ind,
-            [np.mean(tpot_results['mae_test']), np.mean(rvr_results['mae_test'])],
-            yerr=[np.std(tpot_results['mae_test']),
-                  np.std(tpot_results['mae_test'])],
-            color=['b', 'r']
-                 )
-    barplot_annotate_brackets(0, 1, 'p<.001', ind,
-                              height=[np.mean(tpot_results['mae_test']),
-                                      np.mean(rvr_results['mae_test'])])
-    plt.xticks(ind, ('TPOT', 'RVR'))
-    plt.ylim([4.5, 7])
-    plt.yticks(np.arange(4.5, 7.25, .25))
-    plt.ylabel('MAE')
-    plt.savefig(os.path.join(save_path, 'MAE_bootstrap_test.eps'))
-    plt.close()
+        print('Try Bengio Test')
+        t, p_t = ttest_ind_corrected(df['mae_test'][1], df['mae_test'][2], k=10,
+                                    r=10)
+        print('T: %.3f and p: %.f' %(t, p_t))
+        t, p_t = ttest_ind_corrected(df['mae_test'][0], df['mae_test'][2], k=10,
+                                    r=10)
+        print('T: %.3f and p: %.f' %(t, p_t))
+        t, p_t = ttest_ind_corrected(df['mae_test'][0], df['mae_test'][1], k=10,
+                                    r=10)
+        print('T: %.3f and p: %.f' %(t, p_t))
+
+    elif args.analysis == 'population':
+        print('Population analysis')
+        preprocessing_types = [
+                               '00010',
+                               '00100',
+                               '01000']
+        ind = np.arange(0, len(preprocessing_types))
+        df = pd.DataFrame(columns=['mae_test', 'r_test', 'preprocessing',
+                                   ])
+        for preprocessing in preprocessing_types:
+            save_path = '/code/BayOptPy/tpot_%s/Output/%s/age/%s_population_size/%03d_generations' \
+                        %(args.model, args.analysis, preprocessing, args.generations)
+            with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
+                tpot_results = pickle.load(handle)
+                tpot_results['preprocessing'] = preprocessing
+                tpot_results['mean_flatten'] = np.ndarray.flatten(tpot_results['mae_test'])
+                # save information to dataframe
+                df = df.append(tpot_results, ignore_index=True)
+
+        # Calculate mean for every
+        # Plot MAE
+        plt.figure(figsize=(10,15))
+        plt.bar(ind,
+                [np.mean(df['mean_flatten'][0]),
+                 np.mean(df['mean_flatten'][1]),
+                 np.mean(df['mean_flatten'][2])],
+                yerr=[np.std(df['mean_flatten'][0]),
+                 np.std(df['mean_flatten'][1]),
+                 np.std(df['mean_flatten'][2]),
+                     ],
+                color=['b', 'r', 'g']
+                     )
+        plt.xticks(ind, (preprocessing_types))
+        plt.ylim([4, 5])
+        plt.yticks(np.arange(4, 5, .2))
+        plt.ylabel('MAE')
+        plt.savefig(os.path.join(save_path, 'MAE_preprocessinge.eps'))
+
+        data = [df['mean_flatten'][0], df['mean_flatten'][1],
+                df['mean_flatten'][2]]
+
+        plt.figure()
+        sns.swarmplot(data=data)
+        plt.ylabel('MAE')
+        plt.yticks(np.arange(4.3, 4.9, .1))
+        plt.xticks(ind, (preprocessing_types))
+        plt.savefig(os.path.join(save_path, 'MAE_preprocessing_box.eps'))
+
+        # Print statistics
+        f, p = friedmanchisquare(df['mean_flatten'][0], df['mean_flatten'][1],
+                                 df['mean_flatten'][2])
+        print('Statisitcs')
+        print('F-value %.3f' %f)
+        print('p-value: %.3f' %p)
+
+        print('Try Bengio Test')
+        t, p_t = ttest_ind_corrected(df['mae_test'][1], df['mae_test'][2], k=10,
+                                    r=10)
+        print('T: %.3f and p: %.f' %(t, p_t))
+        t, p_t = ttest_ind_corrected(df['mae_test'][0], df['mae_test'][2], k=10,
+                                    r=10)
+        print('T: %.3f and p: %.f' %(t, p_t))
+        t, p_t = ttest_ind_corrected(df['mae_test'][0], df['mae_test'][1], k=10,
+                                    r=10)
+        print('T: %.3f and p: %.f' %(t, p_t))
+
+    else:
+        # Load the dat from the saved pickle
+        save_path = '/code/BayOptPy/tpot_%s/Output/%s/age/%03d_generations' \
+        %(args.model,args.analysis, args.generations)
+        with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
+            tpot_results = pickle.load(handle)
+
+        with open(os.path.join(save_path, 'rvr_all_seeds.pckl'), 'rb') as handle:
+            rvr_results = pickle.load(handle)
+
+        # MAE - Validation plot
+        #----------------------------------------------------------------------------
+        # Do some statistics to see if the results from tpot is significantly differen from rvr
+        print('Test dataset')
+        print('-------------------------------------------------------------------')
+        print('MAE analysis')
+        ind = np.arange(2)
+        t, prob = ttest_ind_corrected(tpot_results['mae_test'][:10],
+                                      rvr_results['mae_test'][:10], k=10, r=10)
+
+        # Test how it would be with the standat TPOT
+        seed_tpot_flatten = np.ndarray.flatten(tpot_results['mae_test'])
+        seed_rvr_flatten = np.ndarray.flatten(rvr_results['mae_test'])
+
+        t_old, prob_old = ttest_ind(seed_tpot_flatten, seed_rvr_flatten)
+        print('T old method')
+        print('T-statistics: %.3f, p-value: %.10f' %(t_old, prob_old))
+
+        print('Mean over the different seeds')
+        print('Mean %.3f Std %.5f MAE Test TPOT'  %(np.mean(tpot_results['mae_test']),
+                                                  np.std(tpot_results['mae_test'])))
+        print('Mean %.3f Std %.5f MAE Test RVR' %(np.mean(rvr_results['mae_test']),
+                                                 np.std(rvr_results['mae_test'])))
+        print('T-statistics: %.3f, p-value: %.10f' %(t, prob))
+
+        plt.figure(figsize=(10,15))
+        plt.bar(ind,
+                [np.mean(tpot_results['mae_test']), np.mean(rvr_results['mae_test'])],
+                yerr=[np.std(tpot_results['mae_test']),
+                      np.std(tpot_results['mae_test'])],
+                color=['b', 'r']
+                     )
+        barplot_annotate_brackets(0, 1, '**', ind,
+                                  height=[np.mean(tpot_results['mae_test']),
+                                          np.mean(rvr_results['mae_test'])])
+        plt.xticks(ind, ('TPOT', 'RVR'))
+        plt.ylim([4.5, 7])
+        plt.yticks(np.arange(4.5, 7.5, .5))
+        plt.ylabel('MAE')
+        plt.savefig(os.path.join(save_path, 'MAE_bootstrap_test.eps'))
+        plt.close()
 
 
-    # Pearsons Correlation Analysis
-    #----------------------------------------------------------------------------
-    # Pearsons Correlation - test plot
-    print('Pearsons Correlation: Test dataset')
-    # t, prob = ttest_ind(tpot_results['r_test'], rvr_results['r_test'])
-    t, prob = ttest_ind_corrected(tpot_results['r_test'], rvr_results['r_test'],
-                                 k=10, r=10)
-    print('T-statistics: %.3f, p-value: %.25f' %(t, prob))
-    print('Mean %.3f Std %.5f Pearsons TPOT' %(np.mean(tpot_results['r_test']),
-                                      np.std(tpot_results['r_test'])))
-    print('Mean %.3f Std %.5f Pearsons RVR' %(np.mean(rvr_results['r_test']),
-                                      np.std(rvr_results['r_test'])))
-    plt.figure()
-    plt.bar(ind,
-            [np.mean(tpot_results['r_test']),
-             np.mean(rvr_results['r_test'])],
-            yerr=[np.std(tpot_results['r_test']),
-                  np.std(tpot_results['r_test'])],
-            color=['b', 'r']
-                 )
-    plt.xticks(ind, ('TPOT', 'RVR'))
-    plt.ylim([.75, 1])
-    plt.yticks(np.arange(.75, 1.005, .05))
-    barplot_annotate_brackets(0, 1, 'p<.001', ind,
-                              height=[np.mean(tpot_results['r_test']),
-                                      np.mean(rvr_results['r_test'])])
-    plt.ylabel('Pearson\'s Correlation')
-    plt.savefig(os.path.join(save_path, 'r_bootstrap_test.eps'))
-    plt.close()
+        # Pearsons Correlation Analysis
+        #----------------------------------------------------------------------------
+        # Pearsons Correlation - test plot
+        print('Pearsons Correlation: Test dataset')
+        # t, prob = ttest_ind(tpot_results['r_test'], rvr_results['r_test'])
+        t, prob = ttest_ind_corrected(tpot_results['r_test'][:10],
+                                      rvr_results['r_test'][:10],
+                                     k=10, r=10)
+        print('T-statistics: %.3f, p-value: %.25f' %(t, prob))
+        print('Mean %.3f Std %.5f Pearsons TPOT' %(np.mean(tpot_results['r_test']),
+                                          np.std(tpot_results['r_test'])))
+        print('Mean %.3f Std %.5f Pearsons RVR' %(np.mean(rvr_results['r_test']),
+                                          np.std(rvr_results['r_test'])))
+        plt.figure(figsize=(10,15))
+        plt.bar(ind,
+                [np.mean(tpot_results['r_test']),
+                 np.mean(rvr_results['r_test'])],
+                yerr=[np.std(tpot_results['r_test']),
+                      np.std(tpot_results['r_test'])],
+                color=['b', 'r']
+                     )
+        plt.xticks(ind, ('TPOT', 'RVR'))
+        plt.ylim([.75, 1])
+        plt.yticks(np.arange(.75, 1.005, .05))
+        barplot_annotate_brackets(0, 1, 'p<.001', ind,
+                                  height=[np.mean(tpot_results['r_test']),
+                                          np.mean(rvr_results['r_test'])])
+        plt.ylabel('Pearson\'s Correlation')
+        plt.savefig(os.path.join(save_path, 'r_bootstrap_test.eps'))
+        plt.close()
 
 
 elif args.model == 'classification':

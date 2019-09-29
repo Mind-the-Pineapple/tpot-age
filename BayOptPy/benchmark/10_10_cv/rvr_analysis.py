@@ -88,7 +88,7 @@ set_publication_style()
 debug = False
 dataset =  'freesurf_combined'
 # dataset =  'UKBIO_freesurf'
-analysis = 'bootstrap'
+analysis = 'not bootstrap'
 n_generations = 10 # generations on the TPOT
 n_folds = 10 # number of times to perform Kfold
 # Analysed random seeds
@@ -120,5 +120,5 @@ if analysis == 'bootstrap':
 else:
     # define default random seed
     random_seed = 20
-    rvr_analysis(random_seed)
+    rvr_analysis(random_seed, save_path, n_folds)
 
