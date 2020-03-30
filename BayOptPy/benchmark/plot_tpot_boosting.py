@@ -33,7 +33,8 @@ parser.add_argument('-analysis',
                     choices=['vanilla_combi',
                              'uniform_dist',
                              'preprocessing',
-                             'population'],
+                             'population',
+                             'mutation'],
                     required=True
                     )
 args = parser.parse_args()
@@ -122,7 +123,8 @@ if (args.model == 'regression'):
             with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
                 tpot_results = pickle.load(handle)
                 tpot_results['preprocessing'] = preprocessing
-                tpot_results['mean_flatten'] = np.ndarray.flatten(tpot_results['mae_test'])
+                tpot_results['mean_flatten'] = np.ndarray.flatten(tpot_results['mae_test'][:10, :])
+                tpot_results['mae_test'] = tpot_results['mae_test'][:10, :]
                 # save information to dataframe
                 df = df.append(tpot_results, ignore_index=True)
 
@@ -241,6 +243,72 @@ if (args.model == 'regression'):
                                     r=10)
         print('T: %.3f and p: %.f' %(t, p_t))
 
+    elif args.analysis == 'mutation':
+        print('Mutation analysis')
+        mutation_types = ['0.1_mut_0.9_cross',
+                          '0.5_mut_0.5_cross',
+                          '0.9_mut_0.1_cross']
+        ind = np.arange(0, len(mutation_types))
+        df = pd.DataFrame(columns=['mae_test', 'r_test', 'preprocessing',
+                                   ])
+        for mutation in mutation_types:
+            save_path = '/code/BayOptPy/tpot_%s/Output/%s/age/%03d_generations/%s' \
+                        %(args.model, args.analysis, args.generations, mutation)
+            with open(os.path.join(save_path, 'tpot_all_seeds.pckl'), 'rb') as handle:
+                tpot_results = pickle.load(handle)
+                tpot_results['preprocessing'] = mutation
+                tpot_results['mean_flatten'] = np.ndarray.flatten(tpot_results['mae_test'][:10, :])
+                tpot_results['mae_test'] = tpot_results['mae_test'][:10, :]
+                # save information to dataframe
+                df = df.append(tpot_results, ignore_index=True)
+
+        # Calculate mean for every
+        # Plot MAE
+        plt.figure(figsize=(10,15))
+        plt.bar(ind,
+                [np.mean(df['mean_flatten'][0]),
+                 np.mean(df['mean_flatten'][1]),
+                 np.mean(df['mean_flatten'][2])],
+                yerr=[np.std(df['mean_flatten'][0]),
+                 np.std(df['mean_flatten'][1]),
+                 np.std(df['mean_flatten'][2]),
+                     ],
+                color=['b', 'r', 'g']
+                     )
+        plt.xticks(ind, (mutation_types))
+        plt.ylim([4, 5])
+        plt.yticks(np.arange(4, 5, .2))
+        plt.ylabel('MAE')
+        plt.savefig(os.path.join(save_path, 'MAE_preprocessinge.eps'))
+
+        data = [df['mean_flatten'][0], df['mean_flatten'][1],
+                df['mean_flatten'][2]]
+
+        plt.figure()
+        sns.swarmplot(data=data)
+        plt.ylabel('MAE')
+        plt.yticks(np.arange(4.3, 4.9, .1))
+        plt.xticks(ind, (mutation_types))
+        plt.savefig(os.path.join(save_path, 'MAE_preprocessing_box.eps'))
+
+        # Print statistics
+        f, p = friedmanchisquare(df['mean_flatten'][0], df['mean_flatten'][1],
+                                 df['mean_flatten'][2])
+        print('Friedman Statisitcs')
+        print('F-value %.3f' %f)
+        print('p-value: %.3f' %p)
+
+        print('Try Bengio Test')
+        t, p_t = ttest_ind_corrected(df['mae_test'][1], df['mae_test'][2], k=10,
+                                    r=10)
+        print('T: %.3f and p: %.f' %(t, p_t))
+        t, p_t = ttest_ind_corrected(df['mae_test'][0], df['mae_test'][2], k=10,
+                                    r=10)
+        print('T: %.3f and p: %.f' %(t, p_t))
+        t, p_t = ttest_ind_corrected(df['mae_test'][0], df['mae_test'][1], k=10,
+                                    r=10)
+        print('T: %.3f and p: %.f' %(t, p_t))
+
     else:
         # Load the dat from the saved pickle
         save_path = '/code/BayOptPy/tpot_%s/Output/%s/age/%03d_generations' \
@@ -287,8 +355,8 @@ if (args.model == 'regression'):
                                   height=[np.mean(tpot_results['mae_test']),
                                           np.mean(rvr_results['mae_test'])])
         plt.xticks(ind, ('TPOT', 'RVR'))
-        plt.ylim([4.5, 7])
-        plt.yticks(np.arange(4.5, 7.5, .5))
+        plt.ylim([0, 6])
+        plt.yticks(np.arange(0, 6, .5))
         plt.ylabel('MAE')
         plt.savefig(os.path.join(save_path, 'MAE_bootstrap_test.eps'))
         plt.close()

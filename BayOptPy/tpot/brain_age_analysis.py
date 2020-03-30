@@ -2,6 +2,8 @@ import multiprocessing
 import os
 import argparse
 import pickle
+import time
+from pathlib import Path
 
 from sklearn import model_selection
 from sklearn.preprocessing import RobustScaler
@@ -422,11 +424,18 @@ if __name__ == '__main__':
                                                      test_size=.5,
                                                      random_state=args.random_seed)
 
-        elif args.model == 'regression':
+        elif (args.model == 'regression') and (args.analysis!= 'uniform_dist'):
             # Split tain, test and validate
             Xtrain, Xtest, Ytrain, Ytest = \
                 model_selection.train_test_split(dataframe, targetAttribute,
                                                  test_size=.85,
+                                                 random_state=args.random_seed)
+
+        elif (args.model == 'regression') and (args.analysis == 'uniform_dist'):
+            # Split tain, test and validate
+            Xtrain, Xtest, Ytrain, Ytest = \
+                model_selection.train_test_split(dataframe, targetAttribute,
+                                                 test_size=.20,
                                                  random_state=args.random_seed)
 
     elif args.dataset == 'UKBIO_freesurf':
@@ -578,11 +587,23 @@ if __name__ == '__main__':
     print('Number of generations: %d' %args.generations)
     print('Population Size: %d' %args.population_size)
     print('Offspring Size: %d' %args.offspring_size)
+    t_training = time.process_time()
     if args.model == 'regression':
         tpot.fit(Xtrain_scaled, Ytrain, Xtest_scaled, Ytest)
     else:
         tpot.fit(Xtrain_scaled, Ytrain)
+    print('TPOT trainig - Elapsed time in seconds:')
+    elapsed_time = time.process_time() - t_training
+    print('%.03f' %elapsed_time)
+    print('')
+
+    t_test = time.process_time()
     tpot_score_test = tpot.score(Xtest_scaled, Ytest)
+    print('TPOT test - Elapsed time in seconds:')
+    elapsed_time = time.process_time() - t_test
+    print('%.03f' %elapsed_time)
+    print('')
+
     print('Test score using optimal model: %.3f ' % tpot_score_test)
     tpot.export(os.path.join(output_path, 'tpot_brain_age_pipeline.py'))
     print('Done TPOT analysis!')
