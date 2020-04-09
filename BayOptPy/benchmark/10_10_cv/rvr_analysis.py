@@ -57,8 +57,8 @@ def rvr_analysis(random_seed, save_path, n_folds, analysis):
         model = RVR(kernel='linear')
         cv_time_train = time.process_time()
         model.fit(x_train, y_train)
-        print('CV - Elapased time in seconds to train:')
         elapsed_time = time.process_time() - cv_time_train
+        print('CV - Elapased time in seconds to train:')
         t_time_train.append(elapsed_time)
         print('%.03f' %elapsed_time)
 
@@ -66,7 +66,7 @@ def rvr_analysis(random_seed, save_path, n_folds, analysis):
         cv_time_test = time.process_time()
         y_predicted = model.predict(x_test)
         elapsed_time = time.process_time() - cv_time_test
-        t_time_test.append(t_time_test)
+        t_time_test.append(elapsed_time)
         print('CV - Elapased time in seconds to test:')
         print('%.03f' %elapsed_time)
 
@@ -87,14 +87,18 @@ def rvr_analysis(random_seed, save_path, n_folds, analysis):
     print('SD CV time: %.3f s' %np.std(t_time_test))
     print('')
 
-    if analysis == 'vanila_combi':
+    if analysis == 'vanilla_combi':
         # Train the entire dataset
         x_train_all, x_test_all, y_train_all, y_test_all = \
                 train_test_split(x, y, test_size=.85, random_state=random_seed)
+        print('All: Shape of the trainig and test dataset')
+        print(y_train_all.shape, y_test_all.shape)
     elif analysis == 'uniform_dist':
         # Train the entire dataset
         x_train_all, x_test_all, y_train_all, y_test_all = \
                 train_test_split(x, y, test_size=.20,  random_state=random_seed)
+        print('ALL: Shape of the trainig and test dataset')
+        print(y_train_all.shape, y_test_all.shape)
     print('Training RVR model:')
     model_all = RVR(kernel='linear')
     model_all.fit(x_train_all, y_train_all)
@@ -106,7 +110,7 @@ def rvr_analysis(random_seed, save_path, n_folds, analysis):
     plot_predicted_vs_true(y_test_all, y_predicted_test,
                            output_path_test, 'Age')
 
-    return mae_cv, r_test
+    return mae_cv, r_test, t_time_train, t_time_test
 
 
 # Settings
@@ -114,41 +118,51 @@ def rvr_analysis(random_seed, save_path, n_folds, analysis):
 
 # Number of cross validations
 set_publication_style()
-import pdb
-pdb.set_trace()
 debug = False
 dataset =  'freesurf_combined'
 # dataset =  'UKBIO_freesurf'
-bootstrap = 'not bootstrap'
+bootstrap = 'bootstrap'
 n_generations = 10 # generations on the TPOT
 n_folds = 10 # number of times to perform Kfold
 # Analysed random seeds
 min_repetition = 10
-max_repetition = 210
+max_repetition = 110
 step_repetition = 10
 save_path = Path('/code/BayOptPy/tpot_regression/Output/%s/age/%03d_generations' \
             %(args.analysis, n_generations))
 save_path.mkdir(exist_ok=True, parents=True)
 
 if bootstrap == 'bootstrap':
-    print('Single Bootstrap Analysis')
+    print('Bootstrap Analysis')
     random_seeds = np.arange(min_repetition, max_repetition+step_repetition,
                              step_repetition)
     # iterate over the multiple random seeds
     mae_test_all = np.zeros((len(random_seeds), n_folds))
     r_test_all = np.zeros((len(random_seeds), n_folds))
+    time_train_all = np.zeros((len(random_seeds), n_folds))
+    time_test_all = np.zeros((len(random_seeds), n_folds))
     for seed_idx, random_seed in enumerate(random_seeds):
-        mae_test, r_test = rvr_analysis(random_seed, save_path, n_folds,
+        mae_test, r_test, t_time_train, t_time_test  = rvr_analysis(random_seed, save_path, n_folds,
                                         args.analysis)
         mae_test_all[seed_idx, :] = mae_test.T
         r_test_all[seed_idx, :] = r_test.T
+        time_train_all[seed_idx, :] = t_time_train
+        time_test_all[seed_idx, :] = t_time_test
     print('Mean and std for test data')
     print(np.mean(mae_test_all, axis=0), np.std(mae_test_all, axis=0))
     print('Mean and std pearson corr test data')
     print(np.mean(r_test_all, axis=0), np.std(r_test_all, axis=0))
+    print('Mean and std TIME training')
+    print(np.mean(np.mean(time_train_all, axis=0)),
+          np.std(np.std(time_train_all, axis=0)))
+    print('Mean and std TIME test')
+    print(np.mean(np.mean(time_test_all, axis=0)),
+          np.std(np.std(time_test_all, axis=0)))
 
     results = {'mae_test': mae_test_all,
-               'r_test': r_test_all}
+               'r_test': r_test_all,
+               'time_train': time_train_all,
+               'time_test': time_test_all}
     with open((save_path / 'rvr_all_seeds.pckl'), 'wb') as handle:
         pickle.dump(results, handle)
 else:

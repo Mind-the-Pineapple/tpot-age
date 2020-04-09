@@ -135,10 +135,10 @@ def tpot_model_analysis(random_seed, save_path, n_folds, algorithms_list):
     pearsons_corr = np.zeros((n_folds, 1))
     pearsons_pval = np.zeros((n_folds, 1))
 
-    t_time = []
+    t_time_train = []
+    t_time_inference = []
 
     for i_fold, (train_idx, test_idx) in enumerate(kf.split(x, y)):
-        cv_time = time.process_time()
         x_train, x_test = x[train_idx, :], x[test_idx, :]
         y_train, y_test = y[train_idx], y[test_idx]
 
@@ -147,10 +147,21 @@ def tpot_model_analysis(random_seed, save_path, n_folds, algorithms_list):
         print(y_train.shape, y_test.shape)
 
         # train the model
+        cv_time = time.process_time()
         new_model = exported_pipeline.fit(x_train, y_train)
+        elapsed_time = time.process_time() - cv_time
+        print('CV - Elapased time in seconds train :')
+        print('%.03f s' %elapsed_time)
+        t_time_train.append(elapsed_time)
 
         # test the model
+        cv_time = time.process_time()
         y_predicted = new_model.predict(x_test)
+        elapsed_time = time.process_time() - cv_time
+        print('CV - Elapased time in seconds inference :')
+        print('%.03f s' %elapsed_time)
+        t_time_inference.append(elapsed_time)
+
         mae_kfold = mean_absolute_error(y_test, y_predicted)
         mae_cv[i_fold, :] = mae_kfold
         # now look at the pearson's correlation
@@ -158,17 +169,11 @@ def tpot_model_analysis(random_seed, save_path, n_folds, algorithms_list):
         pearsons_corr[i_fold, :] = r_test
         pearsons_pval[i_fold, :] = r_p_value_test
 
-        print('CV - Elapased time in seconds:')
-        elapsed_time = time.process_time() - cv_time
-        print('%.03f s' %elapsed_time)
-        t_time.append(elapsed_time)
 
     print('CV results')
     print('MAE: Mean(SD) = %.3f(%.3f)' % (mae_cv.mean(), mae_cv.std()))
     print('Pearson\'s Correlation: Mean(SD) = %.3f(%.3f)' % (r_test.mean(),
                                                              r_test.std()))
-    print('Mean CV time: %.3f' %np.mean(t_time))
-    print('SD CV time: %.3f s' %np.std(t_time))
     print('')
 
     # plot predicted vs true for the test (Entire sample)
@@ -189,12 +194,12 @@ def tpot_model_analysis(random_seed, save_path, n_folds, algorithms_list):
         algorithms_count[algorithm] += values.count(algorithm + '(')
     algorithms_count['random_seed'] = random_seed
     print('-------------------------------------------------------------------------------')
-    return mae_cv, pearsons_corr, algorithms_count
+    return mae_cv, pearsons_corr, algorithms_count, t_time_train, t_time_inference
 
 if __name__ == '__main__':
     # General Settings
     #-------------------------------------------------------------------------------
-    bootstrap = 'not bootstrap'
+    bootstrap = 'bootstrap'
 
     # Analysed random seeds
     min_repetition = 10
@@ -237,14 +242,19 @@ if __name__ == '__main__':
         # Define the list of possible models
         mae_test_all = np.zeros((len(random_seeds), n_folds))
         r_test_all = np.zeros((len(random_seeds), n_folds))
+        time_train_all = np.zeros((len(random_seeds), n_folds))
+        time_test_all = np.zeros((len(random_seeds), n_folds))
         algorithms_count_all = []
         for seed_idx, random_seed in enumerate(random_seeds):
-            mae_test, r_test, algorithms_count = tpot_model_analysis(random_seed,
-                                                                     save_path,
-                                                                     n_folds,
-                                                                     algorithms_list)
+            mae_test, r_test, algorithms_count, t_time_train, t_time_inference = \
+                    tpot_model_analysis(random_seed,
+                    save_path,
+                    n_folds,
+                    algorithms_list)
             mae_test_all[seed_idx, :] = mae_test.T
             r_test_all[seed_idx, :] = r_test.T
+            time_train_all[seed_idx, :] = t_time_train
+            time_test_all[seed_idx, :] = t_time_inference
             algorithms_count_all.append(algorithms_count)
 
         # Transfrom algorithm counts into a dataframe and plot heatmap
@@ -275,8 +285,18 @@ if __name__ == '__main__':
         print('Mean and std pearson corr test data')
         print(np.mean(r_test_all, axis=0), np.std(r_test_all, axis=0))
 
+        print('Mean and std TIME training')
+        print(np.mean(np.mean(time_train_all, axis=0)),
+              np.std(np.std(time_train_all, axis=0)))
+        print('Mean and std TIME test')
+        print(np.mean(np.mean(time_test_all, axis=0)),
+              np.std(np.std(time_test_all, axis=0)))
+
         results = {'mae_test': mae_test_all,
-                   'r_test': r_test_all}
+                   'r_test': r_test_all,
+                   'time_train': time_train_all,
+                   'time_test': time_test_all
+                  }
         with open((save_path / 'tpot_all_seeds.pckl'), 'wb') as handle:
             pickle.dump(results, handle)
 
