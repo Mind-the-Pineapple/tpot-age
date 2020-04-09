@@ -384,8 +384,8 @@ if (args.model == 'regression'):
                 color=['b', 'r']
                      )
         plt.xticks(ind, ('TPOT', 'RVR'))
-        plt.ylim([.75, 1])
-        plt.yticks(np.arange(.75, 1.005, .05))
+        plt.ylim([0, 1.1])
+        plt.yticks(np.arange(0, 1.1, .1))
         barplot_annotate_brackets(0, 1, 'p<.001', ind,
                                   height=[np.mean(tpot_results['r_test']),
                                           np.mean(rvr_results['r_test'])])
