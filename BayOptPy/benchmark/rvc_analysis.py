@@ -4,11 +4,11 @@ import pickle
 
 import numpy as np
 from matplotlib.pylab import plt
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import cross_validate, cross_val_predict
 from skrvm import RVC
 
-from BayOptPy.helperfunctions import (get_paths, plot_predicted_vs_true_age,
+from BayOptPy.helperfunctions import (get_paths,
                                       set_publication_style,
                                       plot_confusion_matrix)
 
@@ -41,13 +41,20 @@ def rvc_analysis(random_seed, save_path):
     ax, cm_test = plot_confusion_matrix(splitted_dataset['Ytest'], y_prediction_test,
                           classes=class_name,
                           normalize=True)
-    plt.savefig(os.path.join(save_path, 'confusion_matrix_test_rvc.png'))
-    # Predict on the validation dataset
+    # Look at accuracy
+    accuracy_test = accuracy_score(splitted_dataset['Ytest'], y_prediction_test)
+    plt.savefig(os.path.join(save_path, 'confusion_matrix_test_rvc.eps'))
+
+   # Predict on the validation dataset
     ax, cm_validation = plot_confusion_matrix(splitted_dataset['Yvalidate'], y_prediction_validation,
                           classes=class_name,
                           normalize=True)
-    plt.savefig(os.path.join(save_path, 'confusion_matrix_validation_rvc.png'))
-    return cm_test, cm_validation
+    plt.savefig(os.path.join(save_path, 'confusion_matrix_validation_rvc.eps'))
+    # Look at accuracy
+    accuracy_val = accuracy_score(splitted_dataset['Yvalidate'],
+                                   y_prediction_validation)
+    plt.savefig(os.path.join(save_path, 'confusion_matrix_test_rvc.eps'))
+    return cm_test, cm_validation, accuracy_test, accuracy_val
 
 
 # Settings
@@ -59,17 +66,22 @@ debug = False
 dataset =  'freesurf_combined'
 # dataset =  'UKBIO_freesurf'
 analysis = 'bootstrap'
-save_path = '/code/BayOptPy/tpot_classification/Output/vanilla_combi/100_generations/'
+n_generations = 5
+save_path = '/code/BayOptPy/tpot_classification/Output/vanilla_combi/age/%03d_generations/' %(n_generations)
 
 if analysis =='bootstrap' :
-    random_seeds = np.arange(0, 110, 10)
+    random_seeds = np.arange(0, 100, 10)
     # iterate over the multiple random seeds
     confusion_matrix_test_all = []
     confusion_matrix_validate_all = []
+    accuracy_test_all = []
+    accuracy_val_all = []
     for random_seed in random_seeds:
-        cm_test, cm_validation = rvc_analysis(random_seed, save_path)
+        cm_test, cm_validation, accuracy_test, accuracy_val  = rvc_analysis(random_seed, save_path)
         confusion_matrix_test_all.append(cm_test)
         confusion_matrix_validate_all.append(cm_validation)
+        accuracy_test_all.append(accuracy_test)
+        accuracy_val_all.append(accuracy_val)
 
 print('Mean and std for test data')
 print(np.mean(confusion_matrix_test_all, axis=0),
@@ -80,6 +92,8 @@ print(np.mean(confusion_matrix_validate_all, axis=0),
 
 results = {'confusion_matrix_test': confusion_matrix_test_all,
            'confusion_matrix_validation': confusion_matrix_validate_all,
-           }
+           'score_test': accuracy_test_all,
+           'score_val': accuracy_val_all,
+          }
 with open(os.path.join(save_path, 'rvc_all_seeds.pckl'), 'wb') as handle:
     pickle.dump(results, handle)

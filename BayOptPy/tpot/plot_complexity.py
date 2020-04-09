@@ -24,6 +24,11 @@ parser.add_argument('-generations',
                     type=int,
                     required=True
                     )
+parser.add_argument('-model',
+                    dest='model',
+                    help='Define if a classification or regression problem',
+                    choices=['regression', 'classification', 'exploration']
+                    )
 parser.add_argument('-analysis_list',
                     dest='analysis_list',
                     help='Specify the list of analysis',
@@ -36,6 +41,13 @@ parser.add_argument('-population_size',
                     type=int,
                     default=100 # use the same default as TPOT default population value
                     )
+parser.add_argument('-predicted_attribute',
+                    dest='predicted_attribute',
+                    help='Define the cognitive task of interest',
+                    choices=['age', 'Reaction_time',
+                             'Prospective_memory',
+                             'Fluid_intelligence',
+                             'gender'])
 parser.add_argument('-random_seed',
                     dest='random_seed',
                     help='Specify random seed to use',
@@ -54,9 +66,10 @@ set_publication_style()
 plt.figure()
 for analysis in args.analysis_list:
     print('Analysis Type: %s' %analysis)
-    tpot_path = get_all_random_seed_paths(analysis, args.generations,
+    tpot_path = get_all_random_seed_paths(args.model, analysis, args.generations,
                                           args.population_size,
-                                          debug, mutation, crossover)
+                                          debug, mutation, crossover,
+                                          args.predicted_attribute)
 
     all_mae_test_set, all_mae_train_set, pipeline_complexity = \
             get_mae_for_all_generations(args.dataset,
@@ -71,4 +84,4 @@ plt.xlabel('Generation')
 plt.ylabel('Pipeline complexity')
 plt.legend()
 plt.ylim(0, 6)
-plt.savefig(os.path.join(os.path.dirname(tpot_path), 'pipeline_complexity.png'))
+plt.savefig(os.path.join(os.path.dirname(tpot_path), 'pipeline_complexity.eps'))

@@ -2,9 +2,11 @@ import joblib
 import os
 import shutil
 import re
+from scipy import stats
+from functools import partial
+
 import pandas as pd
 from multiprocessing import Process, Pool
-from functools import partial
 from nilearn import masking, image
 import nibabel as nib
 import numpy as np
@@ -70,10 +72,11 @@ def get_paths(debug, dataset):
     return project_wd, project_data, project_sink
 
 def get_output_path(model, analysis, ngen, random_seed, population_size, debug,
-                    mutation, crossover):
+                    mutation, crossover, predicted_attribute):
     # Check if output path exists, otherwise create it
     rnd_seed_path = get_all_random_seed_paths(model, analysis, ngen, population_size,
-                                              debug, mutation, crossover)
+                                              debug, mutation, crossover,
+                                              predicted_attribute)
     output_path = os.path.join(rnd_seed_path, 'random_seed_%03d' %random_seed)
 
     if not os.path.exists(output_path):
@@ -82,31 +85,35 @@ def get_output_path(model, analysis, ngen, random_seed, population_size, debug,
     return output_path
 
 def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mutation,
-                             crossover):
+                             crossover, predicted_attribute):
     # As they should have been created by the get_output_path, do not create
     # path but just find its location
     if analysis == 'vanilla' or analysis == 'feat_selec' or \
         analysis == 'feat_combi' or analysis == 'vanilla_combi' or \
         analysis == 'random_seed' or analysis == 'ukbio' or \
-        analysis == 'summary_data':
+        analysis == 'summary_data' or analysis == 'uniform_dist':
         if debug:
-            output_path = os.path.join('BayOptPy', 'tpot_%s' %model, 'Output', analysis,
+            output_path = os.path.join('BayOptPy', 'tpot_%s' %model, 'Output',
+                                       analysis, predicted_attribute,
                                        '%03d_generations' %ngen)
         else:
             output_path = os.path.join(os.sep, 'code', 'BayOptPy',
                                        'tpot_%s' %model,
                                        'Output', analysis,
+                                       predicted_attribute,
                                        '%03d_generations' %ngen)
     elif analysis == 'population':
         if debug:
             output_path = os.path.join('BayOptPy',
                                        'tpot_%s' %model,
-                                       'Output', analysis,
+                                       'Output', analysis, predicted_attribute,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
         else:
             output_path = os.path.join(os.sep, 'code', 'BayOptPy',
                                        'tpot_%s' %model,
+                                       'Output', analysis,
+                                       predicted_attribute,
                                        '%05d_population_size' %population_size,
                                        '%03d_generations' %ngen)
     elif analysis == 'mutation':
@@ -114,11 +121,14 @@ def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mut
             output_path = os.path.join('BayOptPy',
                                        'tpot_%s' %model,
                                        'Output', analysis,
+                                       predicted_attribute,
                                        '%03d_generations' %ngen,
                                        '%.01f_mut_%.01f_cross' %(mutation, crossover))
         else:
             output_path = os.path.join(os.sep, 'code', 'BayOptPy',
                                        'tpot_%s' %model,
+                                       'Output', analysis,
+                                       predicted_attribute,
                                        '%03d_generations' %ngen,
                                        '%.01f_mut_%.01f_cross' %(mutation, crossover))
 
@@ -131,12 +141,59 @@ def get_all_random_seed_paths(model, analysis, ngen, population_size, debug, mut
 
     return output_path
 
+def get_uniform_dist_data(debug, dataset, resamplefactor, raw, analysis):
+    """
+    This function gets the original dataset and transforms it into a uniformly
+    distributed dataset.
+    """
+
+    project_wd, project_data, project_sink = get_paths(debug, dataset)
+
+    demographics, imgs, dataframe  = get_data(project_data, dataset,
+                                            debug, project_wd,
+                                            resamplefactor,
+                                            raw=raw,
+                                            analysis=analysis)
+
+    # transform age into ints
+    demographics['age_int'] = demographics['age'].astype('int32', copy=False)
+
+    # Select 14 subjects for all ages that have 14 representatives.
+    age_range = np.arange(demographics['age'].min(), demographics['age'].max())
+    # remove entry where you don't have 14 subjects
+    max_n = 14
+    age_to_remove = [35, 36, 39, 42, 78, 79, 80, 81, 82, 83, 85, 89]
+    age_range = np.setdiff1d(age_range, age_to_remove)
+    # iterate over the dataframe and select 14 subjects for each age range
+    ids_to_use = []
+    for age in age_range:
+        ids_to_use.append(demographics.index[demographics['age_int'] ==
+                                             age].tolist()[:max_n])
+
+    # flatten ids_to_use
+    ids_to_use = [item for sublist in ids_to_use for item in sublist]
+    # Filter the demographics dataframe
+    demographics = demographics[demographics.index.isin(ids_to_use)]
+    # set subject's id as index
+    # filter dataset using index of the subjects
+    dataframe = dataframe.loc[demographics['id']]
+
+    # Print some diagnosis
+    print('Shape of the new demographics:')
+    print(demographics.shape)
+    print('Oldest %d and youngest %d subject' %(demographics['age_int'].max(),
+                                                demographics['age_int'].min()))
+    print('Number of age bins %d' %len(demographics['age_int'].unique()))
+    return demographics, dataframe
+
+
 def get_best_pipeline_paths(model, analysis, ngen, random_seed, population_size, debug,
-                           mutation, crossover):
+                           mutation, crossover, predicted_attribute):
     # check if folder exists and in case yes, remove it as new runs will save
     # new files without overwritting
     output_path = get_output_path(model, analysis, ngen, random_seed, population_size,
-                                  debug, mutation, crossover)
+                                  debug, mutation, crossover,
+                                  predicted_attribute)
     checkpoint_path = os.path.join(output_path, 'checkpoint_folder')
 
     # Delete folder if it already exists and create a new one
@@ -589,18 +646,17 @@ def set_publication_style():
                             "axes.spines.right": False,
                             "axes.labelsize": 'large'})
 
-def create_age_histogram(training_age, test_age, dataset):
+def create_age_histogram(df, dataset):
     '''
     Get an age array and plot and save the age histogram for the analysed sample
     '''
     # Define plot styple
     set_publication_style()
     plt.figure()
-    path_to_save = '/code/BayOptPy/tpot/age_histogram_%s.png' %dataset
-    min_age = training_age.min()
-    max_age = training_age.max()
-    plt.hist(training_age, bins=65, range=(min_age,max_age), label='training')
-    plt.hist(test_age, bins=65, range=(min_age,max_age), label='test')
+    path_to_save = '/code/BayOptPy/tpot/age_histogram_%s.eps' %dataset
+    min_age = df['age'].min()
+    max_age = df['age'].max()
+    plt.hist(df['age'], bins=65, range=(min_age,max_age))
     plt.xlabel('Age')
     plt.ylabel('# of Subjects')
     plt.legend()
@@ -626,7 +682,8 @@ def plot_confusion_matrix(y_true, y_pred, classes,
     # Compute confusion matrix
     cm = confusion_matrix(y_true, y_pred)
     # Only use the labels that appear in the data
-    classes = classes[unique_labels(y_true, y_pred)]
+    labels = [int(x) for x in unique_labels(y_true, y_pred)]
+    classes = classes[labels]
     if normalize:
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         print("Normalized confusion matrix")
@@ -698,17 +755,60 @@ def plot_confusion_matrix_boosting(cm_mean, cm_std,
     fig.tight_layout()
     return ax
 
-def plot_predicted_vs_true_age(true_y, predicted_y, save_path):
+def plot_predicted_vs_true(true_y, predicted_y, save_path, metric):
     fig = plt.figure()
     plt.scatter(true_y, predicted_y, alpha=.5)
-    plt.ylabel('Predicted Age')
-    plt.xlabel('True Age')
+    plt.ylabel('Predicted %s' %metric)
+    plt.xlabel('True %s'%metric)
     plt.plot(np.arange(min(true_y),
                        max(true_y)),
              np.arange(min(true_y),
                        max(true_y)), alpha=.3, linestyle='--',
              color='b')
-    plt.xticks(np.arange(20, 90, step=10))
-    plt.yticks(np.arange(20, 90, step=10))
+    if metric == 'Age':
+        plt.xticks(np.arange(min(min(true_y), min(predicted_y)),
+                             max(max(true_y), max(predicted_y)), step=10))
+        plt.yticks(np.arange(min(min(true_y), min(predicted_y)),
+                             max(max(true_y), max(predicted_y)), step=10))
     plt.savefig(save_path)
     plt.close()
+
+def load_cognitive_data(project_data):
+    cog_path = os.path.join(project_data, 'cog_ukbio')
+    cog_df = pd.read_csv(os.path.join(cog_path, 'UKB_10k_cog_bmi.csv'))
+    cog_df = cog_df.set_index('ID')
+    return cog_df
+
+def ttest_ind_corrected(performance_a, performance_b, k=10, r=10):
+    """Corrected repeated k-fold cv test.
+     The test assumes that the classifiers were evaluated using cross validation.
+
+    Ref:
+        Bouckaert, Remco R., and Eibe Frank. "Evaluating the replicability of significance tests for comparing learning
+         algorithms." Pacific-Asia Conference on Knowledge Discovery and Data Mining. Springer, Berlin, Heidelberg, 2004
+
+    Args:
+        performance_a: performances from classifier A
+        performance_b: performances from classifier B
+        k: number of folds
+        r: number of repetitions
+
+    Returns:
+         t: t-statistic of the corrected test.
+         prob: p-value of the corrected test.
+    """
+    df = k * r - 1
+
+    x = performance_a - performance_b
+    m = np.mean(x)
+
+    sigma_2 = np.var(x, ddof=1)
+    denom = np.sqrt((1 / k * r + 1 / (k - 1)) * sigma_2)
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        t = np.divide(m, denom)
+
+    prob = stats.t.sf(np.abs(t), df) * 2
+
+    return t, prob
+

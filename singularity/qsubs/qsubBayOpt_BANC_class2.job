@@ -8,16 +8,18 @@
 # Which queues the job should use:
 # NOTE: mpi use multiple cores on different machines
 #       smp use multiple cores on the same machine
-#$ -pe smp 20
+#$ -pe smp 10
 
 # Where to save the STDOUT and STDERR
-#$ -o ~/BayOpt/singularity/logs/ukbio
-#$ -e ~/BayOpt/singularity/logs/ukbio
+#$ -o  /data/project/tpot/BayOpt/singularity/logs/
+#$ -e /data/project/tpot/BayOpt/singularity/logs/
 
+##$ -t 10-20:10
 
 /home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
 /code/BayOptPy/tpot_classification/brain_age_analysis.py -dataset freesurf_combined -cv 5 \
--generations 100 -population_size 1000 -offspring_size 100 -config_dict vanilla_classification \
--njobs 20 -random_seed 20 -analysis vanilla_combi -mutation_rate 0.9 \
--crossover_rate 0.1 -model classification
+-generations 3 -population_size 100 -offspring_size 10 -config_dict vanilla_classification \
+-njobs 10 -random_seed 20 -analysis vanilla_combi -mutation_rate 0.9 \
+-crossover_rate 0.1 -model classification2
 
+#echo ${SGE_TASK_ID}

@@ -1,0 +1,20 @@
+#!/bin/bash --login
+# How much memory needed *per core*
+#$ -l h_vmem=5G
+
+# Which operating system to use
+#$ -l cns_os=el7
+
+# Which queues the job should use:
+# NOTE: mpi use multiple cores on different machines
+#       smp use multiple cores on the same machine
+#$ -pe smp 1
+
+# Where to save the STDOUT and STDERR
+#$ -o ~/BayOpt/singularity/logs/ukbio
+#$ -e ~/BayOpt/singularity/logs/ukbio
+
+/home/k1506210/BayOpt/singularity/exec_BayOpt_BANC.sh /sing/neuroenvpy.sh \
+/code/BayOptPy/benchmark/10_10_cv/tpot_multiple_seeds_regression.py -model \
+regression -dataset freesurf_combined -generations 10 -analysis population \
+-mutation_rate 0.9 -crossover_rate 0.1 -config_dic vanilla_combi -population_size 10
