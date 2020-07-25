@@ -23,7 +23,7 @@ tpot_config_gpr = {
     'sklearn.gaussian_process.GaussianProcessRegressor': {
         'kernel': kernels,
         'random_state': [42],
-        'alpha': [1e-10, 1e-8, 1e-5, 1e-3, 1e-2, 1e0]
+        'alpha': [1e-10, 1e-8, 1e-5, 1e-3, 1e-2]
     },
     'sklearn.linear_model.ElasticNetCV': {
         'l1_ratio': np.arange(0.0, 1.01, 0.05),

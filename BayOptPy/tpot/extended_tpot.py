@@ -36,8 +36,8 @@ from joblib import Parallel, delayed
 from datetime import datetime
 import random
 from tqdm import tqdm
-import deap
 from deap import tools, creator, gp, base
+from tpot.gp_deap import initialize_stats_dict, varOr
 import os
 import errno
 import joblib
@@ -447,7 +447,6 @@ class ExtendedTPOTBase(TPOTBase):
                     # update pbar
                     for val in tmp_result_scores:
                         result_score_list = self._update_val(val, result_score_list)
-
         self._update_evaluated_individuals_(result_score_list, eval_individuals_str, operator_counts, stats_dicts)
         # Create an additional dictionary to save all analysed models per geneartion
         for idx, model in enumerate(stats_dicts.keys()):
@@ -726,6 +725,7 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
 
     # calculate average fitness for the generation
     # ignore the -inf models
+    complexity = np.array([fitnesses[i][0] for i in range(len(population))])
     fitnesses_only = np.array([fitnesses[i][1] for i in range(len(population))])
     n_inf = np.sum(np.isinf(fitnesses_only))
     print('Number of invalid pipelines: %d' %n_inf)
@@ -735,7 +735,7 @@ def extendedeaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen, 
     logbook.record(gen=0, nevals=len(invalid_ind),
                    avg=np.mean(fitnesses_only), std=np.std(fitnesses_only),
                    min=np.min(fitnesses_only), max=np.max(fitnesses_only),
-                   raw=fitnesses_only,
+                   raw=fitnesses_only, complexity=complexity,
                    **record)
 
     # save the optimal model for initial pipeline
